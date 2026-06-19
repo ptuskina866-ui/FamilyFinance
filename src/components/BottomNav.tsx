@@ -39,8 +39,12 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onChangeTab }) => {
 
   return (
     <nav
-      className="absolute bottom-0 left-0 right-0 bg-white border-t border-slate-100 flex items-center px-2 z-50 safe-mb"
-      style={{ height: 64, boxShadow: '0 -4px 20px rgba(0,0,0,0.04)' }}
+      className="absolute bottom-0 left-0 right-0 bg-white border-t border-slate-100 flex items-center px-2 z-50"
+      style={{ 
+        height: 'calc(64px + env(safe-area-inset-bottom))',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+        boxShadow: '0 -4px 20px rgba(0,0,0,0.04)' 
+      }}
     >
       {leftTabs.map(t => <Tab key={t.id} {...t} />)}
 
