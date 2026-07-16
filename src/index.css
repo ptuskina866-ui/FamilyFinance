@@ -68,6 +68,10 @@
     padding-left: 2.75rem !important;
   }
 
+  .safe-header {
+    padding-top: max(28px, calc(env(safe-area-inset-top) + 8px)) !important;
+  }
+
   /* Hide input number spinner arrows */
   input::-webkit-outer-spin-button,
   input::-webkit-inner-spin-button {

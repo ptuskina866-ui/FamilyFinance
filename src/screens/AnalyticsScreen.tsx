@@ -104,7 +104,7 @@ const AnalyticsScreen: React.FC = () => {
   return (
     <div className="flex flex-col overflow-y-auto no-scrollbar pb-24 h-full bg-[#FFFFFF]">
       {/* ── Header ── */}
-      <div className="px-5 pt-7 pb-2 flex justify-between items-center bg-white border-b border-slate-100/60 sticky top-0 z-30">
+      <div className="px-5 pt-7 pb-2 safe-header flex justify-between items-center bg-white border-b border-slate-100/60 sticky top-0 z-30">
         <div className="w-9 h-9" /> {/* Spacer */}
         <h1 className="text-sm font-black text-slate-800 tracking-tight">Аналитика</h1>
         <div className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-lg active:scale-95 transition-transform">

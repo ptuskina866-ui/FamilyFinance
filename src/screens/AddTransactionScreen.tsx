@@ -117,7 +117,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
   return (
     <div className="flex flex-col h-full bg-[#FFFFFF] overflow-y-auto no-scrollbar pb-24">
       {/* ── Header ── */}
-      <div className="px-5 pt-7 pb-2 flex justify-between items-center bg-white border-b border-slate-100/60 sticky top-0 z-30">
+      <div className="px-5 pt-7 pb-2 safe-header flex justify-between items-center bg-white border-b border-slate-100/60 sticky top-0 z-30">
         <button
           onClick={onNavigateHome}
           className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-600 active:scale-95 transition-transform"

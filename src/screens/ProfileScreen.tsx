@@ -35,7 +35,7 @@ const ProfileScreen: React.FC = () => {
   return (
     <div className="flex flex-col overflow-y-auto no-scrollbar pb-24 h-full bg-white">
       {/* Header */}
-      <div className="px-5 pt-7 pb-2 bg-white border-b border-slate-100/60 flex justify-between items-center">
+      <div className="px-5 pt-7 pb-2 safe-header bg-white border-b border-slate-100/60 flex justify-between items-center">
         <div className="w-9 h-9" /> {/* Spacer */}
         <h1 className="text-sm font-black text-slate-800 tracking-tight">Профиль</h1>
         <button

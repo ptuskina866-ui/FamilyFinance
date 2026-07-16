@@ -37,7 +37,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogin }) =>
   return (
     <div className="flex flex-col h-full bg-white overflow-y-auto no-scrollbar">
       {/* Top bar */}
-      <div className="px-5 pt-7 pb-2 bg-white border-b border-slate-100/60 flex justify-between items-center shrink-0">
+      <div className="px-5 pt-7 pb-2 safe-header bg-white border-b border-slate-100/60 flex justify-between items-center shrink-0">
         <button onClick={onNavigateToLogin}
           className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100/60 flex items-center justify-center active:scale-90 transition-all">
           <ChevronLeft className="w-5 h-5 text-slate-600" />
