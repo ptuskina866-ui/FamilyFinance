@@ -18,6 +18,69 @@ export const CATEGORIES: Category[] = [
     accentColor: '#10b981'
   },
   {
+    id: 'food-hippo',
+    name: 'Гиппо',
+    icon: 'ShoppingCart',
+    color: 'text-emerald-400',
+    bgColor: 'bg-emerald-500/10',
+    borderColor: 'border-emerald-500/20',
+    accentColor: '#10b981'
+  },
+  {
+    id: 'food-euroopt',
+    name: 'Евроопт',
+    icon: 'ShoppingCart',
+    color: 'text-emerald-400',
+    bgColor: 'bg-emerald-500/10',
+    borderColor: 'border-emerald-500/20',
+    accentColor: '#10b981'
+  },
+  {
+    id: 'food-green',
+    name: 'Green',
+    icon: 'Leaf',
+    color: 'text-emerald-400',
+    bgColor: 'bg-emerald-500/10',
+    borderColor: 'border-emerald-500/20',
+    accentColor: '#22c55e'
+  },
+  {
+    id: 'food-fixprice',
+    name: 'FixPrice',
+    icon: 'Tag',
+    color: 'text-emerald-400',
+    bgColor: 'bg-emerald-500/10',
+    borderColor: 'border-emerald-500/20',
+    accentColor: '#10b981'
+  },
+  {
+    id: 'food-groshyk',
+    name: 'Грошик',
+    icon: 'Coins',
+    color: 'text-emerald-400',
+    bgColor: 'bg-emerald-500/10',
+    borderColor: 'border-emerald-500/20',
+    accentColor: '#10b981'
+  },
+  {
+    id: 'food-mayak',
+    name: 'Маяк',
+    icon: 'Store',
+    color: 'text-emerald-400',
+    bgColor: 'bg-emerald-500/10',
+    borderColor: 'border-emerald-500/20',
+    accentColor: '#10b981'
+  },
+  {
+    id: 'food-santa',
+    name: 'Санта',
+    icon: 'ShoppingCart',
+    color: 'text-emerald-400',
+    bgColor: 'bg-emerald-500/10',
+    borderColor: 'border-emerald-500/20',
+    accentColor: '#10b981'
+  },
+  {
     id: 'housing',
     name: 'Жилье',
     icon: 'Home',
@@ -54,6 +117,159 @@ export const CATEGORIES: Category[] = [
     accentColor: '#ec4899'
   },
   {
+    id: 'marketplaces',
+    name: 'Маркетплейсы',
+    icon: 'ShoppingBag',
+    color: 'text-rose-400',
+    bgColor: 'bg-rose-500/10',
+    borderColor: 'border-rose-500/20',
+    accentColor: '#ec4899'
+  },
+  {
+    id: 'utilities',
+    name: 'Коммунальные платежи',
+    icon: 'Receipt',
+    color: 'text-blue-400',
+    bgColor: 'bg-blue-500/10',
+    borderColor: 'border-blue-500/20',
+    accentColor: '#3b82f6'
+  },
+  {
+    id: 'scooters',
+    name: 'Поездка на самокатах',
+    icon: 'Bike',
+    color: 'text-lime-400',
+    bgColor: 'bg-lime-500/10',
+    borderColor: 'border-lime-500/20',
+    accentColor: '#84cc16'
+  },
+  {
+    id: 'mobile',
+    name: 'Мобильная связь',
+    icon: 'Phone',
+    color: 'text-sky-400',
+    bgColor: 'bg-sky-500/10',
+    borderColor: 'border-sky-500/20',
+    accentColor: '#0ea5e9'
+  },
+  {
+    id: 'credit',
+    name: 'Кредит',
+    icon: 'Percent',
+    color: 'text-rose-400',
+    bgColor: 'bg-rose-500/10',
+    borderColor: 'border-rose-500/20',
+    accentColor: '#f43f5e'
+  },
+  {
+    id: 'water',
+    name: 'Вода',
+    icon: 'Droplet',
+    color: 'text-cyan-400',
+    bgColor: 'bg-cyan-500/10',
+    borderColor: 'border-cyan-500/20',
+    accentColor: '#06b6d4'
+  },
+  {
+    id: 'medical',
+    name: 'Аптека и медицина',
+    icon: 'Pills',
+    color: 'text-rose-500',
+    bgColor: 'bg-rose-500/10',
+    borderColor: 'border-rose-500/20',
+    accentColor: '#f43f5e'
+  },
+  {
+    id: 'beauty',
+    name: 'Салон красоты',
+    icon: 'Scissors',
+    color: 'text-pink-400',
+    bgColor: 'bg-pink-500/10',
+    borderColor: 'border-pink-500/20',
+    accentColor: '#ec4899'
+  },
+  {
+    id: 'transport',
+    name: 'Такси и транспорт',
+    icon: 'Bus',
+    color: 'text-amber-500',
+    bgColor: 'bg-amber-500/10',
+    borderColor: 'border-amber-500/20',
+    accentColor: '#f59e0b'
+  },
+  {
+    id: 'clothes',
+    name: 'Одежда и обувь',
+    icon: 'Shirt',
+    color: 'text-purple-400',
+    bgColor: 'bg-purple-500/10',
+    borderColor: 'border-purple-500/20',
+    accentColor: '#a855f7'
+  },
+  {
+    id: 'household',
+    name: 'Товары для дома',
+    icon: 'Home',
+    color: 'text-blue-400',
+    bgColor: 'bg-blue-500/10',
+    borderColor: 'border-blue-500/20',
+    accentColor: '#3b82f6'
+  },
+  {
+    id: 'pets',
+    name: 'Питомцы',
+    icon: 'Cat',
+    color: 'text-orange-400',
+    bgColor: 'bg-orange-500/10',
+    borderColor: 'border-orange-500/20',
+    accentColor: '#f97316'
+  },
+  {
+    id: 'electronics',
+    name: 'Техника и гаджеты',
+    icon: 'Smartphone',
+    color: 'text-indigo-400',
+    bgColor: 'bg-indigo-500/10',
+    borderColor: 'border-indigo-500/20',
+    accentColor: '#6366f1'
+  },
+  {
+    id: 'cafes',
+    name: 'Кафе и рестораны',
+    icon: 'Coffee',
+    color: 'text-yellow-500',
+    bgColor: 'bg-yellow-500/10',
+    borderColor: 'border-yellow-500/20',
+    accentColor: '#eab308'
+  },
+  {
+    id: 'gifts',
+    name: 'Подарки и праздники',
+    icon: 'Gift',
+    color: 'text-emerald-400',
+    bgColor: 'bg-emerald-500/10',
+    borderColor: 'border-emerald-500/20',
+    accentColor: '#10b981'
+  },
+  {
+    id: 'internet',
+    name: 'Связь и интернет',
+    icon: 'Wifi',
+    color: 'text-sky-400',
+    bgColor: 'bg-sky-500/10',
+    borderColor: 'border-sky-500/20',
+    accentColor: '#0ea5e9'
+  },
+  {
+    id: 'taxes',
+    name: 'Налоги и страховки',
+    icon: 'FileText',
+    color: 'text-slate-400',
+    bgColor: 'bg-slate-500/10',
+    borderColor: 'border-slate-500/20',
+    accentColor: '#64748b'
+  },
+  {
     id: 'other',
     name: 'Другое',
     icon: 'HelpCircle',
@@ -61,6 +277,15 @@ export const CATEGORIES: Category[] = [
     bgColor: 'bg-slate-500/10',
     borderColor: 'border-slate-500/20',
     accentColor: '#94a3b8'
+  },
+  {
+    id: 'savings',
+    name: 'Накопления',
+    icon: 'Target',
+    color: 'text-indigo-400',
+    bgColor: 'bg-indigo-500/10',
+    borderColor: 'border-indigo-500/20',
+    accentColor: '#6366f1'
   },
   // Доходы (специальные категории)
   {
@@ -80,6 +305,15 @@ export const CATEGORIES: Category[] = [
     bgColor: 'bg-cyan-500/10',
     borderColor: 'border-cyan-500/20',
     accentColor: '#06b6d4'
+  },
+  {
+    id: 'income-relatives',
+    name: 'Помощь родственников',
+    icon: 'Heart',
+    color: 'text-red-400',
+    bgColor: 'bg-red-500/10',
+    borderColor: 'border-red-500/20',
+    accentColor: '#ef4444'
   }
 ];
 

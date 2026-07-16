@@ -187,6 +187,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
 
+    const tx = transactions.find(t => t.id === id);
+
     // Оптимистичное обновление: сразу убираем из локального состояния
     const previousTransactions = transactions;
     setTransactions(prev => prev.filter(t => t.id !== id));
@@ -202,6 +204,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.error('DELETE error:', error);
       setTransactions(previousTransactions);
       alert('Ошибка удаления: ' + error.message);
+    } else {
+      // При успешном удалении проверяем связь с копилкой
+      if (tx) {
+        const match = tx.comment.match(/\[goal_id:([^\]]+)\]/);
+        const linkedGoalId = match ? match[1] : null;
+        if (linkedGoalId) {
+          const goal = savingsGoals.find(g => g.id === linkedGoalId);
+          if (goal && tx.type === 'expense') {
+            const newGoalAmount = Math.max(0, goal.current_amount - tx.amount);
+            const isCompleted = newGoalAmount >= goal.target_amount;
+            await supabase.from('savings_goals')
+              .update({ current_amount: newGoalAmount, is_completed: isCompleted })
+              .eq('id', linkedGoalId);
+            setSavingsGoals(prev => prev.map(g =>
+              g.id === linkedGoalId ? { ...g, current_amount: newGoalAmount, is_completed: isCompleted } : g
+            ));
+          }
+        }
+      }
     }
   };
 
@@ -229,8 +250,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteGoal = async (id: string) => {
+    const goal = savingsGoals.find(g => g.id === id);
+    const refundAmount = goal ? goal.current_amount : 0;
     const { error } = await supabase.from('savings_goals').delete().eq('id', id);
-    if (!error) setSavingsGoals(prev => prev.filter(g => g.id !== id));
+    if (!error) {
+      setSavingsGoals(prev => prev.filter(g => g.id !== id));
+      if (refundAmount > 0 && profile?.household_id) {
+        await supabase.from('transactions').insert({
+          type: 'income',
+          amount: refundAmount,
+          category_id: 'savings',
+          comment: `Закрытие копилки: ${goal?.emoji || '🎯'} ${goal?.name || ''}`,
+          added_by: profile.id,
+          household_id: profile.household_id,
+          date: new Date().toISOString().split('T')[0]
+        });
+      }
+    }
   };
 
   const updateGoalAmount = async (goalId: string, addAmount: number) => {
@@ -241,9 +277,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const { error } = await supabase.from('savings_goals')
       .update({ current_amount: newAmount, is_completed: isCompleted })
       .eq('id', goalId);
-    if (!error) setSavingsGoals(prev => prev.map(g =>
-      g.id === goalId ? { ...g, current_amount: newAmount, is_completed: isCompleted } : g
-    ));
+    if (!error) {
+      setSavingsGoals(prev => prev.map(g =>
+        g.id === goalId ? { ...g, current_amount: newAmount, is_completed: isCompleted } : g
+      ));
+      if (profile?.household_id) {
+        await supabase.from('transactions').insert({
+          type: 'expense',
+          amount: addAmount,
+          category_id: 'savings',
+          comment: `Пополнение копилки: ${goal.emoji} ${goal.name} [goal_id:${goal.id}]`,
+          added_by: profile.id,
+          household_id: profile.household_id,
+          date: new Date().toISOString().split('T')[0]
+        });
+      }
+    }
   };
 
   const setBudgetLimit = (limit: number) => {

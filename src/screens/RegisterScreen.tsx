@@ -35,19 +35,20 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogin }) =>
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#F0F4F8] overflow-y-auto no-scrollbar">
+    <div className="flex flex-col h-full bg-white overflow-y-auto no-scrollbar">
       {/* Top bar */}
-      <div className="px-5 pt-14 pb-4 bg-white border-b border-slate-100 flex items-center gap-3">
+      <div className="px-5 pt-7 pb-2 bg-white border-b border-slate-100/60 flex justify-between items-center shrink-0">
         <button onClick={onNavigateToLogin}
-          className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center active:scale-90 transition-all">
+          className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100/60 flex items-center justify-center active:scale-90 transition-all">
           <ChevronLeft className="w-5 h-5 text-slate-600" />
         </button>
-        <h1 className="text-lg font-bold text-slate-800">Регистрация</h1>
+        <h1 className="text-sm font-black text-slate-800 tracking-tight">Регистрация</h1>
+        <div className="w-9 h-9" /> {/* Spacer */}
       </div>
 
       <div className="px-5 pt-4 pb-8 flex flex-col gap-4">
         {errorMsg && (
-          <div className="flex items-center gap-2 bg-red-50 border border-red-100 rounded-2xl p-3 text-xs text-red-500">
+          <div className="flex items-center gap-2 bg-rose-50 border border-rose-100/40 rounded-2xl p-3 text-xs text-rose-500">
             <AlertCircle className="w-4 h-4 shrink-0" /><span>{errorMsg}</span>
           </div>
         )}
@@ -92,7 +93,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogin }) =>
               <div className="flex gap-2 flex-wrap">
                 {AVATARS.map(av => (
                   <button key={av} type="button" onClick={() => setAvatar(av)}
-                    className={`w-10 h-10 rounded-2xl flex items-center justify-center text-xl border-2 transition-all active:scale-90 ${avatar === av ? 'border-green-500 bg-green-50' : 'border-transparent bg-slate-100'}`}>
+                    className={`w-10 h-10 rounded-2xl flex items-center justify-center text-xl border-2 transition-all active:scale-90 ${avatar === av ? 'border-[#0F172A] bg-slate-50' : 'border-transparent bg-slate-100'}`}>
                     {av}
                   </button>
                 ))}
@@ -116,15 +117,15 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogin }) =>
           <div className="card p-4 flex flex-col gap-3">
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Семейная группа</p>
 
-            <div className="toggle-pill">
+            <div className="toggle-pill p-1 bg-slate-50 border border-slate-100 rounded-2xl flex">
               <button type="button" onClick={() => setHouseholdAction('create')}
-                className="flex-1 py-2.5 text-sm font-bold rounded-[10px] transition-all"
-                style={householdAction === 'create' ? { background: '#22C55E', color: '#fff' } : { color: '#64748B' }}>
+                className="flex-1 py-2.5 text-xs font-bold rounded-xl transition-all"
+                style={householdAction === 'create' ? { background: '#0F172A', color: '#fff', boxShadow: '0 4px 12px rgba(15,23,42,0.15)' } : { color: '#64748B' }}>
                 Создать семью
               </button>
               <button type="button" onClick={() => setHouseholdAction('join')}
-                className="flex-1 py-2.5 text-sm font-bold rounded-[10px] transition-all"
-                style={householdAction === 'join' ? { background: '#22C55E', color: '#fff' } : { color: '#64748B' }}>
+                className="flex-1 py-2.5 text-xs font-bold rounded-xl transition-all"
+                style={householdAction === 'join' ? { background: '#0F172A', color: '#fff', boxShadow: '0 4px 12px rgba(15,23,42,0.15)' } : { color: '#64748B' }}>
                 Войти по ID
               </button>
             </div>
@@ -133,7 +134,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogin }) =>
               <div className="flex flex-col gap-1">
                 <label className="label-xs">Название семьи</label>
                 <div className="relative">
-                  <Plus className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Plus className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input type="text" value={householdName} onChange={e => setHouseholdName(e.target.value)} placeholder="Семья Соколовых" className="input-light pl-10" />
                 </div>
               </div>
@@ -141,21 +142,21 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogin }) =>
               <div className="flex flex-col gap-1">
                 <label className="label-xs">Household ID</label>
                 <div className="relative">
-                  <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Link className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input type="text" value={householdId} onChange={e => setHouseholdId(e.target.value)} placeholder="Вставьте UUID" className="input-light pl-10" />
                 </div>
               </div>
             )}
           </div>
 
-          <button type="submit" disabled={loading} className="btn-primary w-full">
+          <button type="submit" disabled={loading} className="w-full py-3.5 mt-2 rounded-2xl bg-[#0F172A] hover:bg-[#1E293B] text-white font-bold text-xs active:scale-95 transition-all shadow-sm disabled:opacity-50">
             {loading ? 'Регистрация...' : 'Зарегистрироваться'}
           </button>
         </form>
 
-        <p className="text-center text-sm text-slate-500">
+        <p className="text-center text-xs text-slate-400 font-semibold mt-1">
           Уже есть аккаунт?{' '}
-          <button onClick={onNavigateToLogin} className="text-green-600 font-semibold">Войти</button>
+          <button onClick={onNavigateToLogin} className="text-[#0F172A] font-extrabold hover:underline">Войти</button>
         </p>
       </div>
     </div>

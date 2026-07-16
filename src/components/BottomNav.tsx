@@ -24,13 +24,13 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onChangeTab }) => {
         onClick={() => onChangeTab(id)}
         className="flex flex-col items-center justify-center gap-1 flex-1 py-2 transition-all duration-200 active:scale-90"
       >
-        <div className={`flex items-center justify-center w-10 h-7 rounded-full transition-all duration-200 ${active ? 'bg-green-50' : ''}`}>
+        <div className={`flex items-center justify-center w-10 h-7 rounded-full transition-all duration-200 ${active ? 'bg-[#FAF2EA]' : ''}`}>
           <Icon
-            className={`w-5 h-5 transition-colors duration-200 ${active ? 'text-green-600' : 'text-slate-400'}`}
+            className={`w-5 h-5 transition-colors duration-200 ${active ? 'text-[#0F172A]' : 'text-slate-400'}`}
             strokeWidth={active ? 2.5 : 2}
           />
         </div>
-        <span className={`text-[10px] font-semibold leading-none transition-colors duration-200 ${active ? 'text-green-600' : 'text-slate-400'}`}>
+        <span className={`text-[10px] font-bold leading-none transition-colors duration-200 ${active ? 'text-[#0F172A]' : 'text-slate-400'}`}>
           {label}
         </span>
       </button>
@@ -39,11 +39,11 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onChangeTab }) => {
 
   return (
     <nav
-      className="absolute bottom-0 left-0 right-0 bg-white border-t border-slate-100 flex items-center px-2 z-50"
+      className="absolute bottom-0 left-0 right-0 bg-white/85 border-t border-slate-100/60 backdrop-blur-lg flex items-center px-2 z-50"
       style={{ 
         height: 'calc(64px + env(safe-area-inset-bottom))',
         paddingBottom: 'env(safe-area-inset-bottom)',
-        boxShadow: '0 -4px 20px rgba(0,0,0,0.04)' 
+        boxShadow: '0 -8px 30px rgba(15, 23, 42, 0.03)' 
       }}
     >
       {leftTabs.map(t => <Tab key={t.id} {...t} />)}
@@ -52,10 +52,10 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onChangeTab }) => {
       <div className="flex flex-col items-center justify-center flex-1">
         <button
           onClick={() => onChangeTab('add')}
-          className="w-13 h-13 rounded-full bg-green-500 hover:bg-green-600 active:scale-90 flex items-center justify-center transition-all duration-200 -mt-5 shadow-lg shadow-green-500/35"
+          className="w-11 h-11 rounded-full bg-[#0F172A] hover:bg-[#1E293B] active:scale-90 flex items-center justify-center transition-all duration-200 shadow-md shadow-slate-950/10"
           aria-label="Добавить"
         >
-          <Plus className="w-6 h-6 text-white" strokeWidth={3} />
+          <Plus className="w-5 h-5 text-white" strokeWidth={3} />
         </button>
       </div>
 
