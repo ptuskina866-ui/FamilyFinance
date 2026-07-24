@@ -296,6 +296,15 @@ export const CATEGORIES: Category[] = [
     borderColor: 'border-indigo-500/20',
     accentColor: '#6366f1'
   },
+  {
+    id: 'transfer',
+    name: 'Перевод',
+    icon: 'ArrowRightLeft',
+    color: 'text-indigo-400',
+    bgColor: 'bg-indigo-500/10',
+    borderColor: 'border-indigo-500/20',
+    accentColor: '#6366f1'
+  },
   // Доходы (специальные категории)
   {
     id: 'salary',
