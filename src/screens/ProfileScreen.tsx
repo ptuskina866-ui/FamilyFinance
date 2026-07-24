@@ -33,7 +33,7 @@ const ProfileScreen: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col overflow-y-auto no-scrollbar pb-24 h-full bg-white">
+    <div className="flex flex-col overflow-y-auto no-scrollbar h-full bg-white">
       {/* Header */}
       <div className="px-5 pt-7 pb-2 safe-header bg-white border-b border-slate-100/60 flex justify-between items-center">
         <div className="w-9 h-9" /> {/* Spacer */}
@@ -47,7 +47,7 @@ const ProfileScreen: React.FC = () => {
         </button>
       </div>
 
-      <div className="px-5 pt-5 flex flex-col gap-5">
+      <div className="px-5 pt-5 pb-36 flex flex-col gap-5">
         {/* Profile card */}
         <div className="card px-4 py-4 flex flex-col gap-4">
           <div className="flex items-center gap-4">

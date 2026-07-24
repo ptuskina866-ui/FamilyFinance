@@ -81,6 +81,15 @@ export const CATEGORIES: Category[] = [
     accentColor: '#10b981'
   },
   {
+    id: 'food-sosedi',
+    name: 'Соседи',
+    icon: 'ShoppingCart',
+    color: 'text-emerald-400',
+    bgColor: 'bg-emerald-500/10',
+    borderColor: 'border-emerald-500/20',
+    accentColor: '#10b981'
+  },
+  {
     id: 'housing',
     name: 'Жилье',
     icon: 'Home',

@@ -20,6 +20,7 @@ const CATEGORY_GROUPS: Record<string, string> = {
   'food-groshyk': 'products',
   'food-mayak': 'products',
   'food-santa': 'products',
+  'food-sosedi': 'products',
   // Жилье и счета
   'housing': 'bills',
   'utilities': 'bills',
@@ -28,6 +29,7 @@ const CATEGORY_GROUPS: Record<string, string> = {
   'internet': 'bills',
   'credit': 'bills',
   'taxes': 'bills',
+  'transfer': 'bills',
   // Транспорт
   'car': 'transport',
   'scooters': 'transport',
@@ -115,7 +117,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
   });
 
   return (
-    <div className="flex flex-col h-full bg-[#FFFFFF] overflow-y-auto no-scrollbar pb-24">
+    <div className="flex flex-col h-full bg-[#FFFFFF] overflow-y-auto no-scrollbar">
       {/* ── Header ── */}
       <div className="px-5 pt-7 pb-2 safe-header flex justify-between items-center bg-white border-b border-slate-100/60 sticky top-0 z-30">
         <button
@@ -129,7 +131,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
       </div>
 
       {/* ── Scrollable Form content ── */}
-      <div className="px-5 pt-5 flex flex-col gap-6">
+      <div className="px-5 pt-5 pb-36 flex flex-col gap-6">
         {/* Type toggle */}
         <div className="toggle-pill p-1 bg-slate-50 border border-slate-100 rounded-2xl flex">
           <button

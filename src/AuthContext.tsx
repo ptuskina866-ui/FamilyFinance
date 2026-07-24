@@ -49,11 +49,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fetchProfileAndHousehold = async (userId: string) => {
     try {
       // 1. Fetch Profile
-      const { data: profileData, error: profileError } = await supabase
+      let { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
+
+      // Retry once after 600ms if profile row was just created by trigger
+      if (profileError && profileError.code === 'PGRST116') {
+        await new Promise(r => setTimeout(r, 600));
+        const retry = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single();
+        profileData = retry.data;
+        profileError = retry.error;
+      }
 
       if (profileError) {
         if (profileError.code === 'PGRST116') {
@@ -78,6 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (householdError) {
           console.error('Ошибка загрузки семьи:', householdError);
+          setHousehold(null);
         } else {
           setHousehold(householdData);
         }
@@ -92,48 +105,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     let active = true;
 
-    const initAuth = async () => {
+    // Safety timeout: Never hang on loading screen for more than 5 seconds
+    const safetyTimer = setTimeout(() => {
+      if (active) {
+        setLoading(false);
+      }
+    }, 5000);
+
+    const handleSession = async (currentSession: Session | null) => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!active) return;
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
 
-        setSession(session);
-        setUser(session?.user ?? null);
-
-        if (session?.user) {
-          await fetchProfileAndHousehold(session.user.id);
+        if (currentSession?.user) {
+          await fetchProfileAndHousehold(currentSession.user.id);
+        } else {
+          setProfile(null);
+          setHousehold(null);
         }
       } catch (err) {
-        console.error('Ошибка инициализации auth:', err);
+        console.error('Ошибка при обработке сессии:', err);
       } finally {
-        if (active) setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     };
 
-    initAuth();
+    // 1. Initial auth check
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (active) {
+        handleSession(session);
+      }
+    }).catch(err => {
+      console.error('Ошибка getSession:', err);
+      if (active) setLoading(false);
+    });
 
+    // 2. Auth state changes listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!active) return;
-
-      // Игнорируем начальное событие, так как мы уже получили сессию через getSession
       if (event === 'INITIAL_SESSION') return;
 
-      setSession(session);
-      setUser(session?.user ?? null);
-
-      if (session?.user) {
-        setLoading(true);
-        await fetchProfileAndHousehold(session.user.id);
-        if (active) setLoading(false);
-      } else {
-        setProfile(null);
-        setHousehold(null);
-        if (active) setLoading(false);
-      }
+      await handleSession(session);
     });
 
     return () => {
       active = false;
+      clearTimeout(safetyTimer);
       subscription.unsubscribe();
     };
   }, []);

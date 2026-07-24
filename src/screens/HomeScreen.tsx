@@ -32,7 +32,7 @@ const HomeScreen: React.FC = () => {
   const budgetOk = monthlyExpense <= budgetLimit;
 
   return (
-    <div className="flex flex-col overflow-y-auto no-scrollbar pb-24 h-full bg-[#FFFFFF]">
+    <div className="flex flex-col overflow-y-auto no-scrollbar h-full bg-[#FFFFFF]">
       {/* ── Header ── */}
       <div className="px-5 pt-7 pb-2 safe-header flex justify-between items-center bg-white border-b border-slate-100/60 sticky top-0 z-30">
         <div className="w-9 h-9" /> {/* Spacer */}
@@ -43,7 +43,7 @@ const HomeScreen: React.FC = () => {
       </div>
 
       {/* ── Scrollable Body ── */}
-      <div className="px-5 pt-5 flex flex-col gap-6">
+      <div className="px-5 pt-5 pb-36 flex flex-col gap-6">
 
         {/* ── Balance ── */}
         <div className="flex flex-col gap-0.5">
