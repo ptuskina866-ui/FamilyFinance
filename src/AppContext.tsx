@@ -15,6 +15,7 @@ interface AppContextType {
   recurringTransactions: RecurringTransaction[];
   savingsGoals: SavingsGoal[];
   addTransaction: (tx: Omit<Transaction, 'id'>) => Promise<void>;
+  addTransactionsBatch: (txs: Omit<Transaction, 'id'>[]) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
   setBudgetLimit: (limit: number) => void;
   getCategoryById: (id: string) => Category | undefined;
@@ -181,6 +182,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (error) { console.error(error); alert('Ошибка: ' + error.message); }
   };
 
+  const addTransactionsBatch = async (txs: Omit<Transaction, 'id'>[]) => {
+    if (!profile?.household_id || txs.length === 0) return;
+    const records = txs.map(tx => ({
+      type: tx.type,
+      amount: tx.amount,
+      category_id: tx.categoryId,
+      comment: tx.comment,
+      added_by: tx.addedBy,
+      household_id: profile.household_id,
+      date: tx.date
+    }));
+
+    const { error } = await supabase.from('transactions').insert(records);
+    if (error) {
+      console.error('Batch insert error:', error);
+      throw error;
+    }
+  };
+
   const deleteTransaction = async (id: string) => {
     if (!profile?.household_id) {
       console.error('deleteTransaction: no household_id in profile');
@@ -319,7 +339,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       transactions, categories: CATEGORIES, members, balance,
       monthlyIncome, monthlyExpense, budgetLimit,
       recurringTransactions, savingsGoals,
-      addTransaction, deleteTransaction, setBudgetLimit,
+      addTransaction, addTransactionsBatch, deleteTransaction, setBudgetLimit,
       getCategoryById, getMemberById,
       addRecurring, deleteRecurring,
       addGoal, deleteGoal, updateGoalAmount

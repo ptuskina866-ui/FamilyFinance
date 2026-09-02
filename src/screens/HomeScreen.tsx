@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useApp } from '../AppContext';
 import { useAuth } from '../AuthContext';
 import { DynamicIcon } from '../components/CategoryGrid';
-import { Trash2, Check, Search, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { BankSyncModal } from '../components/BankSyncModal';
+import { Trash2, Check, Search, ArrowUpRight, ArrowDownRight, RotateCw } from 'lucide-react';
 
 const fmt = (n: number) => n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' Br';
 
@@ -15,6 +16,7 @@ const HomeScreen: React.FC = () => {
   const { transactions, balance, monthlyIncome, monthlyExpense, budgetLimit, deleteTransaction, getCategoryById, getMemberById } = useApp();
   const { profile } = useAuth();
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [bankSyncOpen, setBankSyncOpen] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'expense' | 'income'>('all');
@@ -97,6 +99,32 @@ const HomeScreen: React.FC = () => {
           {!budgetOk && (
             <p className="text-[10px] text-rose-500 font-semibold tracking-wide">⚠️ Лимит расходов превышен!</p>
           )}
+        </div>
+
+        {/* ── Alfa-Bank Sync Banner ── */}
+        <div 
+          onClick={() => setBankSyncOpen(true)}
+          className="card p-3.5 flex items-center justify-between gap-3 bg-gradient-to-r from-rose-50/60 via-white to-white border-rose-100 hover:border-rose-300 hover:shadow-md transition-all cursor-pointer group active:scale-[0.99]"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-rose-600 text-white flex items-center justify-center font-black text-lg shadow-md shadow-rose-600/20 group-hover:scale-105 transition-transform">
+              А
+            </div>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-black text-slate-800">Альфа-Банк Беларусь</span>
+                <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-rose-100 text-rose-700 font-bold">InSync</span>
+              </div>
+              <span className="text-[11px] text-slate-400">Синхронизация и загрузка операций</span>
+            </div>
+          </div>
+          <button 
+            type="button"
+            className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold transition-colors flex items-center gap-1 shrink-0"
+          >
+            <RotateCw size={12} className="group-hover:rotate-180 transition-transform duration-500" />
+            Импорт
+          </button>
         </div>
 
         {/* ── Search & Filter Controls ── */}
@@ -236,6 +264,12 @@ const HomeScreen: React.FC = () => {
         </div>
 
       </div>
+
+      {/* ── Bank Sync Modal ── */}
+      <BankSyncModal 
+        isOpen={bankSyncOpen} 
+        onClose={() => setBankSyncOpen(false)} 
+      />
     </div>
   );
 };
