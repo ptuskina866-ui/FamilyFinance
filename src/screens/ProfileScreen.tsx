@@ -7,7 +7,11 @@ import { ErrorBoundary } from '../components/ErrorBoundary';
 
 const fmt = (n: number) => n.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' Br';
 
-const ProfileScreen: React.FC = () => {
+interface ProfileScreenProps {
+  onOpenStatement?: () => void;
+}
+
+const ProfileScreen: React.FC<ProfileScreenProps> = ({ onOpenStatement }) => {
   const { members, budgetLimit, setBudgetLimit, monthlyExpense } = useApp();
   const { profile, household, signOut } = useAuth();
 
@@ -197,7 +201,7 @@ const ProfileScreen: React.FC = () => {
             Банковские интеграции
           </p>
           <div 
-            onClick={() => setBankSyncOpen(true)}
+            onClick={onOpenStatement || (() => setBankSyncOpen(true))}
             className="p-3.5 rounded-2xl bg-gradient-to-r from-rose-50/60 to-white border border-rose-100 hover:border-rose-300 flex items-center justify-between gap-3 cursor-pointer group transition-all"
           >
             <div className="flex items-center gap-3">
@@ -206,7 +210,7 @@ const ProfileScreen: React.FC = () => {
               </div>
               <div className="flex flex-col">
                 <span className="text-xs font-black text-slate-800">Альфа-Банк Беларусь</span>
-                <span className="text-[10px] text-slate-400">Импорт официальной выписки в PDF</span>
+                <span className="text-[10px] text-slate-400">Выгрузить выписку из банка</span>
               </div>
             </div>
             <button
@@ -214,7 +218,7 @@ const ProfileScreen: React.FC = () => {
               className="px-3 py-1.5 rounded-xl bg-white border border-rose-200 text-rose-600 text-xs font-bold group-hover:bg-rose-600 group-hover:text-white transition-all shadow-sm flex items-center gap-1"
             >
               <RotateCw size={12} className="group-hover:rotate-180 transition-transform duration-500" />
-              Синхронизировать
+              Выгрузить
             </button>
           </div>
         </div>

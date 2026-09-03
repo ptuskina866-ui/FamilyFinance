@@ -10,6 +10,8 @@ import ProfileScreen from './screens/ProfileScreen';
 import PlansScreen from './screens/PlansScreen';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
+import { BankStatementScreen } from './screens/BankStatementScreen';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 export type TabType = 'home' | 'add' | 'analytics' | 'plans' | 'profile';
 
@@ -17,17 +19,7 @@ const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [authView, setAuthView] = useState<'login' | 'register'>('login');
-
-  const renderScreen = () => {
-    switch (activeTab) {
-      case 'home':      return <HomeScreen />;
-      case 'add':       return <AddTransactionScreen onNavigateHome={() => setActiveTab('home')} />;
-      case 'analytics': return <AnalyticsScreen />;
-      case 'plans':     return <PlansScreen />;
-      case 'profile':   return <ProfileScreen />;
-      default:          return <HomeScreen />;
-    }
-  };
+  const [showStatement, setShowStatement] = useState(false);
 
   if (loading) {
     return (
@@ -54,6 +46,26 @@ const AppContent: React.FC = () => {
     );
   }
 
+  // Full-screen dedicated Bank Statement import page
+  if (showStatement) {
+    return (
+      <Layout>
+        <BankStatementScreen onBack={() => setShowStatement(false)} />
+      </Layout>
+    );
+  }
+
+  const renderScreen = () => {
+    switch (activeTab) {
+      case 'home':      return <HomeScreen onOpenStatement={() => setShowStatement(true)} />;
+      case 'add':       return <AddTransactionScreen onNavigateHome={() => setActiveTab('home')} />;
+      case 'analytics': return <AnalyticsScreen />;
+      case 'plans':     return <PlansScreen />;
+      case 'profile':   return <ProfileScreen onOpenStatement={() => setShowStatement(true)} />;
+      default:          return <HomeScreen onOpenStatement={() => setShowStatement(true)} />;
+    }
+  };
+
   return (
     <Layout>
       <div className="flex-1 flex flex-col min-h-0 relative">
@@ -63,8 +75,6 @@ const AppContent: React.FC = () => {
     </Layout>
   );
 };
-
-import { ErrorBoundary } from './components/ErrorBoundary';
 
 const App: React.FC = () => (
   <ErrorBoundary>

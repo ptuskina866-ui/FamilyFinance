@@ -13,7 +13,11 @@ const fmtDate = (iso: string) => {
   return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 };
 
-const HomeScreen: React.FC = () => {
+interface HomeScreenProps {
+  onOpenStatement?: () => void;
+}
+
+const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement }) => {
   const { transactions, balance, monthlyIncome, monthlyExpense, budgetLimit, deleteTransaction, getCategoryById, getMemberById } = useApp();
   const { profile } = useAuth();
   const [confirmId, setConfirmId] = useState<string | null>(null);
@@ -104,7 +108,7 @@ const HomeScreen: React.FC = () => {
 
         {/* ── Alfa-Bank Sync Banner ── */}
         <div 
-          onClick={() => setBankSyncOpen(true)}
+          onClick={onOpenStatement || (() => setBankSyncOpen(true))}
           className="card p-3.5 flex items-center justify-between gap-3 bg-gradient-to-r from-rose-50/60 via-white to-white border-rose-100 hover:border-rose-300 hover:shadow-md transition-all cursor-pointer group active:scale-[0.99]"
         >
           <div className="flex items-center gap-3">
@@ -114,9 +118,9 @@ const HomeScreen: React.FC = () => {
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-black text-slate-800">Альфа-Банк Беларусь</span>
-                <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-rose-100 text-rose-700 font-bold">PDF / InSync</span>
+                <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-rose-100 text-rose-700 font-bold">InSync PDF</span>
               </div>
-              <span className="text-[11px] text-slate-400">Импорт официальной PDF-выписки</span>
+              <span className="text-[11px] text-slate-400">Выгрузить выписку из банка</span>
             </div>
           </div>
           <button 
@@ -124,7 +128,7 @@ const HomeScreen: React.FC = () => {
             className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold transition-colors flex items-center gap-1 shrink-0"
           >
             <RotateCw size={12} className="group-hover:rotate-180 transition-transform duration-500" />
-            Импорт
+            Выгрузить
           </button>
         </div>
 
