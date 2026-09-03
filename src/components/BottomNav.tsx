@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Plus, PieChart, CalendarDays, User } from 'lucide-react';
+import { Home, Plus, PieChart, Target, User } from 'lucide-react';
 import { TabType } from '../App';
 
 interface BottomNavProps {
@@ -8,63 +8,58 @@ interface BottomNavProps {
 }
 
 const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onChangeTab }) => {
-  const leftTabs = [
-    { id: 'home' as TabType, label: 'Главная', icon: Home },
-    { id: 'analytics' as TabType, label: 'Аналитика', icon: PieChart },
+  const tabs = [
+    { id: 'home' as TabType, icon: Home, label: 'Главная' },
+    { id: 'analytics' as TabType, icon: PieChart, label: 'Аналитика' },
+    { id: 'add' as TabType, icon: Plus, label: 'Добавить', isCenter: true },
+    { id: 'plans' as TabType, icon: Target, label: 'Планы' },
+    { id: 'profile' as TabType, icon: User, label: 'Профиль' },
   ];
-  const rightTabs = [
-    { id: 'plans' as TabType, label: 'Планы', icon: CalendarDays },
-    { id: 'profile' as TabType, label: 'Профиль', icon: User },
-  ];
-
-  const Tab = ({ id, label, icon: Icon }: { id: TabType; label: string; icon: React.ComponentType<any> }) => {
-    const active = activeTab === id;
-    return (
-      <button
-        onClick={() => onChangeTab(id)}
-        className="flex flex-col items-center justify-center gap-1 flex-1 py-2 transition-all duration-200 active:scale-90"
-      >
-        <div className={`flex items-center justify-center w-10 h-7 rounded-full transition-all duration-200 ${active ? 'bg-slate-900/10' : ''}`}>
-          <Icon
-            className={`w-5 h-5 transition-colors duration-200 ${active ? 'text-slate-900' : 'text-slate-400'}`}
-            strokeWidth={active ? 2.5 : 2}
-          />
-        </div>
-        <span className={`text-[10px] font-bold leading-none transition-colors duration-200 ${active ? 'text-slate-900' : 'text-slate-400'}`}>
-          {label}
-        </span>
-      </button>
-    );
-  };
 
   return (
-    <nav
-      className="shrink-0 w-full bg-white/95 border-t border-slate-100/90 backdrop-blur-md flex items-center px-2 z-40 box-border"
-      style={{ 
-        height: 'calc(58px + env(safe-area-inset-bottom, 0px))',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-        boxShadow: '0 -4px 20px rgba(15, 23, 42, 0.03)' 
-      }}
-    >
-      {leftTabs.map(t => <Tab key={t.id} {...t} />)}
+    <div className="shrink-0 w-full pointer-events-none relative z-50 flex justify-center pb-[max(12px,env(safe-area-inset-bottom))] pt-1">
+      {/* Floating Island Capsule */}
+      <nav className="pointer-events-auto bg-white/95 backdrop-blur-xl border border-white/80 rounded-full px-2.5 py-1.5 flex items-center gap-1.5 shadow-[0_14px_38px_rgba(10,35,15,0.14)]">
+        {tabs.map((tab) => {
+          const active = activeTab === tab.id;
+          const Icon = tab.icon;
 
-      {/* Center FAB */}
-      <div className="flex flex-col items-center justify-center flex-1">
-        <button
-          onClick={() => onChangeTab('add')}
-          className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 shadow-md active:scale-90 ${
-            activeTab === 'add'
-              ? 'bg-rose-600 shadow-rose-600/30'
-              : 'bg-slate-900 hover:bg-slate-800 shadow-slate-900/20'
-          }`}
-          aria-label="Добавить"
-        >
-          <Plus className="w-5 h-5 text-white" strokeWidth={3} />
-        </button>
-      </div>
+          if (tab.isCenter) {
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => onChangeTab(tab.id)}
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 ${
+                  active
+                    ? 'bg-slate-950 text-white shadow-md shadow-slate-950/30 ring-2 ring-slate-900/20'
+                    : 'bg-slate-900 text-white hover:bg-slate-800 shadow-sm'
+                }`}
+                title={tab.label}
+              >
+                <Plus className="w-5 h-5 text-white" strokeWidth={2.8} />
+              </button>
+            );
+          }
 
-      {rightTabs.map(t => <Tab key={t.id} {...t} />)}
-    </nav>
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => onChangeTab(tab.id)}
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 ${
+                active
+                  ? 'bg-slate-900 text-white shadow-md shadow-slate-900/20'
+                  : 'text-slate-400 hover:text-slate-800 hover:bg-slate-100/60'
+              }`}
+              title={tab.label}
+            >
+              <Icon className="w-4 h-4" strokeWidth={active ? 2.5 : 2} />
+            </button>
+          );
+        })}
+      </nav>
+    </div>
   );
 };
 

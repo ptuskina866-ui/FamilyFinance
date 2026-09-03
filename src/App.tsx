@@ -57,12 +57,12 @@ const AppContent: React.FC = () => {
 
   const renderScreen = () => {
     switch (activeTab) {
-      case 'home':      return <HomeScreen onOpenStatement={() => setShowStatement(true)} />;
+      case 'home':      return <HomeScreen onOpenStatement={() => setShowStatement(true)} onNavigateTab={(t) => setActiveTab(t as TabType)} />;
       case 'add':       return <AddTransactionScreen onNavigateHome={() => setActiveTab('home')} />;
       case 'analytics': return <AnalyticsScreen />;
       case 'plans':     return <PlansScreen />;
       case 'profile':   return <ProfileScreen onOpenStatement={() => setShowStatement(true)} />;
-      default:          return <HomeScreen onOpenStatement={() => setShowStatement(true)} />;
+      default:          return <HomeScreen onOpenStatement={() => setShowStatement(true)} onNavigateTab={(t) => setActiveTab(t as TabType)} />;
     }
   };
 
