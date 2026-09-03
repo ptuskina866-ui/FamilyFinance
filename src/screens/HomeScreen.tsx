@@ -6,7 +6,7 @@ import { BankSyncModal } from '../components/BankSyncModal';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { SafeToSpendCard } from '../components/SafeToSpendCard';
 import { PayDreamFirstBanner } from '../components/PayDreamFirstBanner';
-import { Trash2, Check, Search, ArrowUpRight, ArrowDownRight, RotateCw, Landmark } from 'lucide-react';
+import { Trash2, Check, Search, Landmark } from 'lucide-react';
 
 const fmt = (n: number) => n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' Br';
 
@@ -25,7 +25,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement }) => {
     balance, 
     monthlyIncome, 
     monthlyExpense, 
-    budgetLimit, 
     deleteTransaction, 
     getCategoryById, 
     getMemberById,
@@ -48,78 +47,54 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement }) => {
     return matchesType && matchesSearch;
   });
 
-  const budgetPercent = Math.min(100, Math.round((monthlyExpense / budgetLimit) * 100));
-  const budgetOk = monthlyExpense <= budgetLimit;
-
   return (
-    <div className="flex flex-col overflow-y-auto no-scrollbar h-full bg-[#FFFFFF]">
-      {/* ── Header ── */}
-      <div className="px-5 pt-7 pb-2 safe-header flex justify-between items-center bg-white border-b border-slate-100/60 sticky top-0 z-30">
-        <div className="w-9 h-9" /> {/* Spacer */}
-        <h1 className="text-sm font-black text-slate-800 tracking-tight">Семейный Бюджет</h1>
-        <div className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-lg active:scale-95 transition-transform">
+    <div className="flex flex-col overflow-y-auto no-scrollbar h-full bg-[#F8FAFC]">
+      {/* ── Apple Header ── */}
+      <div className="px-5 pt-7 pb-2.5 safe-header flex justify-between items-center bg-white/90 backdrop-blur-md border-b border-slate-100/80 sticky top-0 z-30">
+        <button
+          type="button"
+          onClick={onOpenStatement || (() => setBankSyncOpen(true))}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all active:scale-95"
+        >
+          <Landmark size={14} />
+          <span>Выписка</span>
+        </button>
+
+        <h1 className="text-sm font-black text-slate-900 tracking-tight">Семейный Бюджет</h1>
+
+        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-sm font-bold">
           {profile?.avatar || '👤'}
         </div>
       </div>
 
       {/* ── Scrollable Body ── */}
-      <div className="px-5 pt-5 pb-8 flex flex-col gap-6">
+      <div className="px-5 pt-4 pb-8 flex flex-col gap-4">
 
-        {/* ── Balance ── */}
-        <div className="flex flex-col gap-0.5">
-          <p className={`text-[40px] font-black tracking-tight leading-none ${balance < 0 ? 'text-rose-500' : 'text-slate-800'}`}>
-            {fmt(balance)}
-          </p>
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">Доступный баланс</p>
-        </div>
-
-        {/* ── Monthly Summary cards ── */}
-        <div className="grid grid-cols-2 gap-3.5">
-          {/* Income card */}
-          <div className="card p-3.5 flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
-                <ArrowUpRight className="w-4 h-4" />
-              </div>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Доходы</span>
+        {/* ── Apple Unified Hero Card ── */}
+        <div className="card p-5 bg-white border border-slate-100/90 shadow-sm flex flex-col gap-4">
+          <div className="flex justify-between items-start">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Доступный баланс</span>
+              <span className={`text-3xl font-black tracking-tight leading-none ${balance < 0 ? 'text-rose-500' : 'text-slate-900'}`}>
+                {fmt(balance)}
+              </span>
             </div>
-            <span className="text-sm font-black text-slate-800">+{fmt(monthlyIncome)}</span>
-          </div>
-          {/* Expense card */}
-          <div className="card p-3.5 flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full bg-rose-50 flex items-center justify-center text-rose-500">
-                <ArrowDownRight className="w-4 h-4" />
-              </div>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Расходы</span>
+
+            <div className="flex items-center gap-2 pt-1 text-right">
+              <span className="text-xs font-black text-emerald-600">+{fmt(monthlyIncome)}</span>
+              <span className="text-slate-300 font-bold">·</span>
+              <span className="text-xs font-black text-slate-600">-{fmt(monthlyExpense)}</span>
             </div>
-            <span className="text-sm font-black text-slate-800">-{fmt(monthlyExpense)}</span>
           </div>
+
+          {/* Integrated Safe-to-Spend Daily Limit */}
+          <SafeToSpendCard
+            balance={balance}
+            transactions={transactions}
+          />
         </div>
 
-        {/* ── Budget progress bar ── */}
-        <div className="card p-4 flex flex-col gap-2.5">
-          <div className="flex justify-between items-center">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Лимит расходов</span>
-            <span className={`text-xs font-extrabold ${budgetOk ? 'text-slate-800' : 'text-rose-500'}`}>
-              {budgetPercent}% · {fmt(budgetLimit)}
-            </span>
-          </div>
-          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-700"
-              style={{
-                width: `${budgetPercent}%`,
-                background: budgetOk ? '#0F172A' : '#F43F5E',
-              }}
-            />
-          </div>
-          {!budgetOk && (
-            <p className="text-[10px] text-rose-500 font-semibold tracking-wide">⚠️ Лимит расходов превышен!</p>
-          )}
-        </div>
-
-        {/* ── Pay Dream First Banner (auto savings reminder) ── */}
+        {/* ── Pay Dream First Banner (Only when fresh income is detected) ── */}
         <PayDreamFirstBanner
           transactions={transactions}
           goals={savingsGoals}
@@ -127,36 +102,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement }) => {
             await updateGoalAmount(goalId, amount);
           }}
         />
-
-        {/* ── Safe-to-Spend Daily Budget ── */}
-        <SafeToSpendCard
-          balance={balance}
-          transactions={transactions}
-          savingsGoals={savingsGoals}
-        />
-
-        {/* ── Bank Statement Banner ── */}
-        <div 
-          onClick={onOpenStatement || (() => setBankSyncOpen(true))}
-          className="card p-3.5 flex items-center justify-between gap-3 bg-white border-slate-200/80 hover:border-slate-300 hover:shadow-md transition-all cursor-pointer group active:scale-[0.99]"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-black text-lg shadow-sm group-hover:scale-105 transition-transform">
-              <Landmark size={20} />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xs font-black text-slate-800">Выписка из банка</span>
-              <span className="text-[11px] text-slate-400">Выгрузить выписку</span>
-            </div>
-          </div>
-          <button 
-            type="button"
-            className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-colors flex items-center gap-1.5 shrink-0 shadow-sm"
-          >
-            <RotateCw size={12} className="group-hover:rotate-180 transition-transform duration-500" />
-            Выгрузить
-          </button>
-        </div>
 
         {/* ── Search & Filter Controls ── */}
         <div className="flex flex-col gap-3">
