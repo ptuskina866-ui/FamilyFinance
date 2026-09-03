@@ -553,7 +553,9 @@ export const BankStatementScreen: React.FC<BankStatementScreenProps> = ({ onBack
                             className="text-[11px] font-bold bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl px-2 py-0.5 text-slate-700 focus:outline-none max-w-[140px] truncate cursor-pointer transition-colors"
                           >
                             {(categories || [])
-                              .filter(c => tx.type === 'income' ? (c.id === 'salary' || c.id.startsWith('income-')) : (!c.id.startsWith('income-') && c.id !== 'salary'))
+                              .filter(c => tx.type === 'income' 
+                                ? (c.id === 'salary' || c.id.startsWith('income-') || c.id === 'transfer' || c.id === 'cash' || c.id === 'other') 
+                                : (!c.id.startsWith('income-') && c.id !== 'salary'))
                               .map(c => (
                                 <option key={c.id} value={c.id}>{c.name}</option>
                               ))}

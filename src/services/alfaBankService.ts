@@ -81,163 +81,164 @@ export interface ParseResult {
   transactions: AlfaTransaction[];
 }
 
-// ── 1. Справочник авто-категоризации под ритейл и сервисы Беларуси ──
-// Продуктовые супермаркеты объединены в категорию 'food' («Еда»)
-const CATEGORY_RULES: { keywords: string[]; categoryId: string }[] = [
-  // 1. Продукты и супермаркеты (Категория "Еда")
-  { 
-    keywords: [
-      'green', 'грин', 'гиппо', 'hippo', 'belvillesden', 'белвиллесден',
-      'евроопт', 'euroopt', 'edostavka', 'е-доставка', 'гипермолл', 'e-mall',
-      'соседи', 'sosedi', 'санта', 'santa', 'ритейлмаркет',
-      'prostore', 'простор', 'корона', 'korona', 'универсам', 'universam',
-      'грошык', 'groshyk', 'маяк', 'mayak', 'продукты', 'гастроном', 'мясной', 'хлеб',
-      'vitalur', 'виталюр', 'pekarnya', 'пекарня', 'terri', 'zorina', 'зорина', 'belmarket', 'белмаркет'
-    ], 
-    categoryId: 'food' 
-  },
 
-  // 2. Кафе, рестораны и фастфуд
-  { 
-    keywords: [
-      'kfc', 'burger king', 'burger-king', 'rbo', 'mak.by', 'макдональдс', 'мак.бай',
-      'dodo', 'додо', 'пицца', 'pizza', 'picca lisicca', 'лисица', 'лисицца',
-      'cofix', 'кофикс', 'coffee embassy', 'kofesaund', 'кофейня', 'кофе', 'coffee',
-      'padthai', 'падтай', 'john doner', 'донер', 'шаурма', 'yandex.eda', 'яндекс.еда', 'яндекс еда',
-      'foodpicasso', 'фудпикассо', 'кафе', 'cafe', 'ресторан', 'суши', 'sushi', 'бар', 'bar', 'паб', 'bakery'
-    ], 
-    categoryId: 'cafes' 
-  },
-
-  // 3. Маркетплейсы
-  { 
-    keywords: ['wildberries', 'wb', 'вайлдберриз', 'ozon', 'озон', 'izi shop', 'izishop', 'lamoda', 'ламода', 'oz.by', 'яндекс маркет'], 
-    categoryId: 'marketplaces' 
-  },
-
-  // 4. Одежда, обувь и ТЦ
-  { 
-    keywords: ['zarina', 'зарина', 'galereya', 'галерея', 'zara', 'mark formelle', 'марк формель', 'карри', 'kari', 'дефакто', 'defacto', 'bershka', 'pull&bear', 'stradivarius', 'mango', 'одежда', 'обувь', 'conte', 'конте', 'мегатоп', 'megatop'], 
-    categoryId: 'clothes' 
-  },
-
-  // 5. Красота и косметика
-  { 
-    keywords: ['mila', 'мила', 'zolotoe yabloko', 'золотое яблоко', 'byuti level', 'beauty level', 'парфюм', 'косметика', 'салон красоты', 'барбершоп'], 
-    categoryId: 'beauty' 
-  },
-
-  // 6. Товары для дома
-  { 
-    keywords: ['galamart', 'галамарт', 'fix price', 'fixprice', 'фикс прайс', 'jysk', 'юск', 'ikea', 'икеа', 'ами мебель', 'материк', 'mile', 'ома', 'oma', 'стройматериалы'], 
-    categoryId: 'household' 
-  },
-
-  // 7. Такси и транспорт
-  { 
-    keywords: ['paybycard', 'transport paybycard', 'stantsiya metro', 'metro', 'метро', 'yubileyn', 'aerodro', 'wb taxi', 'yandex go', 'яндекс go', 'яндекс такси', 'yandex.taxi', 'такси', 'uber', 'minsktrans', 'минсктранс', 'бжд', 'rw.by', 'проезд'], 
-    categoryId: 'transport' 
-  },
-
-  // 8. Самокаты и кикшеринг
-  { 
-    keywords: ['whoosh', 'вуш', 'eleven', 'илевен', 'kolobike', 'колобайк', 'busyfly', 'jet', 'samokat', 'кикшеринг'], 
-    categoryId: 'scooters' 
-  },
-
-  // 9. Аптека и медицина
-  { 
-    keywords: ['sumbest', 'apteka n88', 'apteka n 18', 'apteka', 'аптека', 'планета здоровья', 'фармация', 'инвитро', 'invitro', 'синэво', 'synevo', 'лодэ', 'lode', 'нордин', 'клиника', 'стоматология', 'медицинский'], 
-    categoryId: 'medical' 
-  },
-
-  // 10. Связь и интернет
-  { 
-    keywords: ['beltelecom', 'белтелеком', 'byfly', 'zala', 'космос тв', 'cosmostv', 'unet'], 
-    categoryId: 'internet' 
-  },
-  { 
-    keywords: ['a1', 'а1', 'мтс', 'mts', 'life:)', 'life', 'лайф'], 
-    categoryId: 'mobile' 
-  },
-
-  // 11. Коммуналка и ЕРИП
-  { 
-    keywords: ['insync (erip)', 'erip oplata zakaza', 'ерип', 'erip', 'расчет', 'жкх', 'коммунал', 'водоканал', 'минскводоканал', 'электроэнерг', 'минскэнерго', 'газ'], 
-    categoryId: 'utilities' 
-  },
-
-  // 12. Кредиты
-  { 
-    keywords: ['погашения кредита', 'погашение кредита', 'кредит'], 
-    categoryId: 'credit' 
-  },
-
-  // 13. Снятие наличных
-  { 
-    keywords: ['получение денег в банкомате', 'банкомат', 'recatm', 'atm'], 
-    categoryId: 'cash' 
-  },
-
-  // 14. Развлечения, ставки и билеты
-  { 
-    keywords: ['winline', 'fonbet', 'pm.by', 'bezkassira', 'кинотеатр', 'cinema', 'silver screen', 'mooon', 'боулинг', 'аквапарк', 'билет', 'kvitki', 'ticketpro', 'парк', 'музей', 'театр'], 
-    categoryId: 'entertainment' 
-  },
-
-  // 15. Переводы
-  { 
-    keywords: ['перевод между счетами', 'перевод', 'перевод физических лиц'], 
-    categoryId: 'transfer' 
-  },
-
-  // 16. Доходы
-  { 
-    keywords: ['зарплата', 'зачисление заработной платы', 'аванс', 'salary', 'оплата труда', 'пособие'], 
-    categoryId: 'salary' 
-  },
-  { 
-    keywords: ['пополнение картсчетов', 'пополнение', 'зачисле ние средств', 'зачисление средств', 'приорбанк', 'беларусбанк', 'технобанк', 'vyplaty', 'выплаты', 'альфа-бонус', 'бонус', 'кэшбэк', 'cashback', 'манибэк'], 
-    categoryId: 'income-other' 
-  },
-  // 17. АЗС и авто
-  {
-    keywords: ['belorusneft', 'белоруснефть', 'лукойл', 'lukoil', 'газпромнефть', 'gazprom', 'азс', 'united company', 'а-100', 'a-100', 'заправка', 'топливо', 'бензин', 'автомойка', 'парковка'],
-    categoryId: 'car'
-  },
-  // 18. Подписки и цифровые сервисы
-  {
-    keywords: ['yandex plus', 'яндекс плюс', 'яндекс музык', 'spotify', 'apple.com', 'itunes', 'google play', 'youtube', 't.me', 'telegram', 'netflix', 'kinopoisk', 'кинопоиск'],
-    categoryId: 'internet'
-  },
-  // 19. Доставка еды
-  {
-    keywords: ['delivio', 'деливио', 'menu.by', 'eda.by'],
-    categoryId: 'cafes'
-  },
-  // 20. Бытовая химия
-  {
-    keywords: ['остров чистоты', 'ostrov chistoty'],
-    categoryId: 'household'
-  }
-];
 
 export class AlfaBankService {
   /**
-   * Определение категории по тексту назначения платежа / названию торговой точки
+   * Определение конкретной категории по тексту назначения платежа и мерчанту
    */
-  static detectCategory(text: string, type: TransactionType): string {
-    const lower = text.toLowerCase();
+  static detectCategory(text: string, type: TransactionType, cleanedMerchant?: string): string {
+    const raw = (text + ' ' + (cleanedMerchant || '')).toLowerCase();
 
-    for (const rule of CATEGORY_RULES) {
-      if (rule.keywords.some(kw => lower.includes(kw))) {
-        return rule.categoryId;
-      }
+    // ── 1. Продуктовые магазины (конкретные категории) ──
+    if (raw.includes('gippo') || raw.includes('гиппо') || raw.includes('hippo') || raw.includes('belvillesden') || raw.includes('белвиллесден')) {
+      return 'food-hippo';
+    }
+    if (raw.includes('euroopt') || raw.includes('евроопт') || raw.includes('edostavka') || raw.includes('е-доставка') || raw.includes('e-mall') || raw.includes('гипермолл')) {
+      return 'food-euroopt';
+    }
+    if (raw.includes('green') || raw.includes('грин')) {
+      return 'food-green';
+    }
+    if (raw.includes('sosedi') || raw.includes('соседи')) {
+      return 'food-sosedi';
+    }
+    if (raw.includes('santa') || raw.includes('санта') || raw.includes('ритейлмаркет')) {
+      return 'food-santa';
+    }
+    if (raw.includes('fix price') || raw.includes('fixprice') || raw.includes('фикс прайс')) {
+      return 'food-fixprice';
+    }
+    if (raw.includes('groshyk') || raw.includes('грошык') || raw.includes('грошик')) {
+      return 'food-groshyk';
+    }
+    if (raw.includes('mayak') || raw.includes('маяк')) {
+      return 'food-mayak';
+    }
+    // Другие продуктовые магазины
+    if (
+      raw.includes('prostore') || raw.includes('простор') ||
+      raw.includes('korona') || raw.includes('корона') ||
+      raw.includes('universam') || raw.includes('универсам') ||
+      raw.includes('zorina') || raw.includes('зорина') ||
+      raw.includes('vitalur') || raw.includes('виталюр') ||
+      raw.includes('belmarket') || raw.includes('белмаркет') ||
+      raw.includes('мясной') || raw.includes('хлеб') || raw.includes('продукты') || raw.includes('гастроном') ||
+      raw.includes('pekarnya') || raw.includes('пекарня') || raw.includes('terri')
+    ) {
+      return 'food';
     }
 
+    // ── 2. Доходы (строгая и точная проверка) ──
     if (type === 'income') {
+      // Зарплата только если явно указана
+      if (raw.includes('зарплата') || raw.includes('зачисление заработной платы') || raw.includes('аванс') || raw.includes('salary') || raw.includes('оплата труда')) {
+        return 'salary';
+      }
+      // Кэшбэк и бонусы
+      if (raw.includes('альфа-бонус') || raw.includes('бонус') || raw.includes('кэшбэк') || raw.includes('cashback') || raw.includes('манибэк')) {
+        return 'income-cashback';
+      }
+      // Перевод между своими счетами
+      if (raw.includes('перевод между счетами')) {
+        return 'transfer';
+      }
+      // Внесение наличных через банкомат / инфокиоск
+      if (raw.includes('банкомат') || raw.includes('внесение наличных') || raw.includes('recatm') || raw.includes('пополнение картсчетов') || raw.includes('инфокиоск')) {
+        return 'income-other';
+      }
+      // Перевод от других людей / ЕРИП
+      if (raw.includes('приорбанк') || raw.includes('беларусбанк') || raw.includes('технобанк') || raw.includes('перевод') || raw.includes('vyplaty') || raw.includes('выплаты')) {
+        return 'income-transfer';
+      }
       return 'income-other';
     }
+
+    // ── 3. Расходы ──
+    // Фастфуд, кафе и рестораны
+    if (
+      raw.includes('kfc') || raw.includes('burger king') || raw.includes('burger-king') || raw.includes('mak.by') || raw.includes('макдональдс') ||
+      raw.includes('dodo') || raw.includes('додо') || raw.includes('пицца') || raw.includes('pizza') || raw.includes('picca lisicca') || raw.includes('лисица') ||
+      raw.includes('cofix') || raw.includes('кофикс') || raw.includes('coffee embassy') || raw.includes('kofesaund') || raw.includes('кофейня') || raw.includes('кофе') || raw.includes('coffee') ||
+      raw.includes('padthai') || raw.includes('john doner') || raw.includes('шаурма') || raw.includes('донер') ||
+      raw.includes('foodpicasso') || raw.includes('кафе') || raw.includes('cafe') || raw.includes('ресторан') || raw.includes('суши') || raw.includes('sushi') || raw.includes('бар') || raw.includes('delivio') || raw.includes('яндекс еда') || raw.includes('yandex.eda')
+    ) {
+      return 'cafes';
+    }
+
+    // Маркетплейсы
+    if (raw.includes('wildberries') || raw.includes('wb') || raw.includes('вайлдберриз') || raw.includes('ozon') || raw.includes('озон') || raw.includes('izi shop') || raw.includes('izishop') || raw.includes('lamoda') || raw.includes('ламода') || raw.includes('oz.by')) {
+      return 'marketplaces';
+    }
+
+    // Одежда и обувь
+    if (raw.includes('zarina') || raw.includes('зарина') || raw.includes('galereya') || raw.includes('galleria') || raw.includes('галерея') || raw.includes('zara') || raw.includes('mark formelle') || raw.includes('марк формель') || raw.includes('kari') || raw.includes('карри') || raw.includes('дефакто') || raw.includes('defacto') || raw.includes('одежда') || raw.includes('обувь') || raw.includes('conte') || raw.includes('мегатоп')) {
+      return 'clothes';
+    }
+
+    // Косметика и уход
+    if (raw.includes('mila') || raw.includes('мила') || raw.includes('zolotoe yabloko') || raw.includes('золотое яблоко') || raw.includes('byuti level') || raw.includes('beauty level') || raw.includes('парфюм') || raw.includes('косметика') || raw.includes('салон красоты') || raw.includes('барбершоп')) {
+      return 'beauty';
+    }
+
+    // Товары для дома
+    if (raw.includes('galamart') || raw.includes('галамарт') || raw.includes('остров чистоты') || raw.includes('ostrov chistoty') || raw.includes('jysk') || raw.includes('юск') || raw.includes('ikea') || raw.includes('икеа') || raw.includes('ами мебель') || raw.includes('материк') || raw.includes('mile') || raw.includes('ома') || raw.includes('oma') || raw.includes('стройматериалы')) {
+      return 'household';
+    }
+
+    // Такси и транспорт
+    if (raw.includes('paybycard') || raw.includes('metro') || raw.includes('метро') || raw.includes('yubileyn') || raw.includes('aerodro') || raw.includes('wb taxi') || raw.includes('yandex go') || raw.includes('яндекс go') || raw.includes('яндекс такси') || raw.includes('yandex.taxi') || raw.includes('такси') || raw.includes('uber') || raw.includes('minsktrans') || raw.includes('минсктранс') || raw.includes('бжд') || raw.includes('rw.by') || raw.includes('проезд')) {
+      return 'transport';
+    }
+
+    // Самокаты
+    if (raw.includes('whoosh') || raw.includes('вуш') || raw.includes('eleven') || raw.includes('илевен') || raw.includes('kolobike') || raw.includes('busyfly') || raw.includes('jet') || raw.includes('кикшеринг')) {
+      return 'scooters';
+    }
+
+    // Аптека и медицина
+    if (raw.includes('sumbest') || raw.includes('apteka') || raw.includes('аптека') || raw.includes('планета здоровья') || raw.includes('фармация') || raw.includes('инвитро') || raw.includes('invitro') || raw.includes('синэво') || raw.includes('synevo') || raw.includes('лодэ') || raw.includes('нордин') || raw.includes('клиника') || raw.includes('стоматология') || raw.includes('медицинский')) {
+      return 'medical';
+    }
+
+    // Связь, интернет, подписки
+    if (raw.includes('beltelecom') || raw.includes('белтелеком') || raw.includes('byfly') || raw.includes('zala') || raw.includes('yandex plus') || raw.includes('яндекс плюс') || raw.includes('spotify') || raw.includes('apple.com') || raw.includes('itunes') || raw.includes('google play') || raw.includes('youtube') || raw.includes('telegram') || raw.includes('netflix') || raw.includes('кинопоиск')) {
+      return 'internet';
+    }
+    if (raw.includes('a1') || raw.includes('а1') || raw.includes('мтс') || raw.includes('mts') || raw.includes('life')) {
+      return 'mobile';
+    }
+
+    // ЕРИП и коммуналка
+    if (raw.includes('insync (erip)') || raw.includes('ерип') || raw.includes('erip') || raw.includes('расчет') || raw.includes('жкх') || raw.includes('коммунал') || raw.includes('водоканал') || raw.includes('электроэнерг') || raw.includes('минскэнерго') || raw.includes('газ')) {
+      return 'utilities';
+    }
+
+    // Кредит
+    if (raw.includes('погашения кредита') || raw.includes('погашение кредита') || raw.includes('кредит')) {
+      return 'credit';
+    }
+
+    // Снятие наличных
+    if (raw.includes('получение денег в банкомате') || (raw.includes('recatm') && type === 'expense') || (raw.includes('atm') && type === 'expense')) {
+      return 'cash';
+    }
+
+    // Переводы
+    if (raw.includes('перевод между счетами') || raw.includes('перевод')) {
+      return 'transfer';
+    }
+
+    // Развлечения и ставки
+    if (raw.includes('winline') || raw.includes('fonbet') || raw.includes('bezkassira') || raw.includes('кинотеатр') || raw.includes('cinema') || raw.includes('silver screen') || raw.includes('mooon') || raw.includes('боулинг') || raw.includes('билет')) {
+      return 'entertainment';
+    }
+
+    // АЗС и авто
+    if (raw.includes('belorusneft') || raw.includes('белоруснефть') || raw.includes('лукойл') || raw.includes('lukoil') || raw.includes('газпромнефть') || raw.includes('азс') || raw.includes('а-100') || raw.includes('заправка') || raw.includes('бензин')) {
+      return 'car';
+    }
+
     return 'other';
   }
 
@@ -247,73 +248,82 @@ export class AlfaBankService {
   static cleanMerchantName(rawText: string, type: TransactionType): string {
     const upper = rawText.toUpperCase();
 
-    // Быстрые шаблоны для конкретных известных брендов и сервисов:
+    // 1. Продуктовые магазины и супермаркеты
+    if (upper.includes('GIPPO') || upper.includes('BELVILLESDEN') || upper.includes('ГИППО') || upper.includes('БЕЛВИЛЛЕСДЕН')) return 'Супермаркет Гиппо';
+    if (upper.includes('GREEN') || upper.includes('ГРИН')) return 'Супермаркет Green';
+    if (upper.includes('SOSEDI') || upper.includes('СОСЕДИ')) return 'Супермаркет Соседи';
+    if (upper.includes('EUROOPT') || upper.includes('ЕВРООПТ') || upper.includes('EDOSTAVKA') || upper.includes('E-MALL')) return 'Евроопт';
+    if (upper.includes('SANTA') || upper.includes('САНТА')) return 'Санта';
+    if (upper.includes('FIX PRICE') || upper.includes('FIXPRICE') || upper.includes('ФИКС ПРАЙС')) return 'Fix Price';
+    if (upper.includes('GROSHYK') || upper.includes('ГРОШЫК') || upper.includes('ГРОШИК')) return 'Грошык';
+    if (upper.includes('MAYAK') || upper.includes('МАЯК')) return 'Маяк';
+    if (upper.includes('PROSTORE') || upper.includes('ПРОСТОР')) return 'Супермаркет Prostore';
+    if (upper.includes('KORONA') || upper.includes('КОРОНА')) return 'Корона';
+    if (upper.includes('UNIVERSAM') || upper.includes('УНИВЕРСАМ')) return 'Универсам';
+    if (upper.includes('ZORINA') || upper.includes('ЗОРИНА')) return 'Магазин Зорина';
+    if (upper.includes('PEKARNYA') || upper.includes('ПЕКАРНЯ')) return 'Пекарня Terri';
+
+    // 2. Фастфуд и рестораны
     if (upper.includes('KFC')) return 'KFC';
     if (upper.includes('BURGER KING') || upper.includes('BURGER-KING')) return 'Burger King';
-    if (upper.includes('MAK.BY')) return 'Mak.by';
-    if (upper.includes('DODO PIZZA')) return 'Додо Пицца';
-    if (upper.includes('PICCA LISICCA')) return 'Пицца Лисица';
-    if (upper.includes('COFIX')) return 'Кофейня Cofix';
+    if (upper.includes('MAK.BY') || upper.includes('МАКДОНАЛЬДС')) return 'Mak.by';
+    if (upper.includes('DODO PIZZA') || upper.includes('ДОДО')) return 'Додо Пицца';
+    if (upper.includes('PICCA LISICCA') || upper.includes('ЛИСИЦА')) return 'Пицца Лисица';
+    if (upper.includes('COFIX') || upper.includes('КОФИКС')) return 'Кофейня Cofix';
     if (upper.includes('COFFEE EMBASSY')) return 'Coffee Embassy';
     if (upper.includes('KOFESAUND')) return 'Кофейня Kofesaund';
     if (upper.includes('PADTHAI')) return 'Padthai';
     if (upper.includes('JOHN DONER')) return 'John Doner';
     if (upper.includes('FOODPICASSO')) return 'Foodpicasso';
-    if (upper.includes('YANDEX.EDA')) return 'Яндекс Еда';
-    if (upper.includes('PEKARNYA TERRI')) return 'Пекарня Terri';
+    if (upper.includes('YANDEX.EDA') || upper.includes('ЯНДЕКС ЕДА') || upper.includes('DELIVIO')) return 'Доставка еды';
 
-    if (upper.includes('GREEN-25') || upper.includes('SUPERMARKET "GREEN"')) return 'Супермаркет Green';
-    if (upper.includes('GIPPO') || upper.includes('BELVILLESDEN')) return 'Супермаркет Гиппо';
-    if (upper.includes('SOSEDI')) return 'Супермаркет Соседи';
-    if (upper.includes('PROSTORE')) return 'Супермаркет Prostore';
-    if (upper.includes('UNIVERSAM')) return 'Универсам';
-    if (upper.includes('EUROOPT') || upper.includes('ЕВРООПТ')) return 'Евроопт';
-    if (upper.includes('SANTA') || upper.includes('САНТА')) return 'Санта';
-    if (upper.includes('KORONA') || upper.includes('КОРОНА')) return 'Корона';
-    if (upper.includes('SHOP ZORINA')) return 'Магазин Зорина';
+    // 3. Маркетплейсы и онлайн-шопинг
+    if (upper.includes('OZON') || upper.includes('ОЗОН')) return 'Ozon';
+    if (upper.includes('WILDBERRIES') || upper.includes('ВАЙЛДБЕРРИЗ')) return 'Wildberries';
+    if (upper.includes('IZI SHOP') || upper.includes('IZISHOP')) return 'Izi Shop';
 
-    if (upper.includes('OZON')) return 'Ozon';
-    if (upper.includes('WILDBERRIES')) return 'Wildberries';
-    if (upper.includes('IZI SHOP')) return 'Izi Shop';
+    // 4. Одежда, косметика, товары для дома
+    if (upper.includes('ZARINA') || upper.includes('ЗАРИНА')) return 'Zarina';
+    if (upper.includes('GALEREYA') || upper.includes('GALLERIA')) return 'ТЦ Galleria Minsk';
+    if (upper.includes('MILA') || upper.includes('МИЛА')) return 'Мила';
+    if (upper.includes('ZOLOTOE YABLOKO') || upper.includes('ЗОЛОТОЕ ЯБЛОКО')) return 'Золотое Яблоко';
+    if (upper.includes('BYUTI LEVEL') || upper.includes('BEAUTY LEVEL')) return 'Бьюти Левел';
+    if (upper.includes('GALAMART') || upper.includes('ГАЛАМАРТ')) return 'Галамарт';
 
-    if (upper.includes('SHOP ZARINA')) return 'Zarina';
-    if (upper.includes('GALEREYA')) return 'ТЦ Galleria Minsk';
-    if (upper.includes('SHOP MILA')) return 'Мила';
-    if (upper.includes('ZOLOTOE YABLOKO')) return 'Золотое Яблоко';
-    if (upper.includes('BYUTI LEVEL')) return 'Бьюти Левел';
-    if (upper.includes('GALAMART')) return 'Галамарт';
-    if (upper.includes('FIX PRICE')) return 'Fix Price';
-
-    if (upper.includes('PAYBYCARD.BY')) return 'Оплата проезда (PayByCard)';
-    if (upper.includes('STANTSIYA METRO YUBILEYN')) return 'Метро Юбилейная пл.';
-    if (upper.includes('STANTSIYA METRO AERODRO')) return 'Метро Аэродромная';
+    // 5. Транспорт и шеринг
+    if (upper.includes('PAYBYCARD.BY') || upper.includes('PAYBYCARD')) return 'Оплата проезда (PayByCard)';
+    if (upper.includes('METRO') || upper.includes('МЕТРО')) return 'Метрополитен';
     if (upper.includes('WB TAXI')) return 'WB Taxi';
     if (upper.includes('YANDEX') && (upper.includes('GO') || upper.includes('TAXI'))) return 'Яндекс Такси';
     if (upper.includes('WHOOSH')) return 'Самокаты Whoosh';
     if (upper.includes('ELEVEN')) return 'Самокаты Eleven';
 
-    if (upper.includes('BELTELECOM')) return 'Белтелеком';
-    if (upper.includes('INSYNC (ERIP)')) return 'Платеж ЕРИП (InSync)';
-    if (upper.includes('ERIP OPLATA ZAKAZA')) return 'Оплата заказа ЕРИП';
-    if (upper.includes('OPS MINSK')) return 'Белпочта (ОПС-48)';
+    // 6. Связь, ЕРИП, коммуналка
+    if (upper.includes('BELTELECOM') || upper.includes('БЕЛТЕЛЕКОМ')) return 'Белтелеком';
+    if (upper.includes('INSYNC (ERIP)') || upper.includes('ERIP')) return 'Платеж ЕРИП';
+    if (upper.includes('OPS MINSK') || upper.includes('БЕЛПОЧТА')) return 'Белпочта';
 
+    // 7. Медицина и аптеки
     if (upper.includes('SUMBEST')) return 'Аптека №18 Sumbest';
     if (upper.includes('APTEKA N88') || upper.includes('APTEKA N 88')) return 'Аптека №88';
-    if (upper.includes('APTEKA')) return 'Аптека';
+    if (upper.includes('APTEKA') || upper.includes('АПТЕКА')) return 'Аптека';
 
+    // 8. Развлечения и ставки
     if (upper.includes('BEZKASSIRA')) return 'BezKassira.by';
     if (upper.includes('WINLINE')) return type === 'income' ? 'Выигрыш Winline' : 'Winline.by';
     if (upper.includes('FONBET')) return 'Fonbet.by';
 
-    if (upper.includes('ПОЛУЧЕНИЕ ДЕНЕГ В БАНКОМАТЕ') || upper.includes('RECATM')) return 'Снятие в банкомате';
-    if (upper.includes('ПОГАШЕНИЯ КРЕДИТА')) return 'Погашение кредита';
+    // 9. Банковские операции, банкоматы, переводы
+    if (upper.includes('ПОЛУЧЕНИЕ ДЕНЕГ В БАНКОМАТЕ') || (upper.includes('RECATM') && type === 'expense')) return 'Снятие в банкомате';
+    if (upper.includes('ПОПОЛНЕНИЕ КАРТСЧЕТОВ') || upper.includes('ВНЕСЕНИЕ НАЛИЧНЫХ') || (upper.includes('RECATM') && type === 'income') || (upper.includes('БАНКОМАТ') && type === 'income')) return 'Пополнение через банкомат';
+    if (upper.includes('ПОГАШЕНИЯ КРЕДИТА') || upper.includes('ПОГАШЕНИЕ КРЕДИТА')) return 'Погашение кредита';
     if (upper.includes('ПЕРЕВОД МЕЖДУ СЧЕТАМИ')) return 'Перевод между счетами';
-    if (upper.includes('ПОПОЛНЕНИЕ КАРТСЧЕТОВ')) return 'Пополнение через инфокиоск';
     if (upper.includes('ПРИОРБАНК')) return 'Перевод через ЕРИП (Приорбанк)';
     if (upper.includes('БЕЛАРУСБАНК')) return 'Перевод через ЕРИП (Беларусбанк)';
     if (upper.includes('ТЕХНОБАНК')) return 'Перевод через ЕРИП (Технобанк)';
     if (upper.includes('VYPLATY BB') || upper.includes('BGPB')) return 'Белгазпромбанк выплата';
     if (upper.includes('АЛЬФА-БОНУС') || upper.includes('А ЛЬФА-БОНУС')) return 'Кэшбэк Альфа-Бонус';
+    if (upper.includes('ЗАРПЛАТ') || upper.includes('ЗАЧИСЛЕНИЕ ЗАРАБОТНОЙ ПЛАТЫ')) return 'Зачисление зарплаты';
 
     // Общая очистка для остальных названий:
     let text = rawText;
@@ -522,7 +532,7 @@ export class AlfaBankService {
 
       // 3. Формирование чистого и понятного названия мерчанта
       const merchant = this.cleanMerchantName(rawBlock, type);
-      const categoryId = this.detectCategory(rawBlock, type);
+      const categoryId = this.detectCategory(rawBlock, type, merchant);
 
       results.push({
         id: `alfa-pdf-${Date.now()}-${results.length}-${Math.random().toString(36).substr(2, 4)}`,
