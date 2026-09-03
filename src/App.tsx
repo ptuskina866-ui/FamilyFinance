@@ -64,12 +64,16 @@ const AppContent: React.FC = () => {
   );
 };
 
+import { ErrorBoundary } from './components/ErrorBoundary';
+
 const App: React.FC = () => (
-  <AuthProvider>
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
-  </AuthProvider>
+  <ErrorBoundary>
+    <AuthProvider>
+      <AppProvider>
+        <AppContent />
+      </AppProvider>
+    </AuthProvider>
+  </ErrorBoundary>
 );
 
 export default App;

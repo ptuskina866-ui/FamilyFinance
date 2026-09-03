@@ -3,6 +3,7 @@ import { useApp } from '../AppContext';
 import { useAuth } from '../AuthContext';
 import { DynamicIcon } from '../components/CategoryGrid';
 import { BankSyncModal } from '../components/BankSyncModal';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { Trash2, Check, Search, ArrowUpRight, ArrowDownRight, RotateCw } from 'lucide-react';
 
 const fmt = (n: number) => n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' Br';
@@ -266,10 +267,12 @@ const HomeScreen: React.FC = () => {
       </div>
 
       {/* ── Bank Sync Modal ── */}
-      <BankSyncModal 
-        isOpen={bankSyncOpen} 
-        onClose={() => setBankSyncOpen(false)} 
-      />
+      <ErrorBoundary fallbackTitle="Ошибка в окне синхронизации банка" onReset={() => setBankSyncOpen(false)}>
+        <BankSyncModal 
+          isOpen={bankSyncOpen} 
+          onClose={() => setBankSyncOpen(false)} 
+        />
+      </ErrorBoundary>
     </div>
   );
 };

@@ -25,12 +25,29 @@ if (typeof (Promise as any).withResolvers === 'undefined') {
   };
 }
 
+// Global visual error handlers to prevent silent white screens
+window.addEventListener('error', (event) => {
+  console.error('Fatal Window Error:', event);
+  const banner = document.getElementById('fatal-error-overlay');
+  if (banner) {
+    banner.style.display = 'block';
+    banner.innerText = `⚠️ Ошибка: ${event.message || 'Сбой скрипта'} (${event.filename || ''}:${event.lineno || ''})`;
+  }
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('Fatal Promise Rejection:', event);
+  const banner = document.getElementById('fatal-error-overlay');
+  if (banner) {
+    banner.style.display = 'block';
+    banner.innerText = `⚠️ Ошибка: ${event.reason?.message || event.reason || 'Необработанный сбой'}`;
+  }
+});
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
-
-
 // Register PWA service worker if available in production
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {

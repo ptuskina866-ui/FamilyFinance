@@ -30,7 +30,7 @@ type StepType = 'upload' | 'preview' | 'success';
 type TabFilter = 'all' | 'expense' | 'income' | 'duplicates';
 
 export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose }) => {
-  const { transactions, categories, members, addTransactionsBatch } = useApp();
+  const { transactions = [], categories = [], members = [], addTransactionsBatch } = useApp();
   const { profile } = useAuth();
 
   const [step, setStep] = useState<StepType>('upload');
@@ -46,7 +46,8 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
   const [activeTab, setActiveTab] = useState<TabFilter>('all');
 
   // Selected member for imported transactions
-  const [selectedMemberId, setSelectedMemberId] = useState<string>(profile?.id || members[0]?.id || 'dad');
+  const defaultMemberId = profile?.id || (members && members.length > 0 ? members[0]?.id : 'dad');
+  const [selectedMemberId, setSelectedMemberId] = useState<string>(defaultMemberId);
 
   // Data states
   const [parsedList, setParsedList] = useState<AlfaTransaction[]>([]);
@@ -71,22 +72,22 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
 
       if (file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf') {
         const result = await AlfaBankService.parsePdfFile(file);
-        rawTxs = result.transactions;
-        meta = result.metadata;
+        rawTxs = result.transactions || [];
+        meta = result.metadata || {};
       } else {
         const text = await file.text();
         if (!text) throw new Error('Файл пуст');
         rawTxs = AlfaBankService.parseStatementFile(text);
       }
 
-      if (rawTxs.length === 0) {
+      if (!rawTxs || rawTxs.length === 0) {
         throw new Error('В выписке не найдено операций с движением средств за выбранный период.');
       }
 
       setMetadata(meta);
 
       // Проверка на дубликаты среди уже сохраненных в бюджете
-      const marked = AlfaBankService.markDuplicates(rawTxs, transactions);
+      const marked = AlfaBankService.markDuplicates(rawTxs, transactions || []);
       setParsedList(marked);
 
       // По умолчанию выбираем только новые операции (не дубликаты)
@@ -128,18 +129,19 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
 
   // ── Filtered transactions calculation ──
   const filteredList = useMemo(() => {
-    return parsedList.filter(tx => {
+    return (parsedList || []).filter(tx => {
+      if (!tx) return false;
       // Filter by tab
       if (activeTab === 'expense' && tx.type !== 'expense') return false;
       if (activeTab === 'income' && tx.type !== 'income') return false;
       if (activeTab === 'duplicates' && !tx.isDuplicate) return false;
 
       // Filter by search query
-      if (searchQuery.trim()) {
+      if (searchQuery && searchQuery.trim()) {
         const query = searchQuery.toLowerCase().trim();
-        const matchMerchant = tx.merchant.toLowerCase().includes(query);
-        const matchComment = tx.comment.toLowerCase().includes(query);
-        const matchAmount = tx.amount.toString().includes(query);
+        const matchMerchant = (tx.merchant || '').toLowerCase().includes(query);
+        const matchComment = (tx.comment || '').toLowerCase().includes(query);
+        const matchAmount = (tx.amount ?? '').toString().includes(query);
         if (!matchMerchant && !matchComment && !matchAmount) return false;
       }
 
@@ -149,14 +151,12 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
 
   // ── Select All / Deselect All for current filter ──
   const handleSelectAllFiltered = () => {
-    const allFilteredSelected = filteredList.every(t => selectedTxIds.has(t.id));
+    const allFilteredSelected = filteredList.length > 0 && filteredList.every(t => selectedTxIds.has(t.id));
     const next = new Set(selectedTxIds);
 
     if (allFilteredSelected) {
-      // Unselect all currently filtered
       filteredList.forEach(t => next.delete(t.id));
     } else {
-      // Select all currently filtered
       filteredList.forEach(t => next.add(t.id));
     }
     setSelectedTxIds(next);
@@ -169,7 +169,7 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
 
   // ── Save selected to DB ──
   const handleSaveToDatabase = async () => {
-    const itemsToSave = parsedList.filter(t => selectedTxIds.has(t.id));
+    const itemsToSave = (parsedList || []).filter(t => selectedTxIds.has(t.id));
     if (itemsToSave.length === 0) {
       alert('Выберите хотя бы одну операцию для импорта');
       return;
@@ -181,8 +181,8 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
         type: t.type,
         amount: t.amount,
         categoryId: t.categoryId,
-        comment: t.merchant || t.comment,
-        addedBy: selectedMemberId,
+        comment: t.merchant || t.comment || 'Импорт выписки',
+        addedBy: selectedMemberId || 'dad',
         date: t.date
       }));
 
@@ -207,31 +207,34 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
   };
 
   const getCategoryInfo = (catId: string) => {
+    if (!categories || categories.length === 0) {
+      return { id: catId, name: 'Категория', icon: 'HelpCircle', color: 'text-slate-600', bgColor: 'bg-slate-100', borderColor: 'border-slate-200' };
+    }
     return categories.find(c => c.id === catId) || categories.find(c => c.id === 'food') || categories[0];
   };
 
   // Summary counts
-  const expenseCount = parsedList.filter(t => t.type === 'expense').length;
-  const incomeCount = parsedList.filter(t => t.type === 'income').length;
-  const duplicateCount = parsedList.filter(t => t.isDuplicate).length;
+  const expenseCount = (parsedList || []).filter(t => t.type === 'expense').length;
+  const incomeCount = (parsedList || []).filter(t => t.type === 'income').length;
+  const duplicateCount = (parsedList || []).filter(t => t.isDuplicate).length;
 
   // Selected totals
   const selectedSum = useMemo(() => {
-    return parsedList
-      .filter(t => selectedTxIds.has(t.id))
+    return (parsedList || [])
+      .filter(t => selectedTxIds && selectedTxIds.has(t.id))
       .reduce((acc, t) => acc + (t.type === 'expense' ? t.amount : -t.amount), 0);
   }, [parsedList, selectedTxIds]);
 
-  const areAllFilteredSelected = filteredList.length > 0 && filteredList.every(t => selectedTxIds.has(t.id));
+  const areAllFilteredSelected = filteredList.length > 0 && filteredList.every(t => selectedTxIds && selectedTxIds.has(t.id));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-md animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/80 backdrop-blur-sm">
       <div className="bg-white rounded-[2rem] w-full max-w-xl shadow-2xl border border-slate-100 flex flex-col max-h-[92vh] overflow-hidden">
         
         {/* ── Premium Modal Header ── */}
-        <div className="px-6 py-4 border-b border-slate-100/80 flex justify-between items-center bg-gradient-to-r from-rose-50/50 via-white to-slate-50/50">
+        <div className="px-6 py-4 border-b border-slate-100/80 flex justify-between items-center bg-gradient-to-r from-rose-50/50 via-white to-slate-50/50 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-rose-500 to-rose-600 text-white flex items-center justify-center font-black text-lg shadow-md shadow-rose-500/20">
+            <div className="w-10 h-10 rounded-2xl bg-rose-600 text-white flex items-center justify-center font-black text-lg shadow-md shadow-rose-600/20">
               А
             </div>
             <div className="flex flex-col">
@@ -245,15 +248,16 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
             </div>
           </div>
           <button 
+            type="button"
             onClick={() => { resetAll(); onClose(); }}
-            className="w-9 h-9 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors"
+            className="w-9 h-9 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors active:scale-95"
           >
             <X size={18} />
           </button>
         </div>
 
         {/* ── Modal Body ── */}
-        <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col p-5 sm:p-6 gap-4">
+        <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col p-5 sm:p-6 gap-4 min-h-0">
 
           {errorMsg && (
             <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 text-xs font-medium flex items-center gap-2.5">
@@ -280,9 +284,9 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
                 onClick={() => fileInputRef.current?.click()}
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
-                className="border-2 border-dashed border-rose-200 hover:border-rose-500 bg-gradient-to-b from-rose-50/20 to-rose-50/5 hover:from-rose-50/40 hover:to-rose-50/10 rounded-[2rem] p-8 sm:p-10 flex flex-col items-center text-center gap-3 cursor-pointer transition-all duration-300 group shadow-sm hover:shadow-md"
+                className="border-2 border-dashed border-rose-200 hover:border-rose-500 bg-rose-50/20 hover:bg-rose-50/40 rounded-[2rem] p-8 sm:p-10 flex flex-col items-center text-center gap-3 cursor-pointer transition-all duration-200 group shadow-sm hover:shadow-md"
               >
-                <div className="w-16 h-16 rounded-2xl bg-white shadow-md border border-rose-100 text-rose-600 flex items-center justify-center group-hover:scale-105 group-hover:shadow-rose-500/10 transition-all duration-300">
+                <div className="w-16 h-16 rounded-2xl bg-white shadow-md border border-rose-100 text-rose-600 flex items-center justify-center group-hover:scale-105 group-hover:shadow-rose-600/10 transition-all duration-200">
                   {loading ? (
                     <RotateCw size={30} className="animate-spin text-rose-600" />
                   ) : (
@@ -344,19 +348,19 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
               STEP 2: PREVIEW & INTERACTIVE REVIEW SCREEN
           ══════════════════════════════════════════════════ */}
           {step === 'preview' && (
-            <div className="flex flex-col gap-3.5 animate-fade-in">
+            <div className="flex flex-col gap-3.5">
 
               {/* ── Summary Card (Metadata) ── */}
-              <div className="p-4 rounded-3xl bg-slate-900 text-white shadow-xl shadow-slate-900/10 flex flex-col gap-3 relative overflow-hidden">
+              <div className="p-4 rounded-3xl bg-slate-900 text-white shadow-xl shadow-slate-900/10 flex flex-col gap-3 relative overflow-hidden shrink-0">
                 <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-rose-600/20 rounded-full blur-2xl pointer-events-none" />
 
                 {/* Period & Card Header */}
                 <div className="flex justify-between items-center text-xs">
                   <div className="flex items-center gap-1.5 text-slate-300 font-medium truncate max-w-[240px]">
                     <Calendar size={13} className="text-rose-400 shrink-0" />
-                    <span className="truncate">{metadata.period || fileName || 'Период выписки'}</span>
+                    <span className="truncate">{metadata?.period || fileName || 'Период выписки'}</span>
                   </div>
-                  {metadata.card && (
+                  {metadata?.card && (
                     <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-[10px] text-slate-300 font-bold">
                       <CreditCard size={11} />
                       <span className="truncate max-w-[140px]">{metadata.card.replace(/Classic\(.*/, '')}</span>
@@ -370,7 +374,7 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
                     <span className="text-[10px] text-slate-400 font-medium">Расход</span>
                     <span className="text-sm font-black text-rose-400 flex items-center gap-0.5">
                       <ArrowDownLeft size={13} className="shrink-0" />
-                      {metadata.totalExpense ? metadata.totalExpense.toFixed(2) : expenseCount} Br
+                      {metadata?.totalExpense ? metadata.totalExpense.toFixed(2) : expenseCount} Br
                     </span>
                   </div>
 
@@ -378,7 +382,7 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
                     <span className="text-[10px] text-slate-400 font-medium">Приход</span>
                     <span className="text-sm font-black text-emerald-400 flex items-center gap-0.5">
                       <ArrowUpRight size={13} className="shrink-0" />
-                      {metadata.totalIncome ? metadata.totalIncome.toFixed(2) : incomeCount} Br
+                      {metadata?.totalIncome ? metadata.totalIncome.toFixed(2) : incomeCount} Br
                     </span>
                   </div>
 
@@ -392,7 +396,7 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
               </div>
 
               {/* ── Filter Tabs & Search Bar ── */}
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2 shrink-0">
                 {/* Search input */}
                 <div className="relative">
                   <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
@@ -405,6 +409,7 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
                   />
                   {searchQuery && (
                     <button
+                      type="button"
                       onClick={() => setSearchQuery('')}
                       className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
                     >
@@ -521,8 +526,8 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
                         </div>
 
                         {/* Category Icon Badge */}
-                        <div className={`w-10 h-10 rounded-2xl ${cat.bgColor} ${cat.color} flex items-center justify-center shrink-0 shadow-sm border ${cat.borderColor}`}>
-                          <DynamicIcon name={cat.icon} className="w-4 h-4" />
+                        <div className={`w-10 h-10 rounded-2xl ${cat?.bgColor || 'bg-slate-100'} ${cat?.color || 'text-slate-600'} flex items-center justify-center shrink-0 shadow-sm border ${cat?.borderColor || 'border-slate-200'}`}>
+                          <DynamicIcon name={cat?.icon || 'HelpCircle'} className="w-4 h-4" />
                         </div>
 
                         {/* Details */}
@@ -547,7 +552,7 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
                               onChange={(e) => handleChangeCategory(tx.id, e.target.value)}
                               className="text-[10px] font-bold bg-slate-100/90 hover:bg-slate-200/80 border border-slate-200 rounded-xl px-2 py-0.5 text-slate-700 focus:outline-none max-w-[130px] truncate cursor-pointer transition-colors"
                             >
-                              {categories.map(c => (
+                              {(categories || []).map(c => (
                                 <option key={c.id} value={c.id}>{c.name}</option>
                               ))}
                             </select>
@@ -566,12 +571,12 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
               </div>
 
               {/* ── Sticky Bottom Action Bar ── */}
-              <div className="pt-3 border-t border-slate-100 flex flex-col gap-3">
+              <div className="pt-3 border-t border-slate-100 flex flex-col gap-3 shrink-0">
                 {/* Member selector */}
                 <div className="flex items-center justify-between px-1">
                   <span className="text-xs font-bold text-slate-500">Записать расходы на:</span>
                   <div className="flex items-center gap-1">
-                    {members.map(m => {
+                    {(members || []).map(m => {
                       const isMemberSelected = selectedMemberId === m.id;
                       return (
                         <button
@@ -626,7 +631,7 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
               STEP 3: SUCCESS STATE
           ══════════════════════════════════════════════════ */}
           {step === 'success' && (
-            <div className="flex flex-col items-center text-center gap-4 py-8 animate-fade-in">
+            <div className="flex flex-col items-center text-center gap-4 py-8">
               <div className="w-20 h-20 rounded-3xl bg-emerald-50 text-emerald-500 border border-emerald-100 flex items-center justify-center shadow-xl shadow-emerald-500/10">
                 <CheckCircle2 size={42} />
               </div>
