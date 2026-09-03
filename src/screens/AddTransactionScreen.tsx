@@ -169,7 +169,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
       </div>
 
       {/* ── Form Content ── */}
-      <div className="px-4 sm:px-5 pt-4 pb-36 flex flex-col gap-4 max-w-lg mx-auto w-full min-w-0 box-border">
+      <div className="px-4 sm:px-5 pt-4 pb-8 flex flex-col gap-4 max-w-lg mx-auto w-full min-w-0 box-border">
         
         {/* Type Toggle */}
         <div className="p-1 bg-slate-200/60 rounded-2xl flex shadow-inner">

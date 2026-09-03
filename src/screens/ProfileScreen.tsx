@@ -54,7 +54,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onOpenStatement }) => {
         </button>
       </div>
 
-      <div className="px-5 pt-5 pb-36 flex flex-col gap-5">
+      <div className="px-5 pt-5 pb-8 flex flex-col gap-5">
         {/* Profile card */}
         <div className="card px-4 py-4 flex flex-col gap-4">
           <div className="flex items-center gap-4">

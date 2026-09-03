@@ -50,7 +50,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement }) => {
       </div>
 
       {/* ── Scrollable Body ── */}
-      <div className="px-5 pt-5 pb-36 flex flex-col gap-6">
+      <div className="px-5 pt-5 pb-8 flex flex-col gap-6">
 
         {/* ── Balance ── */}
         <div className="flex flex-col gap-0.5">

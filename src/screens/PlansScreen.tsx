@@ -162,7 +162,7 @@ const PlansScreen: React.FC = () => {
       </div>
 
       {/* Content wrapper */}
-      <div className="flex-1 overflow-y-auto no-scrollbar px-5 pt-5 pb-36">
+      <div className="flex-1 overflow-y-auto no-scrollbar px-5 pt-5 pb-8">
         {activeSubTab === 'goals' ? (
           /* ========================================================================= */
           /* GOALS TAB */

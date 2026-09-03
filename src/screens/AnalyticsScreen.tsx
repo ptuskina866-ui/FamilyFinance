@@ -113,7 +113,7 @@ const AnalyticsScreen: React.FC = () => {
       </div>
 
       {/* ── Scrollable Body ── */}
-      <div className="px-5 pt-5 pb-36 flex flex-col gap-6">
+      <div className="px-5 pt-5 pb-8 flex flex-col gap-6">
 
         {/* ── Tab Switcher ── */}
         <div className="toggle-pill p-1 bg-slate-50 border border-slate-100 rounded-2xl flex">
