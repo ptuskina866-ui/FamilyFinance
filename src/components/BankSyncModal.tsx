@@ -55,8 +55,6 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  if (!isOpen) return null;
-
   // ── File Upload Handler ──
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -226,6 +224,8 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
   }, [parsedList, selectedTxIds]);
 
   const areAllFilteredSelected = filteredList.length > 0 && filteredList.every(t => selectedTxIds && selectedTxIds.has(t.id));
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/80 backdrop-blur-sm">
