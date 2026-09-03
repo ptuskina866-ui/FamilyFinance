@@ -25,23 +25,21 @@ if (typeof (Promise as any).withResolvers === 'undefined') {
   };
 }
 
-// Global visual error handlers to prevent silent white screens
+// Global error logging (ignoring harmless native browser / share sheet cross-origin errors)
 window.addEventListener('error', (event) => {
-  console.error('Fatal Window Error:', event);
-  const banner = document.getElementById('fatal-error-overlay');
-  if (banner) {
-    banner.style.display = 'block';
-    banner.innerText = `⚠️ Ошибка: ${event.message || 'Сбой скрипта'} (${event.filename || ''}:${event.lineno || ''})`;
+  if (!event.message || event.message.toLowerCase().includes('script error') || !event.filename) {
+    console.warn('Ignored external browser script event:', event);
+    return;
   }
+  console.error('Window Error:', event);
 });
 
 window.addEventListener('unhandledrejection', (event) => {
-  console.error('Fatal Promise Rejection:', event);
-  const banner = document.getElementById('fatal-error-overlay');
-  if (banner) {
-    banner.style.display = 'block';
-    banner.innerText = `⚠️ Ошибка: ${event.reason?.message || event.reason || 'Необработанный сбой'}`;
+  const msg = event.reason?.message || String(event.reason || '');
+  if (!msg || msg.toLowerCase().includes('script error') || msg.includes('AbortError')) {
+    return;
   }
+  console.error('Promise Rejection:', event);
 });
 
 import React from 'react';
