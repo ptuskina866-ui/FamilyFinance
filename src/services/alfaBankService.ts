@@ -199,6 +199,26 @@ const CATEGORY_RULES: { keywords: string[]; categoryId: string }[] = [
   { 
     keywords: ['пополнение картсчетов', 'пополнение', 'зачисле ние средств', 'зачисление средств', 'приорбанк', 'беларусбанк', 'технобанк', 'vyplaty', 'выплаты', 'альфа-бонус', 'бонус', 'кэшбэк', 'cashback', 'манибэк'], 
     categoryId: 'income-other' 
+  },
+  // 17. АЗС и авто
+  {
+    keywords: ['belorusneft', 'белоруснефть', 'лукойл', 'lukoil', 'газпромнефть', 'gazprom', 'азс', 'united company', 'а-100', 'a-100', 'заправка', 'топливо', 'бензин', 'автомойка', 'парковка'],
+    categoryId: 'car'
+  },
+  // 18. Подписки и цифровые сервисы
+  {
+    keywords: ['yandex plus', 'яндекс плюс', 'яндекс музык', 'spotify', 'apple.com', 'itunes', 'google play', 'youtube', 't.me', 'telegram', 'netflix', 'kinopoisk', 'кинопоиск'],
+    categoryId: 'internet'
+  },
+  // 19. Доставка еды
+  {
+    keywords: ['delivio', 'деливио', 'menu.by', 'eda.by'],
+    categoryId: 'cafes'
+  },
+  // 20. Бытовая химия
+  {
+    keywords: ['остров чистоты', 'ostrov chistoty'],
+    categoryId: 'household'
   }
 ];
 
@@ -218,7 +238,7 @@ export class AlfaBankService {
     if (type === 'income') {
       return 'income-other';
     }
-    return 'food';
+    return 'other';
   }
 
   /**

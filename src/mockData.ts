@@ -182,7 +182,7 @@ export const CATEGORIES: Category[] = [
   {
     id: 'medical',
     name: 'Аптека и медицина',
-    icon: 'Pills',
+    icon: 'Pill',
     color: 'text-rose-500',
     bgColor: 'bg-rose-500/10',
     borderColor: 'border-rose-500/20',
@@ -319,28 +319,55 @@ export const CATEGORIES: Category[] = [
     id: 'salary',
     name: 'Зарплата',
     icon: 'Briefcase',
-    color: 'text-teal-400',
-    bgColor: 'bg-teal-500/10',
-    borderColor: 'border-teal-500/20',
-    accentColor: '#14b8a6'
+    color: 'text-emerald-500',
+    bgColor: 'bg-emerald-500/10',
+    borderColor: 'border-emerald-500/20',
+    accentColor: '#10b981'
+  },
+  {
+    id: 'income-transfer',
+    name: 'Перевод на карту',
+    icon: 'ArrowDownLeft',
+    color: 'text-indigo-500',
+    bgColor: 'bg-indigo-500/10',
+    borderColor: 'border-indigo-500/20',
+    accentColor: '#6366f1'
+  },
+  {
+    id: 'income-cashback',
+    name: 'Кэшбэк и бонусы',
+    icon: 'Sparkles',
+    color: 'text-amber-500',
+    bgColor: 'bg-amber-500/10',
+    borderColor: 'border-amber-500/20',
+    accentColor: '#f59e0b'
+  },
+  {
+    id: 'income-freelance',
+    name: 'Подработка',
+    icon: 'Laptop',
+    color: 'text-blue-500',
+    bgColor: 'bg-blue-500/10',
+    borderColor: 'border-blue-500/20',
+    accentColor: '#3b82f6'
   },
   {
     id: 'income-other',
-    name: 'Доп. доход',
+    name: 'Прочий доход',
     icon: 'TrendingUp',
-    color: 'text-cyan-400',
+    color: 'text-cyan-500',
     bgColor: 'bg-cyan-500/10',
     borderColor: 'border-cyan-500/20',
     accentColor: '#06b6d4'
   },
   {
     id: 'income-relatives',
-    name: 'Помощь родственников',
+    name: 'Помощь близких',
     icon: 'Heart',
-    color: 'text-red-400',
-    bgColor: 'bg-red-500/10',
-    borderColor: 'border-red-500/20',
-    accentColor: '#ef4444'
+    color: 'text-rose-500',
+    bgColor: 'bg-rose-500/10',
+    borderColor: 'border-rose-500/20',
+    accentColor: '#f43f5e'
   }
 ];
 
