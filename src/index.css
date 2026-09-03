@@ -113,7 +113,7 @@
   }
 
   .safe-header {
-    padding-top: max(28px, calc(env(safe-area-inset-top) + 8px)) !important;
+    padding-top: max(28px, calc(env(safe-area-inset-top, 0px) + 16px)) !important;
   }
 
   /* Hide input number spinner arrows */

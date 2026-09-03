@@ -150,7 +150,10 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
   return (
     <div className="flex flex-col overflow-y-auto no-scrollbar h-full select-none">
       {/* ── Top Header ── */}
-      <div className="px-5 pt-7 pb-3 safe-header flex justify-between items-center bg-[#E5F3E8]/90 backdrop-blur-md sticky top-0 z-30">
+      <div 
+        className="px-5 pb-3 safe-header flex justify-between items-center bg-[#E5F3E8]/95 backdrop-blur-md sticky top-0 z-30"
+        style={{ paddingTop: 'max(28px, calc(env(safe-area-inset-top, 0px) + 16px))' }}
+      >
         <button
           type="button"
           onClick={onNavigateHome}

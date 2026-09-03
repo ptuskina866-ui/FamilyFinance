@@ -112,7 +112,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
   return (
     <div className="flex flex-col overflow-y-auto no-scrollbar h-full select-none">
       {/* ── Top Bar (Hi, User!) ── */}
-      <div className="px-5 pt-7 pb-3 flex justify-between items-center sticky top-0 z-30 bg-[#E5F3E8]/90 backdrop-blur-md">
+      <div 
+        className="px-5 pb-3 safe-header flex justify-between items-center sticky top-0 z-30 bg-[#E5F3E8]/95 backdrop-blur-md"
+        style={{ paddingTop: 'max(28px, calc(env(safe-area-inset-top, 0px) + 16px))' }}
+      >
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-white border border-white/80 shadow-sm flex items-center justify-center text-lg active:scale-95 transition-transform">
             {profile?.avatar || '👤'}
@@ -138,7 +141,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
       </div>
 
       {/* ── Scrollable Body ── */}
-      <div className="px-5 pt-2 pb-32 flex flex-col gap-5">
+      <div className="px-5 pt-2 pb-36 flex flex-col gap-5">
 
         {/* ── Signature Citrus/Lime Hero Card ── */}
         <div className="card-lime p-6 flex flex-col justify-between gap-4 relative overflow-hidden transition-transform active:scale-[0.99]">

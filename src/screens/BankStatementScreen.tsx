@@ -228,7 +228,10 @@ export const BankStatementScreen: React.FC<BankStatementScreenProps> = ({ onBack
     <div className="h-full flex flex-col bg-[#F8FAFC] overflow-hidden">
       
       {/* ── Native Safe-Area Header ── */}
-      <div className="safe-header px-5 pb-3.5 bg-white border-b border-slate-100 shadow-sm flex items-center justify-between shrink-0">
+      <div 
+        className="safe-header px-5 pb-3.5 bg-white border-b border-slate-100 shadow-sm flex items-center justify-between shrink-0"
+        style={{ paddingTop: 'max(28px, calc(env(safe-area-inset-top, 0px) + 16px))' }}
+      >
         <div className="flex items-center gap-3">
           <button
             type="button"

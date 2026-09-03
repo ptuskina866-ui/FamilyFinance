@@ -120,14 +120,17 @@ const PlansScreen: React.FC = () => {
   const ordinalDay = (d: number) => `${d}-го числа`;
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full select-none">
       {/* Header */}
-      <div className="px-5 pt-7 pb-2 safe-header bg-white border-b border-slate-100/60 flex justify-between items-center shrink-0">
+      <div 
+        className="px-5 pb-3 safe-header bg-[#E5F3E8]/95 backdrop-blur-md sticky top-0 z-30 flex justify-between items-center shrink-0"
+        style={{ paddingTop: 'max(28px, calc(env(safe-area-inset-top, 0px) + 16px))' }}
+      >
         <div className="w-9 h-9" /> {/* Spacer */}
-        <h1 className="text-sm font-black text-slate-800 tracking-tight">Планы</h1>
+        <h1 className="text-sm font-black text-slate-900 tracking-tight">Планы</h1>
         <button
           onClick={() => activeSubTab === 'goals' ? setShowGoalForm(true) : setShowRecForm(true)}
-          className="w-9 h-9 rounded-full bg-[#0F172A] hover:bg-[#1E293B] text-white flex items-center justify-center shadow-sm active:scale-90 transition-all"
+          className="w-9 h-9 rounded-full bg-slate-950 text-white flex items-center justify-center shadow-sm active:scale-90 transition-all"
         >
           <Plus className="w-5 h-5" strokeWidth={2.5} />
         </button>
@@ -164,7 +167,7 @@ const PlansScreen: React.FC = () => {
       </div>
 
       {/* Content wrapper */}
-      <div className="flex-1 overflow-y-auto no-scrollbar px-5 pt-5 pb-8">
+      <div className="flex-1 overflow-y-auto no-scrollbar px-5 pt-3 pb-36">
         {activeSubTab === 'goals' ? (
           /* ========================================================================= */
           /* GOALS TAB */

@@ -103,18 +103,21 @@ const AnalyticsScreen: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col overflow-y-auto no-scrollbar h-full bg-[#FFFFFF]">
+    <div className="flex flex-col overflow-y-auto no-scrollbar h-full select-none">
       {/* ── Header ── */}
-      <div className="px-5 pt-7 pb-2 safe-header flex justify-between items-center bg-white border-b border-slate-100/60 sticky top-0 z-30">
+      <div 
+        className="px-5 pb-3 safe-header flex justify-between items-center bg-[#E5F3E8]/95 backdrop-blur-md sticky top-0 z-30"
+        style={{ paddingTop: 'max(28px, calc(env(safe-area-inset-top, 0px) + 16px))' }}
+      >
         <div className="w-9 h-9" /> {/* Spacer */}
-        <h1 className="text-sm font-black text-slate-800 tracking-tight">Аналитика</h1>
-        <div className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-lg active:scale-95 transition-transform">
+        <h1 className="text-sm font-black text-slate-900 tracking-tight">Аналитика</h1>
+        <div className="w-9 h-9 rounded-full bg-white border border-white/80 shadow-sm flex items-center justify-center text-base active:scale-95 transition-transform">
           {profile?.avatar || '👤'}
         </div>
       </div>
 
       {/* ── Scrollable Body ── */}
-      <div className="px-5 pt-5 pb-8 flex flex-col gap-6">
+      <div className="px-5 pt-3 pb-36 flex flex-col gap-5">
 
         {/* ── Tab Switcher ── */}
         <div className="toggle-pill p-1 bg-slate-50 border border-slate-100 rounded-2xl flex">
