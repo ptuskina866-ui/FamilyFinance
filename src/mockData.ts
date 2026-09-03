@@ -297,6 +297,15 @@ export const CATEGORIES: Category[] = [
     accentColor: '#6366f1'
   },
   {
+    id: 'cash',
+    name: 'Снятие наличных',
+    icon: 'Banknote',
+    color: 'text-emerald-500',
+    bgColor: 'bg-emerald-500/10',
+    borderColor: 'border-emerald-500/20',
+    accentColor: '#10b981'
+  },
+  {
     id: 'transfer',
     name: 'Перевод',
     icon: 'ArrowRightLeft',

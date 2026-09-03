@@ -66,67 +66,140 @@ export interface AlfaAuthState {
   account?: AlfaAccount;
 }
 
-// ── 1. Справочник авто-категоризации под магазины и сервисы Беларуси ──
+export interface StatementMetadata {
+  period?: string;
+  client?: string;
+  account?: string;
+  card?: string;
+  totalIncome?: number;
+  totalExpense?: number;
+  balance?: number;
+}
+
+export interface ParseResult {
+  metadata: StatementMetadata;
+  transactions: AlfaTransaction[];
+}
+
+// ── 1. Справочник авто-категоризации под ритейл и сервисы Беларуси ──
+// Продуктовые супермаркеты объединены в категорию 'food' («Еда»)
 const CATEGORY_RULES: { keywords: string[]; categoryId: string }[] = [
-  // Продуктовые сети и супермаркеты
-  { keywords: ['евроопт', 'euroopt', 'edostavka', 'е-доставка', 'гипермолл', 'e-mall'], categoryId: 'food-euroopt' },
-  { keywords: ['green', 'грин', 'гриин'], categoryId: 'food-green' },
-  { keywords: ['гиппо', 'hippo', 'belvillesden', 'белвиллесден', 'belmarket', 'белмаркет'], categoryId: 'food-hippo' },
-  { keywords: ['соседи', 'sosedi'], categoryId: 'food-sosedi' },
-  { keywords: ['санта', 'santa', 'ритейлмаркет'], categoryId: 'food-santa' },
-  { keywords: ['грошык', 'groshyk'], categoryId: 'food-groshyk' },
-  { keywords: ['маяк', 'mayak'], categoryId: 'food-mayak' },
-  { keywords: ['fixprice', 'fix price', 'фикс прайс'], categoryId: 'food-fixprice' },
-  { keywords: ['корона', 'korona', 'продукты', 'универсам', 'universam', 'гастроном', 'мясной', 'хлеб', 'vitalur', 'виталюр'], categoryId: 'food' },
+  // 1. Продукты и супермаркеты (Категория "Еда")
+  { 
+    keywords: [
+      'green', 'грин', 'гиппо', 'hippo', 'belvillesden', 'белвиллесден',
+      'евроопт', 'euroopt', 'edostavka', 'е-доставка', 'гипермолл', 'e-mall',
+      'соседи', 'sosedi', 'санта', 'santa', 'ритейлмаркет',
+      'prostore', 'простор', 'корона', 'korona', 'универсам', 'universam',
+      'грошык', 'groshyk', 'маяк', 'mayak', 'продукты', 'гастроном', 'мясной', 'хлеб',
+      'vitalur', 'виталюр', 'pekarnya', 'пекарня', 'terri', 'zorina', 'зорина', 'belmarket', 'белмаркет'
+    ], 
+    categoryId: 'food' 
+  },
 
-  // Маркетплейсы
-  { keywords: ['wildberries', 'wb', 'вайлдберриз', 'ozon', 'озон', 'lamoda', 'ламода', 'oz.by', 'oz by', 'яндекс маркет'], categoryId: 'marketplaces' },
+  // 2. Кафе, рестораны и фастфуд
+  { 
+    keywords: [
+      'kfc', 'burger king', 'burger-king', 'rbo', 'mak.by', 'макдональдс', 'мак.бай',
+      'dodo', 'додо', 'пицца', 'pizza', 'picca lisicca', 'лисица', 'лисицца',
+      'cofix', 'кофикс', 'coffee embassy', 'kofesaund', 'кофейня', 'кофе', 'coffee',
+      'padthai', 'падтай', 'john doner', 'донер', 'шаурма', 'yandex.eda', 'яндекс.еда', 'яндекс еда',
+      'foodpicasso', 'фудпикассо', 'кафе', 'cafe', 'ресторан', 'суши', 'sushi', 'бар', 'bar', 'паб', 'bakery'
+    ], 
+    categoryId: 'cafes' 
+  },
 
-  // Техника и электроника
-  { keywords: ['21vek', '21 век', '5 элемент', '5element', 'электросила', 'sila.by', 'mvideo', 'i-store', 'istore', 'a1 shop', 'мтс салон'], categoryId: 'electronics' },
+  // 3. Маркетплейсы
+  { 
+    keywords: ['wildberries', 'wb', 'вайлдберриз', 'ozon', 'озон', 'izi shop', 'izishop', 'lamoda', 'ламода', 'oz.by', 'яндекс маркет'], 
+    categoryId: 'marketplaces' 
+  },
 
-  // Авто и АЗС
-  { keywords: ['белоруснефть', 'belorusneft', 'лукойл', 'lukoil', 'газпромнефть', 'gazpromneft', 'а-100', 'a-100', 'united company', 'azs', 'азс', 'автомойка', 'шиномонтаж', 'автозапчасти', 'armtek', 'шате-м'], categoryId: 'car' },
+  // 4. Одежда, обувь и ТЦ
+  { 
+    keywords: ['zarina', 'зарина', 'galereya', 'галерея', 'zara', 'mark formelle', 'марк формель', 'карри', 'kari', 'дефакто', 'defacto', 'bershka', 'pull&bear', 'stradivarius', 'mango', 'одежда', 'обувь', 'conte', 'конте', 'мегатоп', 'megatop'], 
+    categoryId: 'clothes' 
+  },
 
-  // Такси и общественный транспорт
-  { keywords: ['yandex go', 'яндекс go', 'яндекс такси', 'yandex.taxi', 'такси', 'uber', 'minsktrans', 'минсктранс', 'метро', 'бжд', 'rw.by', 'пассажирские перевозки'], categoryId: 'transport' },
+  // 5. Красота и косметика
+  { 
+    keywords: ['mila', 'мила', 'zolotoe yabloko', 'золотое яблоко', 'byuti level', 'beauty level', 'парфюм', 'косметика', 'салон красоты', 'барбершоп'], 
+    categoryId: 'beauty' 
+  },
 
-  // Самокаты и кикшеринг
-  { keywords: ['eleven', 'whoosh', 'вуш', 'kolobike', 'колобайк', 'busyfly', 'jet', 'samokat', 'кикшеринг'], categoryId: 'scooters' },
+  // 6. Товары для дома
+  { 
+    keywords: ['galamart', 'галамарт', 'fix price', 'fixprice', 'фикс прайс', 'jysk', 'юск', 'ikea', 'икеа', 'ами мебель', 'материк', 'mile', 'ома', 'oma', 'стройматериалы'], 
+    categoryId: 'household' 
+  },
 
-  // Мобильная связь
-  { keywords: ['a1', 'а1', 'мтс', 'mts', 'life:)', 'life', 'лайф'], categoryId: 'mobile' },
+  // 7. Такси и транспорт
+  { 
+    keywords: ['paybycard', 'transport paybycard', 'stantsiya metro', 'metro', 'метро', 'yubileyn', 'aerodro', 'wb taxi', 'yandex go', 'яндекс go', 'яндекс такси', 'yandex.taxi', 'такси', 'uber', 'minsktrans', 'минсктранс', 'бжд', 'rw.by', 'проезд'], 
+    categoryId: 'transport' 
+  },
 
-  // Интернет и ТВ
-  { keywords: ['белтелеком', 'beltelecom', 'byfly', 'zala', 'космос тв', 'cosmostv', 'a1 интернет', 'unet'], categoryId: 'internet' },
+  // 8. Самокаты и кикшеринг
+  { 
+    keywords: ['whoosh', 'вуш', 'eleven', 'илевен', 'kolobike', 'колобайк', 'busyfly', 'jet', 'samokat', 'кикшеринг'], 
+    categoryId: 'scooters' 
+  },
 
-  // Коммуналка и ЕРИП
-  { keywords: ['ерип', 'erip', 'расчет', 'жкх', 'коммунал', 'водоканал', 'минскводоканал', 'электроэнерг', 'минскэнерго', 'газ'], categoryId: 'utilities' },
+  // 9. Аптека и медицина
+  { 
+    keywords: ['sumbest', 'apteka n88', 'apteka n 18', 'apteka', 'аптека', 'планета здоровья', 'фармация', 'инвитро', 'invitro', 'синэво', 'synevo', 'лодэ', 'lode', 'нордин', 'клиника', 'стоматология', 'медицинский'], 
+    categoryId: 'medical' 
+  },
 
-  // Медицина и аптеки
-  { keywords: ['аптека', 'apteka', 'sumbest', 'планета здоровья', 'фармация', 'инвитро', 'invitro', 'синэво', 'synevo', 'лодэ', 'lode', 'нордин', 'клиника', 'стоматология', 'медицинский центр', 'doctor'], categoryId: 'medical' },
+  // 10. Связь и интернет
+  { 
+    keywords: ['beltelecom', 'белтелеком', 'byfly', 'zala', 'космос тв', 'cosmostv', 'unet'], 
+    categoryId: 'internet' 
+  },
+  { 
+    keywords: ['a1', 'а1', 'мтс', 'mts', 'life:)', 'life', 'лайф'], 
+    categoryId: 'mobile' 
+  },
 
-  // Кафе и рестораны
-  { keywords: ['foodpicasso', 'кафе', 'cafe', 'ресторан', 'кофе', 'coffee', 'васильки', 'vasilki', 'макдональдс', 'mak.by', 'kfc', 'burger king', 'додо', 'dodo', 'пицца', 'pizza', 'хинкальная', 'суши', 'sushi', 'бар', 'bar', 'паб', 'bakery', 'пекарня'], categoryId: 'cafes' },
+  // 11. Коммуналка и ЕРИП
+  { 
+    keywords: ['insync (erip)', 'erip oplata zakaza', 'ерип', 'erip', 'расчет', 'жкх', 'коммунал', 'водоканал', 'минскводоканал', 'электроэнерг', 'минскэнерго', 'газ'], 
+    categoryId: 'utilities' 
+  },
 
-  // Одежда и обувь
-  { keywords: ['zara', 'mark formelle', 'марк формель', 'карри', 'kari', 'дефакто', 'defacto', 'bershka', 'pull&bear', 'stradivarius', 'mango', 'одежда', 'обувь', 'conte', 'конте', 'мегатоп', 'megatop'], categoryId: 'clothes' },
+  // 12. Кредиты
+  { 
+    keywords: ['погашения кредита', 'погашение кредита', 'кредит'], 
+    categoryId: 'credit' 
+  },
 
-  // Товары для дома
-  { keywords: ['jysk', 'юск', 'ikea', 'икеа', 'ами мебель', 'материк', 'новоселкин', 'mile', 'стройматериалы', 'ома', 'oma'], categoryId: 'household' },
+  // 13. Снятие наличных
+  { 
+    keywords: ['получение денег в банкомате', 'банкомат', 'recatm', 'atm'], 
+    categoryId: 'cash' 
+  },
 
-  // Питомцы
-  { keywords: ['зоомаркет', 'zoomarket', 'зообазар', 'zoobazar', 'ветклиника', 'зоотовары', 'кот и пес'], categoryId: 'pets' },
+  // 14. Развлечения, ставки и билеты
+  { 
+    keywords: ['winline', 'fonbet', 'pm.by', 'bezkassira', 'кинотеатр', 'cinema', 'silver screen', 'mooon', 'боулинг', 'аквапарк', 'билет', 'kvitki', 'ticketpro', 'парк', 'музей', 'театр'], 
+    categoryId: 'entertainment' 
+  },
 
-  // Развлечения и отдых
-  { keywords: ['кинотеатр', 'cinema', 'silver screen', 'mooon', 'боулинг', 'аквапарк', 'билет', 'kvitki', 'ticketpro', 'парк', 'музей', 'театр'], categoryId: 'entertainment' },
+  // 15. Переводы
+  { 
+    keywords: ['перевод между счетами', 'перевод', 'перевод физических лиц'], 
+    categoryId: 'transfer' 
+  },
 
-  // Переводы
-  { keywords: ['перевод между счетами', 'перевод', 'перевод физических лиц'], categoryId: 'transfer' },
-
-  // Доходы
-  { keywords: ['зарплата', 'зачисление заработной платы', 'аванс', 'salary', 'оплата труда', 'пособие'], categoryId: 'salary' },
-  { keywords: ['пополнение картсчетов', 'пополнение', 'кэшбэк', 'cashback', 'манибэк', 'манибэк альфа', 'бонус', 'проценты на остаток'], categoryId: 'income-other' }
+  // 16. Доходы
+  { 
+    keywords: ['зарплата', 'зачисление заработной платы', 'аванс', 'salary', 'оплата труда', 'пособие'], 
+    categoryId: 'salary' 
+  },
+  { 
+    keywords: ['пополнение картсчетов', 'пополнение', 'зачисле ние средств', 'зачисление средств', 'приорбанк', 'беларусбанк', 'технобанк', 'vyplaty', 'выплаты', 'альфа-бонус', 'бонус', 'кэшбэк', 'cashback', 'манибэк'], 
+    categoryId: 'income-other' 
+  }
 ];
 
 export class AlfaBankService {
@@ -146,6 +219,97 @@ export class AlfaBankService {
       return 'income-other';
     }
     return 'food';
+  }
+
+  /**
+   * Интеллектуальное преобразование банковских строк в красивые названия
+   */
+  static cleanMerchantName(rawText: string, type: TransactionType): string {
+    const upper = rawText.toUpperCase();
+
+    // Быстрые шаблоны для конкретных известных брендов и сервисов:
+    if (upper.includes('KFC')) return 'KFC';
+    if (upper.includes('BURGER KING') || upper.includes('BURGER-KING')) return 'Burger King';
+    if (upper.includes('MAK.BY')) return 'Mak.by';
+    if (upper.includes('DODO PIZZA')) return 'Додо Пицца';
+    if (upper.includes('PICCA LISICCA')) return 'Пицца Лисица';
+    if (upper.includes('COFIX')) return 'Кофейня Cofix';
+    if (upper.includes('COFFEE EMBASSY')) return 'Coffee Embassy';
+    if (upper.includes('KOFESAUND')) return 'Кофейня Kofesaund';
+    if (upper.includes('PADTHAI')) return 'Padthai';
+    if (upper.includes('JOHN DONER')) return 'John Doner';
+    if (upper.includes('FOODPICASSO')) return 'Foodpicasso';
+    if (upper.includes('YANDEX.EDA')) return 'Яндекс Еда';
+    if (upper.includes('PEKARNYA TERRI')) return 'Пекарня Terri';
+
+    if (upper.includes('GREEN-25') || upper.includes('SUPERMARKET "GREEN"')) return 'Супермаркет Green';
+    if (upper.includes('GIPPO') || upper.includes('BELVILLESDEN')) return 'Супермаркет Гиппо';
+    if (upper.includes('SOSEDI')) return 'Супермаркет Соседи';
+    if (upper.includes('PROSTORE')) return 'Супермаркет Prostore';
+    if (upper.includes('UNIVERSAM')) return 'Универсам';
+    if (upper.includes('EUROOPT') || upper.includes('ЕВРООПТ')) return 'Евроопт';
+    if (upper.includes('SANTA') || upper.includes('САНТА')) return 'Санта';
+    if (upper.includes('KORONA') || upper.includes('КОРОНА')) return 'Корона';
+    if (upper.includes('SHOP ZORINA')) return 'Магазин Зорина';
+
+    if (upper.includes('OZON')) return 'Ozon';
+    if (upper.includes('WILDBERRIES')) return 'Wildberries';
+    if (upper.includes('IZI SHOP')) return 'Izi Shop';
+
+    if (upper.includes('SHOP ZARINA')) return 'Zarina';
+    if (upper.includes('GALEREYA')) return 'ТЦ Galleria Minsk';
+    if (upper.includes('SHOP MILA')) return 'Мила';
+    if (upper.includes('ZOLOTOE YABLOKO')) return 'Золотое Яблоко';
+    if (upper.includes('BYUTI LEVEL')) return 'Бьюти Левел';
+    if (upper.includes('GALAMART')) return 'Галамарт';
+    if (upper.includes('FIX PRICE')) return 'Fix Price';
+
+    if (upper.includes('PAYBYCARD.BY')) return 'Оплата проезда (PayByCard)';
+    if (upper.includes('STANTSIYA METRO YUBILEYN')) return 'Метро Юбилейная пл.';
+    if (upper.includes('STANTSIYA METRO AERODRO')) return 'Метро Аэродромная';
+    if (upper.includes('WB TAXI')) return 'WB Taxi';
+    if (upper.includes('YANDEX') && (upper.includes('GO') || upper.includes('TAXI'))) return 'Яндекс Такси';
+    if (upper.includes('WHOOSH')) return 'Самокаты Whoosh';
+    if (upper.includes('ELEVEN')) return 'Самокаты Eleven';
+
+    if (upper.includes('BELTELECOM')) return 'Белтелеком';
+    if (upper.includes('INSYNC (ERIP)')) return 'Платеж ЕРИП (InSync)';
+    if (upper.includes('ERIP OPLATA ZAKAZA')) return 'Оплата заказа ЕРИП';
+    if (upper.includes('OPS MINSK')) return 'Белпочта (ОПС-48)';
+
+    if (upper.includes('SUMBEST')) return 'Аптека №18 Sumbest';
+    if (upper.includes('APTEKA N88') || upper.includes('APTEKA N 88')) return 'Аптека №88';
+    if (upper.includes('APTEKA')) return 'Аптека';
+
+    if (upper.includes('BEZKASSIRA')) return 'BezKassira.by';
+    if (upper.includes('WINLINE')) return type === 'income' ? 'Выигрыш Winline' : 'Winline.by';
+    if (upper.includes('FONBET')) return 'Fonbet.by';
+
+    if (upper.includes('ПОЛУЧЕНИЕ ДЕНЕГ В БАНКОМАТЕ') || upper.includes('RECATM')) return 'Снятие в банкомате';
+    if (upper.includes('ПОГАШЕНИЯ КРЕДИТА')) return 'Погашение кредита';
+    if (upper.includes('ПЕРЕВОД МЕЖДУ СЧЕТАМИ')) return 'Перевод между счетами';
+    if (upper.includes('ПОПОЛНЕНИЕ КАРТСЧЕТОВ')) return 'Пополнение через инфокиоск';
+    if (upper.includes('ПРИОРБАНК')) return 'Перевод через ЕРИП (Приорбанк)';
+    if (upper.includes('БЕЛАРУСБАНК')) return 'Перевод через ЕРИП (Беларусбанк)';
+    if (upper.includes('ТЕХНОБАНК')) return 'Перевод через ЕРИП (Технобанк)';
+    if (upper.includes('VYPLATY BB') || upper.includes('BGPB')) return 'Белгазпромбанк выплата';
+    if (upper.includes('АЛЬФА-БОНУС') || upper.includes('А ЛЬФА-БОНУС')) return 'Кэшбэк Альфа-Бонус';
+
+    // Общая очистка для остальных названий:
+    let text = rawText;
+    text = text.replace(/^\s*\d{2}\.\d{2}\.\d{4}\s*/, '');
+    text = text.replace(/([+-]?\s*\d+(?:[.,]\d{1,2})?\s*(?:BYN|USD|EUR)\s*)+$/gi, '');
+    text = text.replace(/^\s*\d{8}\s*/, '');
+    text = text.replace(/^(?:G\.\s*)?(?:MINSK|VITEBSK|BREST|GRODNO|GOMEL|MOGILEV|ZASLAVL)\s+/i, '');
+    text = text.replace(/Покупка товара\s*\/\s*получение услуг\s*/gi, '');
+    text = text.replace(/ONLINE SERVICE\s*/gi, '');
+    text = text.replace(/I\.-RES\.\s*/gi, '');
+    text = text.replace(/^SHOP\s+/i, '');
+    text = text.replace(/^PT\s+/i, '');
+    text = text.replace(/^SUPERMARKET\s+/i, '');
+    text = text.replace(/^["'«]|["'»]$/g, '').trim();
+
+    return text || (type === 'income' ? 'Пополнение счета' : 'Оплата картой');
   }
 
   /**
@@ -182,7 +346,7 @@ export class AlfaBankService {
   /**
    * Парсинг официальной PDF-выписки Альфа-Банка Беларусь (InSync)
    */
-  static async parsePdfFile(file: File): Promise<AlfaTransaction[]> {
+  static async parsePdfFile(file: File): Promise<ParseResult> {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     const allLines: string[] = [];
@@ -217,7 +381,33 @@ export class AlfaBankService {
       }
     }
 
-    return this.extractTransactionsFromTextLines(allLines);
+    // Извлечение сводных метаданных выписки
+    const metadata: StatementMetadata = {};
+    for (const line of allLines) {
+      if (line.includes('Период')) {
+        const m = line.match(/Период\s*(\d{2}\.\d{2}\.\d{4}\s*-\s*\d{2}\.\d{2}\.\d{4})/i);
+        if (m) metadata.period = m[1];
+      }
+      if (line.includes('Привязанные карты')) {
+        const m = line.match(/Привязанные карты\s*(.+)$/i);
+        if (m) metadata.card = m[1].trim();
+      }
+      if (line.includes('Расход')) {
+        const m = line.match(/Расход\s*([+-]?\s*[\d\s]+(?:[.,]\d{2})?)\s*BYN/i);
+        if (m) metadata.totalExpense = Math.abs(parseFloat(m[1].replace(/\s+/g, '').replace(',', '.')));
+      }
+      if (line.includes('Приход')) {
+        const m = line.match(/Приход\s*([+-]?\s*[\d\s]+(?:[.,]\d{2})?)\s*BYN/i);
+        if (m) metadata.totalIncome = Math.abs(parseFloat(m[1].replace(/\s+/g, '').replace(',', '.')));
+      }
+      if (line.includes('Доступный остаток')) {
+        const m = line.match(/Доступный остаток\s*([+-]?\s*[\d\s]+(?:[.,]\d{2})?)\s*BYN/i);
+        if (m) metadata.balance = parseFloat(m[1].replace(/\s+/g, '').replace(',', '.'));
+      }
+    }
+
+    const transactions = this.extractTransactionsFromTextLines(allLines);
+    return { metadata, transactions };
   }
 
   /**
@@ -311,37 +501,7 @@ export class AlfaBankService {
       }
 
       // 3. Формирование чистого и понятного названия мерчанта
-      let note = rawBlock;
-
-      // Удаляем дату в начале
-      note = note.replace(/^\s*\d{2}\.\d{2}\.\d{4}\s*/, '');
-      // Удаляем все суммы с BYN/валютой в конце строки
-      note = note.replace(/([+-]?\s*\d+(?:[.,]\d{1,2})?\s*(?:BYN|USD|EUR)\s*)+$/gi, '');
-      // Удаляем 8-значную дату клиринга банка в начале примечания (например 20260902, 20260831)
-      note = note.replace(/^\s*\d{8}\s*/, '');
-      // Удаляем название города в начале (MINSK, G. MINSK, VITEBSK и т.д.)
-      note = note.replace(/^(?:G\.\s*)?(?:MINSK|VITEBSK|BREST|GRODNO|GOMEL|MOGILEV)\s+/i, '');
-      // Удаляем шаблонную фразу "Покупка товара / получение услуг"
-      note = note.replace(/Покупка товара\s*\/\s*получение услуг\s*/gi, '');
-      // Удаляем "ONLINE SERVICE"
-      note = note.replace(/ONLINE SERVICE\s*/gi, '');
-
-      // Красивые названия для типовых операций
-      if (upper.includes('ПЕРЕВОД МЕЖДУ СЧЕТАМИ')) {
-        note = 'Перевод между своими счетами';
-      } else if (upper.includes('ПОПОЛНЕНИЕ КАРТСЧЕТОВ')) {
-        note = 'Пополнение карты через терминал';
-      } else if (upper.includes('ERIP') || upper.includes('ЕРИП')) {
-        note = 'Платеж ЕРИП (InSync)';
-      }
-
-      // Очистка кавычек и префиксов SHOP / SUPERMARKET / PT
-      note = note.replace(/^SHOP\s+/i, '');
-      note = note.replace(/^PT\s+/i, '');
-      note = note.replace(/^SUPERMARKET\s+/i, '');
-      note = note.replace(/^["'«]|["'»]$/g, '').trim();
-
-      const merchant = note || 'Операция по карте';
+      const merchant = this.cleanMerchantName(rawBlock, type);
       const categoryId = this.detectCategory(rawBlock, type);
 
       results.push({
