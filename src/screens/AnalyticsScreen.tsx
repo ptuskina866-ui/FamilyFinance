@@ -120,97 +120,100 @@ const AnalyticsScreen: React.FC = () => {
       <div className="px-5 pt-3 pb-36 flex flex-col gap-5">
 
         {/* ── Tab Switcher ── */}
-        <div className="toggle-pill p-1 bg-slate-50 border border-slate-100 rounded-2xl flex">
+        <div className="p-1 bg-white/80 border border-white/80 rounded-2xl flex shadow-sm">
           <button
             onClick={() => setActiveTab('expense')}
-            className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all duration-200 ${
-              activeTab === 'expense' ? 'bg-[#0F172A] text-white shadow-sm' : 'text-slate-400'
+            className={`flex-1 py-2.5 text-xs font-black rounded-xl transition-all duration-200 ${
+              activeTab === 'expense' ? 'bg-slate-950 text-white shadow-sm' : 'text-slate-500 hover:text-slate-900'
             }`}
           >
             Расходы
           </button>
           <button
             onClick={() => setActiveTab('income')}
-            className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all duration-200 ${
-              activeTab === 'income' ? 'bg-[#0F172A] text-white shadow-sm' : 'text-slate-400'
+            className={`flex-1 py-2.5 text-xs font-black rounded-xl transition-all duration-200 ${
+              activeTab === 'income' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-900'
             }`}
           >
             Доходы
           </button>
         </div>
 
-        {/* ── Amount and Subtitle ── */}
-        <div className="flex flex-col gap-0.5 mt-2">
-          <p className="text-[40px] font-black tracking-tight text-slate-800 leading-none">
-            {fmt(totalAmountForTab)}
-          </p>
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">
-            {activeTab === 'expense' ? 'Всего расходов' : 'Всего доходов'}
-          </p>
-        </div>
-
-        {/* ── Month Navigation Bar ── */}
-        <div className="flex justify-between items-center gap-3 bg-slate-50/50 border border-slate-100 rounded-2xl p-2.5">
-          <div className="flex items-center gap-2 pl-1.5">
-            <Calendar className="w-4 h-4 text-slate-400" />
-            <span className="text-xs font-bold text-slate-700 capitalize">{mName}</span>
-          </div>
-          <div className="flex gap-1.5">
-            <button
-              onClick={handlePrevMonth}
-              className="w-8 h-8 rounded-full bg-[#0F172A] hover:bg-[#1E293B] flex items-center justify-center text-white active:scale-90 transition-transform"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button
-              onClick={handleNextMonth}
-              className="w-8 h-8 rounded-full bg-[#0F172A] hover:bg-[#1E293B] flex items-center justify-center text-white active:scale-90 transition-transform"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* ── Chart ── */}
-        <div className="w-full h-[220px] -mx-2 pr-4 relative">
-          {totalAmountForTab === 0 ? (
-            <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50/30 rounded-2xl border border-dashed border-slate-200 gap-1.5">
-              <span className="text-2xl">📈</span>
-              <p className="text-[11px] text-slate-400 font-medium">Нет данных для графика за этот период</p>
+        {/* ── Main Chart Card ── */}
+        <div className="card p-5 bg-white border border-white/80 shadow-[0_4px_20px_rgba(0,30,10,0.03)] rounded-[28px] flex flex-col gap-4">
+          {/* Month Navigation Bar */}
+          <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-slate-400" />
+              <span className="text-xs font-black text-slate-800 capitalize tracking-tight">{mName}</span>
             </div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={getChartDataPoints()} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={activeTab === 'expense' ? '#FB923C' : '#34D399'} stopOpacity={0.18} />
-                    <stop offset="95%" stopColor={activeTab === 'expense' ? '#FB923C' : '#34D399'} stopOpacity={0.0} />
-                  </linearGradient>
-                </defs>
-                <XAxis
-                  dataKey="day"
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 9, fontWeight: 700, fill: '#94A3B8' }}
-                  dy={8}
-                />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 9, fontWeight: 700, fill: '#94A3B8' }}
-                />
-                <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#F1F5F9', strokeWidth: 1 }} />
-                <Area
-                  type="monotone"
-                  dataKey="amount"
-                  stroke={activeTab === 'expense' ? '#F97316' : '#10B981'}
-                  strokeWidth={2.5}
-                  fillOpacity={1}
-                  fill="url(#chartGradient)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          )}
+            <div className="flex gap-1">
+              <button
+                onClick={handlePrevMonth}
+                className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-700 active:scale-90 transition-transform"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={handleNextMonth}
+                className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-700 active:scale-90 transition-transform"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Amount and Subtitle */}
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+              {activeTab === 'expense' ? 'Всего расходов' : 'Всего доходов'}
+            </span>
+            <p className="text-[34px] font-black tracking-tight text-slate-950 leading-none">
+              {fmt(totalAmountForTab)}
+            </p>
+          </div>
+
+          {/* Chart */}
+          <div className="w-full h-[190px] -mx-2 pr-3 pt-2 relative">
+            {totalAmountForTab === 0 ? (
+              <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 gap-1.5">
+                <span className="text-xl">📈</span>
+                <p className="text-[11px] text-slate-400 font-medium">Нет операций за этот период</p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={getChartDataPoints()} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={activeTab === 'expense' ? '#0F172A' : '#059669'} stopOpacity={0.15} />
+                      <stop offset="95%" stopColor={activeTab === 'expense' ? '#0F172A' : '#059669'} stopOpacity={0.0} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis
+                    dataKey="day"
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fontSize: 9, fontWeight: 700, fill: '#94A3B8' }}
+                    dy={8}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fontSize: 9, fontWeight: 700, fill: '#94A3B8' }}
+                  />
+                  <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#F1F5F9', strokeWidth: 1 }} />
+                  <Area
+                    type="monotone"
+                    dataKey="amount"
+                    stroke={activeTab === 'expense' ? '#0F172A' : '#059669'}
+                    strokeWidth={2.5}
+                    fillOpacity={1}
+                    fill="url(#chartGradient)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </div>
         </div>
 
         {/* ── Auto Goal Money Leaks Detector ── */}
@@ -219,10 +222,16 @@ const AnalyticsScreen: React.FC = () => {
         )}
 
         {/* ── Categories Breakdown ── */}
-        <div className="flex flex-col gap-3.5 mt-2">
-          <h2 className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Разделение по категориям</h2>
+        <div className="card p-5 bg-white border border-white/80 shadow-[0_4px_20px_rgba(0,30,10,0.03)] rounded-[28px] flex flex-col gap-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xs font-black text-slate-900 tracking-tight">Разделение по категориям</h2>
+            <span className="text-[10px] font-bold text-slate-400">
+              {breakdownData.length} {breakdownData.length === 1 ? 'категория' : 'категорий'}
+            </span>
+          </div>
+
           {breakdownData.length === 0 ? (
-            <div className="card p-8 text-center bg-slate-50/20">
+            <div className="py-6 text-center">
               <p className="text-slate-400 text-xs font-semibold">Операций пока нет</p>
             </div>
           ) : (
@@ -231,18 +240,18 @@ const AnalyticsScreen: React.FC = () => {
                 const cat = item.category;
                 if (!cat) return null;
                 return (
-                  <div key={cat.id} className="flex flex-col items-center gap-1.5 text-center">
-                    {/* Circle icon */}
-                    <div className="w-14 h-14 rounded-full bg-[#FAF2EA] hover:bg-[#F3E5D8] flex items-center justify-center active:scale-95 transition-all shadow-sm">
+                  <div key={cat.id} className="flex flex-col items-center gap-1.5 text-center group active:scale-95 transition-transform">
+                    {/* Circle icon - Solid Neo-Fintech Dark Circle */}
+                    <div className="w-12 h-12 rounded-full bg-slate-950 text-white flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
                       <DynamicIcon
                         name={cat.icon}
-                        className="w-5 h-5 text-[#5C4033]"
+                        className="w-5 h-5 text-white"
                       />
                     </div>
                     {/* Details */}
                     <div className="flex flex-col min-w-0 w-full">
                       <span className="text-[10px] font-bold text-slate-700 truncate px-0.5">{cat.name}</span>
-                      <span className="text-[10px] font-extrabold text-slate-800 mt-0.5">{fmt(item.value)}</span>
+                      <span className="text-[11px] font-black text-slate-950 mt-0.5">{fmt(item.value)}</span>
                     </div>
                   </div>
                 );
