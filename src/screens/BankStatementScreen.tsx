@@ -241,7 +241,7 @@ export const BankStatementScreen: React.FC<BankStatementScreenProps> = ({ onBack
             <h1 className="text-base font-black text-slate-800 tracking-tight leading-tight">
               Выгрузить выписку
             </h1>
-            <p className="text-[11px] text-slate-400 font-medium">Импорт банковских операций (PDF / 1C)</p>
+            <p className="text-[11px] text-slate-400 font-medium">Импорт банковских операций</p>
           </div>
         </div>
 

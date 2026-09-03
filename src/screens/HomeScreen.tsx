@@ -116,10 +116,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement }) => {
               <Landmark size={20} />
             </div>
             <div className="flex flex-col">
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-black text-slate-800">Выписка из банка</span>
-                <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-slate-100 text-slate-600 font-bold">PDF / 1C</span>
-              </div>
+              <span className="text-xs font-black text-slate-800">Выписка из банка</span>
               <span className="text-[11px] text-slate-400">Выгрузить выписку</span>
             </div>
           </div>
