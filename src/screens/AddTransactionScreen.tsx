@@ -148,10 +148,10 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
   });
 
   return (
-    <div className="flex flex-col h-full bg-[#F8FAFC] overflow-y-auto no-scrollbar">
+    <div className="flex flex-col h-full w-full max-w-full bg-[#F8FAFC] overflow-y-auto overflow-x-hidden no-scrollbar">
       
       {/* ── Native Safe Header ── */}
-      <div className="px-5 pt-7 pb-3 safe-header flex justify-between items-center bg-white border-b border-slate-100/80 sticky top-0 z-30 shadow-sm">
+      <div className="px-5 pt-7 pb-3 safe-header flex justify-between items-center bg-white border-b border-slate-100/80 sticky top-0 z-30 shadow-sm w-full shrink-0">
         <button
           type="button"
           onClick={onNavigateHome}
@@ -169,7 +169,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
       </div>
 
       {/* ── Form Content ── */}
-      <div className="px-4 sm:px-5 pt-4 pb-36 flex flex-col gap-4 max-w-lg mx-auto w-full">
+      <div className="px-4 sm:px-5 pt-4 pb-36 flex flex-col gap-4 max-w-lg mx-auto w-full min-w-0 box-border">
         
         {/* Type Toggle */}
         <div className="p-1 bg-slate-200/60 rounded-2xl flex shadow-inner">
@@ -333,30 +333,30 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
           )}
 
           {/* Date Picker */}
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5 w-full min-w-0">
             <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Дата операции</span>
-            <div className="relative">
-              <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <div className="relative flex items-center w-full min-w-0 max-w-full overflow-hidden rounded-2xl bg-slate-50 border border-slate-200 focus-within:border-slate-900 focus-within:ring-2 focus-within:ring-slate-900/10">
+              <Calendar className="absolute left-3.5 w-4 h-4 text-slate-400 pointer-events-none shrink-0" />
               <input
                 type="date"
                 value={txDate}
                 onChange={e => setTxDate(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900"
+                className="w-full min-w-0 max-w-full pl-10 pr-4 py-2.5 bg-transparent text-xs font-bold text-slate-800 focus:outline-none appearance-none block"
               />
             </div>
           </div>
 
           {/* Comment */}
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5 w-full min-w-0">
             <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Комментарий</span>
-            <div className="relative">
-              <MessageSquare className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <div className="relative flex items-center w-full min-w-0 max-w-full overflow-hidden rounded-2xl bg-slate-50 border border-slate-200 focus-within:border-slate-900 focus-within:ring-2 focus-within:ring-slate-900/10">
+              <MessageSquare className="absolute left-3.5 w-4 h-4 text-slate-400 pointer-events-none shrink-0" />
               <input
                 type="text"
                 value={comment}
                 onChange={e => setComment(e.target.value)}
                 placeholder="Например: Продукты в Евроопте"
-                className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900"
+                className="w-full min-w-0 max-w-full pl-10 pr-4 py-2.5 bg-transparent text-xs font-medium text-slate-800 focus:outline-none block"
               />
             </div>
           </div>
