@@ -198,24 +198,24 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onOpenStatement }) => {
         <div className="card px-4 py-4 flex flex-col gap-3">
           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-2">
             <Landmark className="w-3.5 h-3.5 text-slate-800" />
-            Банковские интеграции
+            Банковские выписки
           </p>
           <div 
             onClick={onOpenStatement || (() => setBankSyncOpen(true))}
-            className="p-3.5 rounded-2xl bg-gradient-to-r from-rose-50/60 to-white border border-rose-100 hover:border-rose-300 flex items-center justify-between gap-3 cursor-pointer group transition-all"
+            className="p-3.5 rounded-2xl bg-white border border-slate-200/80 hover:border-slate-300 flex items-center justify-between gap-3 cursor-pointer group transition-all"
           >
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-2xl bg-rose-600 text-white flex items-center justify-center font-black text-base shadow-sm shadow-rose-600/20">
-                А
+              <div className="w-9 h-9 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-black text-base shadow-sm">
+                <Landmark size={18} />
               </div>
               <div className="flex flex-col">
-                <span className="text-xs font-black text-slate-800">Альфа-Банк Беларусь</span>
-                <span className="text-[10px] text-slate-400">Выгрузить выписку из банка</span>
+                <span className="text-xs font-black text-slate-800">Выписка из банка</span>
+                <span className="text-[10px] text-slate-400">Выгрузить выписку</span>
               </div>
             </div>
             <button
               type="button"
-              className="px-3 py-1.5 rounded-xl bg-white border border-rose-200 text-rose-600 text-xs font-bold group-hover:bg-rose-600 group-hover:text-white transition-all shadow-sm flex items-center gap-1"
+              className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
             >
               <RotateCw size={12} className="group-hover:rotate-180 transition-transform duration-500" />
               Выгрузить

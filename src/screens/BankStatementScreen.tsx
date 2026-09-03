@@ -19,7 +19,8 @@ import {
   Filter,
   CheckSquare,
   Square,
-  X
+  X,
+  Landmark
 } from 'lucide-react';
 
 interface BankStatementScreenProps {
@@ -238,14 +239,14 @@ export const BankStatementScreen: React.FC<BankStatementScreenProps> = ({ onBack
           </button>
           <div className="flex flex-col">
             <h1 className="text-base font-black text-slate-800 tracking-tight leading-tight">
-              Выгрузить выписку из банка
+              Выгрузить выписку
             </h1>
-            <p className="text-[11px] text-slate-400 font-medium">Альфа-Банк Беларусь · InSync PDF</p>
+            <p className="text-[11px] text-slate-400 font-medium">Импорт банковских операций (PDF / 1C)</p>
           </div>
         </div>
 
-        <div className="w-8 h-8 rounded-xl bg-rose-600 text-white flex items-center justify-center font-black text-sm shadow-sm shadow-rose-600/20">
-          А
+        <div className="w-9 h-9 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-sm">
+          <Landmark size={18} />
         </div>
       </div>
 
@@ -277,11 +278,11 @@ export const BankStatementScreen: React.FC<BankStatementScreenProps> = ({ onBack
               onClick={() => fileInputRef.current?.click()}
               onDrop={handleDrop}
               onDragOver={handleDragOver}
-              className="border-2 border-dashed border-rose-200 hover:border-rose-500 bg-white rounded-3xl p-8 sm:p-10 flex flex-col items-center text-center gap-4 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md"
+              className="border-2 border-dashed border-slate-200 hover:border-slate-800 bg-white rounded-3xl p-8 sm:p-10 flex flex-col items-center text-center gap-4 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md"
             >
-              <div className="w-20 h-20 rounded-3xl bg-rose-50 border border-rose-100 text-rose-600 flex items-center justify-center shadow-md shadow-rose-500/10 transition-transform active:scale-95">
+              <div className="w-20 h-20 rounded-3xl bg-slate-100 border border-slate-200 text-slate-800 flex items-center justify-center shadow-md shadow-slate-900/5 transition-transform active:scale-95">
                 {loading ? (
-                  <RotateCw size={36} className="animate-spin text-rose-600" />
+                  <RotateCw size={36} className="animate-spin text-slate-800" />
                 ) : (
                   <UploadCloud size={40} />
                 )}
@@ -289,30 +290,30 @@ export const BankStatementScreen: React.FC<BankStatementScreenProps> = ({ onBack
 
               <div className="flex flex-col gap-1 max-w-xs">
                 <span className="text-lg font-black text-slate-800">
-                  {loading ? 'Анализ PDF документа...' : 'Выберите PDF выписку'}
+                  {loading ? 'Анализ выписки...' : 'Выберите файл выписки'}
                 </span>
                 <span className="text-xs text-slate-400 font-medium leading-relaxed">
-                  Нажмите сюда для выбора файла на телефоне или компьютере
+                  Поддерживаются официальные выписки банков в PDF, 1C или CSV
                 </span>
               </div>
 
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-                className="py-3 px-6 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md shadow-rose-600/20 active:scale-95 transition-all mt-1"
+                className="py-3 px-6 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-md active:scale-95 transition-all mt-1"
               >
-                Выбрать PDF файл
+                Выбрать файл выписки
               </button>
 
               <div className="flex flex-wrap items-center justify-center gap-1.5 mt-2">
                 <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-100 flex items-center gap-1">
-                  <CheckCircle2 size={12} /> Авто-категория «Еда»
+                  <CheckCircle2 size={12} /> Авто-категоризация
                 </span>
                 <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-[10px] font-bold border border-blue-100">
                   Анти-дубликаты
                 </span>
                 <span className="px-3 py-1 rounded-full bg-purple-50 text-purple-700 text-[10px] font-bold border border-purple-100">
-                  Чистые названия магазинов
+                  Чистые названия
                 </span>
               </div>
             </div>
@@ -320,13 +321,13 @@ export const BankStatementScreen: React.FC<BankStatementScreenProps> = ({ onBack
             {/* Instructions Guide */}
             <div className="p-5 rounded-3xl bg-white border border-slate-100 shadow-sm flex flex-col gap-3">
               <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                <FileText size={16} className="text-rose-600" />
-                <span>Как скачать выписку в приложении InSync:</span>
+                <FileText size={16} className="text-slate-800" />
+                <span>Как выгрузить выписку в приложении банка:</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-medium text-slate-500">
                 <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100/80 flex gap-2.5 items-center">
                   <span className="w-6 h-6 rounded-full bg-slate-200 font-bold text-slate-700 flex items-center justify-center shrink-0 text-xs">1</span>
-                  <span>Откройте карту или счет в InSync</span>
+                  <span>Откройте карту или счет в банке</span>
                 </div>
                 <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100/80 flex gap-2.5 items-center">
                   <span className="w-6 h-6 rounded-full bg-slate-200 font-bold text-slate-700 flex items-center justify-center shrink-0 text-xs">2</span>

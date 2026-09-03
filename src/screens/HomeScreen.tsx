@@ -4,7 +4,7 @@ import { useAuth } from '../AuthContext';
 import { DynamicIcon } from '../components/CategoryGrid';
 import { BankSyncModal } from '../components/BankSyncModal';
 import { ErrorBoundary } from '../components/ErrorBoundary';
-import { Trash2, Check, Search, ArrowUpRight, ArrowDownRight, RotateCw } from 'lucide-react';
+import { Trash2, Check, Search, ArrowUpRight, ArrowDownRight, RotateCw, Landmark } from 'lucide-react';
 
 const fmt = (n: number) => n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' Br';
 
@@ -106,26 +106,26 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement }) => {
           )}
         </div>
 
-        {/* ── Alfa-Bank Sync Banner ── */}
+        {/* ── Bank Statement Banner ── */}
         <div 
           onClick={onOpenStatement || (() => setBankSyncOpen(true))}
-          className="card p-3.5 flex items-center justify-between gap-3 bg-gradient-to-r from-rose-50/60 via-white to-white border-rose-100 hover:border-rose-300 hover:shadow-md transition-all cursor-pointer group active:scale-[0.99]"
+          className="card p-3.5 flex items-center justify-between gap-3 bg-white border-slate-200/80 hover:border-slate-300 hover:shadow-md transition-all cursor-pointer group active:scale-[0.99]"
         >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-rose-600 text-white flex items-center justify-center font-black text-lg shadow-md shadow-rose-600/20 group-hover:scale-105 transition-transform">
-              А
+            <div className="w-10 h-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-black text-lg shadow-sm group-hover:scale-105 transition-transform">
+              <Landmark size={20} />
             </div>
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5">
-                <span className="text-xs font-black text-slate-800">Альфа-Банк Беларусь</span>
-                <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-rose-100 text-rose-700 font-bold">InSync PDF</span>
+                <span className="text-xs font-black text-slate-800">Выписка из банка</span>
+                <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-slate-100 text-slate-600 font-bold">PDF / 1C</span>
               </div>
-              <span className="text-[11px] text-slate-400">Выгрузить выписку из банка</span>
+              <span className="text-[11px] text-slate-400">Выгрузить выписку</span>
             </div>
           </div>
           <button 
             type="button"
-            className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold transition-colors flex items-center gap-1 shrink-0"
+            className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-colors flex items-center gap-1.5 shrink-0 shadow-sm"
           >
             <RotateCw size={12} className="group-hover:rotate-180 transition-transform duration-500" />
             Выгрузить
