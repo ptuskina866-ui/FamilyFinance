@@ -18,8 +18,8 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onChangeTab }) => {
 
   return (
     <div className="shrink-0 w-full pointer-events-none relative z-50 flex justify-center pb-[max(6px,calc(env(safe-area-inset-bottom,0px)-8px))] pt-0.5">
-      {/* Floating Island Capsule */}
-      <nav className="pointer-events-auto bg-white/95 backdrop-blur-xl border border-white/80 rounded-full px-2.5 py-1.5 flex items-center gap-1.5 shadow-[0_14px_38px_rgba(10,35,15,0.14)]">
+      {/* Floating Island Capsule - Liquid Glass */}
+      <nav className="pointer-events-auto dock-glass rounded-full px-2.5 py-1.5 flex items-center gap-1.5">
         {tabs.map((tab) => {
           const active = activeTab === tab.id;
           const Icon = tab.icon;

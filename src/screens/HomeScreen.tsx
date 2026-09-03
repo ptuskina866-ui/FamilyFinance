@@ -189,7 +189,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
             onClick={onOpenStatement || (() => setBankSyncOpen(true))}
             className="flex flex-col items-center gap-1.5 group active:scale-95 transition-transform"
           >
-            <div className="w-12 h-12 rounded-full bg-white border border-white/80 shadow-sm group-hover:shadow-md flex items-center justify-center text-slate-800 transition-all">
+            <div className="w-12 h-12 rounded-full bg-white/80 backdrop-blur-xl border border-white/90 shadow-[0_4px_16px_rgba(0,30,10,0.04)] group-hover:shadow-md flex items-center justify-center text-slate-800 transition-all">
               <Landmark className="w-5 h-5" />
             </div>
             <span className="text-[11px] font-bold text-slate-700">Выписка</span>
@@ -201,7 +201,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
             onClick={() => onNavigateTab && onNavigateTab('plans')}
             className="flex flex-col items-center gap-1.5 group active:scale-95 transition-transform"
           >
-            <div className="w-12 h-12 rounded-full bg-white border border-white/80 shadow-sm group-hover:shadow-md flex items-center justify-center text-slate-800 transition-all">
+            <div className="w-12 h-12 rounded-full bg-white/80 backdrop-blur-xl border border-white/90 shadow-[0_4px_16px_rgba(0,30,10,0.04)] group-hover:shadow-md flex items-center justify-center text-slate-800 transition-all">
               <Target className="w-5 h-5" />
             </div>
             <span className="text-[11px] font-bold text-slate-700">Цели</span>
@@ -213,7 +213,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
             onClick={() => onNavigateTab && onNavigateTab('analytics')}
             className="flex flex-col items-center gap-1.5 group active:scale-95 transition-transform"
           >
-            <div className="w-12 h-12 rounded-full bg-white border border-white/80 shadow-sm group-hover:shadow-md flex items-center justify-center text-slate-800 transition-all">
+            <div className="w-12 h-12 rounded-full bg-white/80 backdrop-blur-xl border border-white/90 shadow-[0_4px_16px_rgba(0,30,10,0.04)] group-hover:shadow-md flex items-center justify-center text-slate-800 transition-all">
               <TrendingUp className="w-5 h-5" />
             </div>
             <span className="text-[11px] font-bold text-slate-700">Аналитика</span>
@@ -243,8 +243,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
           </div>
 
           <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1 -mx-5 px-5">
-            {/* Card 1: Safe-to-Spend Daily Limit */}
-            <div className="min-w-[155px] p-4 rounded-[26px] bg-white border border-white/80 shadow-[0_4px_16px_rgba(0,30,10,0.03)] flex flex-col justify-between gap-3 shrink-0">
+            {/* Card 1: Safe-to-Spend Daily Limit - Frosted Glass */}
+            <div className="card min-w-[155px] p-4 flex flex-col justify-between gap-3 shrink-0">
               <div className="flex items-center justify-between">
                 <div className="w-7 h-7 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
                   <ShieldCheck className="w-4 h-4" />
@@ -261,11 +261,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
               </div>
             </div>
 
-            {/* Card 2: Car Goal */}
+            {/* Card 2: Car Goal - Frosted Glass */}
             {carGoal && (
               <div 
                 onClick={() => onNavigateTab && onNavigateTab('plans')}
-                className="min-w-[165px] p-4 rounded-[26px] bg-white border border-white/80 shadow-[0_4px_16px_rgba(0,30,10,0.03)] flex flex-col justify-between gap-3 shrink-0 cursor-pointer active:scale-95 transition-transform"
+                className="card min-w-[165px] p-4 flex flex-col justify-between gap-3 shrink-0 cursor-pointer active:scale-95 transition-transform"
               >
                 <div className="flex items-center justify-between">
                   <span className="text-2xl filter drop-shadow-sm">{carGoal.emoji || '🚗'}</span>
@@ -282,10 +282,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
               </div>
             )}
 
-            {/* Card 3: Add Goal Button (Black card like reference) */}
+            {/* Card 3: Add Goal Button - Dark Smoky Glass */}
             <div 
               onClick={() => onNavigateTab && onNavigateTab('plans')}
-              className="min-w-[125px] p-4 rounded-[26px] bg-slate-950 text-white shadow-md flex flex-col justify-between gap-3 shrink-0 cursor-pointer active:scale-95 transition-transform"
+              className="card-dark-glass min-w-[125px] p-4 text-white flex flex-col justify-between gap-3 shrink-0 cursor-pointer active:scale-95 transition-transform"
             >
               <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-white">
                 <Plus className="w-4 h-4" />
@@ -305,8 +305,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
           <div className="flex justify-between items-center px-1">
             <span className="text-xs font-black text-slate-800 tracking-tight">Последние операции</span>
             
-            {/* Filter Pills */}
-            <div className="flex items-center gap-1 p-0.5 rounded-full bg-white border border-white/80 shadow-sm">
+            {/* Filter Pills - Frosted Glass */}
+            <div className="flex items-center gap-1 p-0.5 rounded-full bg-white/75 backdrop-blur-xl border border-white/90 shadow-sm">
               {(['all', 'expense', 'income'] as const).map(type => (
                 <button
                   key={type}
@@ -326,7 +326,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
 
           {/* Transactions Grouped by Date (like reference left screen) */}
           {groupedTransactions.length === 0 ? (
-            <div className="card p-8 text-center bg-white">
+            <div className="card p-8 text-center">
               <p className="text-xs font-semibold text-slate-400">Операций не найдено</p>
             </div>
           ) : (
@@ -346,7 +346,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
                       return (
                         <div
                           key={tx.id}
-                          className="card p-3.5 bg-white flex items-center justify-between border border-white/80 shadow-[0_2px_12px_rgba(0,30,10,0.02)] active:scale-[0.99] transition-transform"
+                          className="card p-3.5 flex items-center justify-between active:scale-[0.99] transition-transform"
                         >
                           <div className="flex items-center gap-3 min-w-0">
                             {/* Round category avatar */}
