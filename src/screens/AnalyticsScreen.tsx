@@ -4,6 +4,7 @@ import { useAuth } from '../AuthContext';
 import { DynamicIcon } from '../components/CategoryGrid';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Calendar, ChevronLeft, ChevronRight, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { MoneyLeaksCard } from '../components/MoneyLeaksCard';
 
 const fmt = (n: number) => n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' Br';
 
@@ -208,6 +209,11 @@ const AnalyticsScreen: React.FC = () => {
             </ResponsiveContainer>
           )}
         </div>
+
+        {/* ── Auto Goal Money Leaks Detector ── */}
+        {activeTab === 'expense' && (
+          <MoneyLeaksCard transactions={transactions} />
+        )}
 
         {/* ── Categories Breakdown ── */}
         <div className="flex flex-col gap-3.5 mt-2">

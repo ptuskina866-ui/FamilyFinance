@@ -3,6 +3,7 @@ import { useApp } from '../AppContext';
 import { useAuth } from '../AuthContext';
 import { DynamicIcon } from '../components/CategoryGrid';
 import { CATEGORIES } from '../mockData';
+import { CarGoalForecastCard } from '../components/CarGoalForecastCard';
 import { Target, Plus, Trash2, X, Check, RefreshCw, Calendar } from 'lucide-react';
 
 const GOAL_EMOJIS = ['🎯', '🏖️', '🚗', '🏠', '💍', '✈️', '📱', '🎓', '💰', '🛋️', '🍔', '🎁'];
@@ -16,6 +17,7 @@ const PlansScreen: React.FC = () => {
     deleteGoal,
     updateGoalAmount,
     balance,
+    transactions,
     recurringTransactions,
     addRecurring,
     deleteRecurring,
@@ -175,6 +177,17 @@ const PlansScreen: React.FC = () => {
                 {fmt(balance)}
               </span>
             </div>
+
+            {/* Car Smart Forecast Card */}
+            <CarGoalForecastCard
+              goals={savingsGoals}
+              transactions={transactions}
+              onQuickAddGoal={() => addGoal({ name: 'Автомобиль', target_amount: 30000, emoji: '🚗', deadline: null })}
+              onSelectGoal={(g) => {
+                setAddingToGoalId(g.id);
+                setAddAmount('');
+              }}
+            />
 
             {savingsGoals.length === 0 ? (
               <div className="card p-10 text-center flex flex-col items-center gap-3">

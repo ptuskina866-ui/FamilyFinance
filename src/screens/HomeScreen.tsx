@@ -4,6 +4,8 @@ import { useAuth } from '../AuthContext';
 import { DynamicIcon } from '../components/CategoryGrid';
 import { BankSyncModal } from '../components/BankSyncModal';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { SafeToSpendCard } from '../components/SafeToSpendCard';
+import { PayDreamFirstBanner } from '../components/PayDreamFirstBanner';
 import { Trash2, Check, Search, ArrowUpRight, ArrowDownRight, RotateCw, Landmark } from 'lucide-react';
 
 const fmt = (n: number) => n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' Br';
@@ -18,7 +20,18 @@ interface HomeScreenProps {
 }
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement }) => {
-  const { transactions, balance, monthlyIncome, monthlyExpense, budgetLimit, deleteTransaction, getCategoryById, getMemberById } = useApp();
+  const { 
+    transactions, 
+    balance, 
+    monthlyIncome, 
+    monthlyExpense, 
+    budgetLimit, 
+    deleteTransaction, 
+    getCategoryById, 
+    getMemberById,
+    savingsGoals,
+    updateGoalAmount 
+  } = useApp();
   const { profile } = useAuth();
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [bankSyncOpen, setBankSyncOpen] = useState(false);
@@ -105,6 +118,22 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement }) => {
             <p className="text-[10px] text-rose-500 font-semibold tracking-wide">⚠️ Лимит расходов превышен!</p>
           )}
         </div>
+
+        {/* ── Pay Dream First Banner (auto savings reminder) ── */}
+        <PayDreamFirstBanner
+          transactions={transactions}
+          goals={savingsGoals}
+          onDepositToGoal={async (goalId, amount) => {
+            await updateGoalAmount(goalId, amount);
+          }}
+        />
+
+        {/* ── Safe-to-Spend Daily Budget ── */}
+        <SafeToSpendCard
+          balance={balance}
+          transactions={transactions}
+          savingsGoals={savingsGoals}
+        />
 
         {/* ── Bank Statement Banner ── */}
         <div 
