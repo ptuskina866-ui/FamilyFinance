@@ -1,18 +1,14 @@
 import React, { useState, useRef } from 'react';
 import { useApp } from '../AppContext';
 import { useAuth } from '../AuthContext';
-import { AlfaBankService, AlfaTransaction, AlfaAccount } from '../services/alfaBankService';
+import { AlfaBankService, AlfaTransaction } from '../services/alfaBankService';
 import { DynamicIcon } from './CategoryGrid';
 import { 
   X, 
-  Smartphone, 
   UploadCloud, 
   CheckCircle2, 
   AlertCircle, 
-  ArrowRight, 
   RotateCw, 
-  CreditCard, 
-  ShieldCheck, 
   FileText, 
   Check
 } from 'lucide-react';
@@ -22,28 +18,21 @@ interface BankSyncModalProps {
   onClose: () => void;
 }
 
-type TabType = 'online' | 'file';
-type StepType = 'form' | 'otp' | 'preview' | 'success';
+type StepType = 'upload' | 'preview' | 'success';
 
 export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose }) => {
   const { transactions, categories, members, addTransactionsBatch } = useApp();
   const { profile } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<TabType>('online');
-  const [step, setStep] = useState<StepType>('form');
-
-  // Form states
-  const [phone, setPhone] = useState('+375 (29) ');
-  const [otpCode, setOtpCode] = useState('');
-  const [maskedPhone, setMaskedPhone] = useState('');
+  const [step, setStep] = useState<StepType>('upload');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [fileName, setFileName] = useState('');
 
   // Selected member for imported transactions
   const [selectedMemberId, setSelectedMemberId] = useState<string>(profile?.id || members[0]?.id || 'dad');
 
   // Data states
-  const [account, setAccount] = useState<AlfaAccount | null>(null);
   const [parsedList, setParsedList] = useState<AlfaTransaction[]>([]);
   const [selectedTxIds, setSelectedTxIds] = useState<Set<string>>(new Set());
 
@@ -51,91 +40,64 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
 
   if (!isOpen) return null;
 
-  // ── Step 1: Request Login ──
-  const handleRequestLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg('');
-    setLoading(true);
-
-    try {
-      const res = await AlfaBankService.requestLogin(phone);
-      if (res.success) {
-        setMaskedPhone(res.maskedPhone);
-        setStep('otp');
-      } else {
-        setErrorMsg(res.error || 'Ошибка входа в интернет-банк');
-      }
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Сбой соединения');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ── Step 2: Verify OTP ──
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg('');
-    setLoading(true);
-
-    try {
-      const res = await AlfaBankService.verifyOtp(otpCode, phone);
-      if (res.success && res.transactions) {
-        setAccount(res.account || null);
-        const marked = AlfaBankService.markDuplicates(res.transactions, transactions);
-        setParsedList(marked);
-
-        // По умолчанию выбираем только не-дубликаты
-        const nonDups = new Set(marked.filter(t => !t.isDuplicate).map(t => t.id));
-        setSelectedTxIds(nonDups);
-
-        setStep('preview');
-      } else {
-        setErrorMsg(res.error || 'Неверный код подтверждения');
-      }
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Ошибка верификации');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ── File Upload Handler ──
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // ── File Upload Handler (PDF, CSV, TXT, 1C) ──
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setErrorMsg('');
     setLoading(true);
+    setFileName(file.name);
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const text = event.target?.result as string;
+    try {
+      let parsed: AlfaTransaction[] = [];
+
+      if (file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf') {
+        // Парсинг официального PDF документа
+        parsed = await AlfaBankService.parsePdfFile(file);
+      } else {
+        // Парсинг текстовых выписок (CSV / TXT / 1C)
+        const text = await file.text();
         if (!text) throw new Error('Файл пуст');
-
-        const parsed = AlfaBankService.parseStatementFile(text);
-        if (parsed.length === 0) {
-          setErrorMsg('Не удалось распознать операции. Проверьте формат выписки (CSV или 1C).');
-          setLoading(false);
-          return;
-        }
-
-        const marked = AlfaBankService.markDuplicates(parsed, transactions);
-        setParsedList(marked);
-
-        const nonDups = new Set(marked.filter(t => !t.isDuplicate).map(t => t.id));
-        setSelectedTxIds(nonDups);
-
-        setStep('preview');
-      } catch (err: any) {
-        setErrorMsg('Ошибка чтения файла: ' + err.message);
-      } finally {
-        setLoading(false);
+        parsed = AlfaBankService.parseStatementFile(text);
       }
-    };
 
-    reader.readAsText(file, 'utf-8');
+      if (parsed.length === 0) {
+        throw new Error('В файле не найдено строк с операциями. Убедитесь, что это выписка за период с движениями средств.');
+      }
+
+      // Проверка на дубликаты
+      const marked = AlfaBankService.markDuplicates(parsed, transactions);
+      setParsedList(marked);
+
+      // По умолчанию выбираем только новые операции (не дубликаты)
+      const nonDups = new Set(marked.filter(t => !t.isDuplicate).map(t => t.id));
+      setSelectedTxIds(nonDups);
+
+      setStep('preview');
+    } catch (err: any) {
+      console.error('File parsing error:', err);
+      setErrorMsg(err.message || 'Ошибка обработки файла выписки');
+    } finally {
+      setLoading(false);
+      // Сбрасываем input, чтобы можно было выбрать тот же файл повторно
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  // ── Drag and Drop handlers ──
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const fakeEvent = {
+        target: { files: e.dataTransfer.files }
+      } as unknown as React.ChangeEvent<HTMLInputElement>;
+      handleFileUpload(fakeEvent);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
   };
 
   // ── Toggle transaction selection ──
@@ -180,9 +142,9 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
   };
 
   const resetAll = () => {
-    setStep('form');
-    setOtpCode('');
+    setStep('upload');
     setErrorMsg('');
+    setFileName('');
     setParsedList([]);
     setSelectedTxIds(new Set());
   };
@@ -204,8 +166,8 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
               А
             </div>
             <div>
-              <h2 className="text-base font-black text-slate-800 tracking-tight">Альфа-Банк Беларусь</h2>
-              <p className="text-[11px] text-slate-400 font-medium">Синхронизация и импорт операций</p>
+              <h2 className="text-base font-black text-slate-800 tracking-tight">Импорт выписки Альфа-Банка</h2>
+              <p className="text-[11px] text-slate-400 font-medium">Беларусь · InSync PDF / CSV</p>
             </div>
           </div>
           <button 
@@ -219,36 +181,6 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
         {/* ── Modal Body ── */}
         <div className="p-6 overflow-y-auto no-scrollbar flex flex-col gap-5">
 
-          {/* ── Mode Tabs (only in form step) ── */}
-          {step === 'form' && (
-            <div className="grid grid-cols-2 p-1 bg-slate-100/80 rounded-2xl">
-              <button
-                type="button"
-                onClick={() => { setActiveTab('online'); setErrorMsg(''); }}
-                className={`py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                  activeTab === 'online' 
-                    ? 'bg-white text-slate-800 shadow-sm' 
-                    : 'text-slate-400 hover:text-slate-600'
-                }`}
-              >
-                <Smartphone size={15} />
-                Вход в интернет-банк
-              </button>
-              <button
-                type="button"
-                onClick={() => { setActiveTab('file'); setErrorMsg(''); }}
-                className={`py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                  activeTab === 'file' 
-                    ? 'bg-white text-slate-800 shadow-sm' 
-                    : 'text-slate-400 hover:text-slate-600'
-                }`}
-              >
-                <UploadCloud size={15} />
-                Файл выписки
-              </button>
-            </div>
-          )}
-
           {errorMsg && (
             <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 text-xs font-medium flex items-center gap-2">
               <AlertCircle size={16} className="shrink-0" />
@@ -256,157 +188,79 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
             </div>
           )}
 
-          {/* ── STEP 1: FORM (Online Auth or File Upload) ── */}
-          {step === 'form' && activeTab === 'online' && (
-            <form onSubmit={handleRequestLogin} className="flex flex-col gap-4">
-              <div className="p-4 rounded-2xl bg-rose-50/60 border border-rose-100/80 flex items-start gap-3">
-                <ShieldCheck size={20} className="text-rose-600 shrink-0 mt-0.5" />
-                <div className="flex flex-col gap-1 text-[11px] text-slate-600 leading-relaxed">
-                  <span className="font-bold text-slate-800">Безопасный коннектор как в Дзен-мани</span>
-                  После ввода номера банк отправит вам SMS с кодом подтверждения сессии для выгрузки свежих операций.
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-slate-600">Номер телефона в Альфа-Банке</label>
-                <input 
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+375 (29) 000-00-00"
-                  className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-800 focus:outline-none focus:border-rose-500 transition-colors"
-                  required
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3.5 rounded-2xl bg-rose-600 hover:bg-rose-700 active:scale-[0.98] text-white text-sm font-bold shadow-lg shadow-rose-600/25 transition-all flex items-center justify-center gap-2 mt-2"
-              >
-                {loading ? (
-                  <>
-                    <RotateCw size={18} className="animate-spin" />
-                    Соединение с банком...
-                  </>
-                ) : (
-                  <>
-                    Запросить код в SMS
-                    <ArrowRight size={16} />
-                  </>
-                )}
-              </button>
-            </form>
-          )}
-
-          {step === 'form' && activeTab === 'file' && (
+          {/* ── STEP 1: UPLOAD ── */}
+          {step === 'upload' && (
             <div className="flex flex-col gap-4">
               <input 
                 type="file" 
                 ref={fileInputRef}
                 onChange={handleFileUpload}
-                accept=".csv,.txt,.1c"
+                accept=".pdf,.csv,.txt,.1c"
                 className="hidden" 
               />
 
               <div 
                 onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-slate-200 hover:border-rose-400 hover:bg-rose-50/20 rounded-3xl p-8 flex flex-col items-center text-center gap-3 cursor-pointer transition-all group"
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                className="border-2 border-dashed border-rose-200 hover:border-rose-500 bg-rose-50/20 hover:bg-rose-50/40 rounded-3xl p-8 flex flex-col items-center text-center gap-3 cursor-pointer transition-all group"
               >
-                <div className="w-14 h-14 rounded-2xl bg-slate-100 group-hover:bg-rose-100/60 text-slate-500 group-hover:text-rose-600 flex items-center justify-center transition-colors">
-                  <UploadCloud size={28} />
+                <div className="w-16 h-16 rounded-2xl bg-white shadow-sm border border-rose-100 text-rose-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+                  {loading ? (
+                    <RotateCw size={28} className="animate-spin text-rose-600" />
+                  ) : (
+                    <UploadCloud size={32} />
+                  )}
                 </div>
+
                 <div className="flex flex-col gap-1">
-                  <span className="text-sm font-black text-slate-800">Нажмите для выбора выписки</span>
-                  <span className="text-xs text-slate-400">Форматы InSync CSV, TXT или выписка 1С</span>
+                  <span className="text-sm font-black text-slate-800">
+                    {loading ? 'Чтение PDF выписки...' : 'Перетащите PDF выписку сюда'}
+                  </span>
+                  <span className="text-xs text-slate-500">
+                    или нажмите для выбора файла на телефоне/компьютере
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1.5 px-3 py-1 bg-rose-100/60 rounded-full text-rose-700 text-[10px] font-bold mt-1">
+                  <span>📄 Поддерживается официальный PDF из InSync</span>
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 flex items-center gap-2.5 text-xs text-slate-500">
-                <FileText size={16} className="text-slate-400 shrink-0" />
-                <span>Выписку можно скачать в приложении InSync: <b>Счет → Выписка → Сохранить файл</b></span>
+              {/* Tips for InSync */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col gap-2">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                  <FileText size={15} className="text-slate-500" />
+                  <span>Как скачать выписку в приложении InSync:</span>
+                </div>
+                <ol className="list-decimal list-inside space-y-1 text-[11px] font-medium text-slate-500">
+                  <li>Откройте карту или счет в приложении <b>InSync</b></li>
+                  <li>Нажмите <b>«Выписка»</b></li>
+                  <li>Выберите период (например, <b>«За месяц»</b>)</li>
+                  <li>Нажмите <b>«Сформировать / Скачать в PDF»</b></li>
+                </ol>
               </div>
             </div>
           )}
 
-          {/* ── STEP 2: OTP VERIFICATION ── */}
-          {step === 'otp' && (
-            <form onSubmit={handleVerifyOtp} className="flex flex-col gap-4 animate-fade-in">
-              <div className="text-center flex flex-col gap-1">
-                <span className="text-sm font-black text-slate-800">Введите SMS-код</span>
-                <span className="text-xs text-slate-400">Код подтверждения отправлен на {maskedPhone}</span>
-              </div>
-
-              <div className="flex justify-center py-2">
-                <input 
-                  type="text"
-                  maxLength={6}
-                  value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                  placeholder="• • • •"
-                  autoFocus
-                  className="w-48 text-center tracking-[0.4em] text-2xl font-black py-3 rounded-2xl bg-slate-50 border-2 border-rose-500 text-slate-800 focus:outline-none"
-                />
-              </div>
-
-              <p className="text-[11px] text-center text-slate-400">
-                Для демо-проверки введите любые 4–6 цифр
-              </p>
-
-              <div className="flex gap-2.5 mt-2">
-                <button
-                  type="button"
-                  onClick={() => setStep('form')}
-                  className="flex-1 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors"
-                >
-                  Назад
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading || otpCode.length < 4}
-                  className="flex-[2] py-3.5 rounded-2xl bg-rose-600 hover:bg-rose-700 active:scale-[0.98] text-white text-xs font-bold shadow-lg shadow-rose-600/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {loading ? (
-                    <>
-                      <RotateCw size={16} className="animate-spin" />
-                      Загрузка операций...
-                    </>
-                  ) : (
-                    'Подтвердить и загрузить'
-                  )}
-                </button>
-              </div>
-            </form>
-          )}
-
-          {/* ── STEP 3: PREVIEW & IMPORT ── */}
+          {/* ── STEP 2: PREVIEW & CONFIRM ── */}
           {step === 'preview' && (
             <div className="flex flex-col gap-4 animate-fade-in">
-              {/* Account info badge */}
-              {account && (
-                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-slate-900 to-slate-800 text-white flex justify-between items-center shadow-md">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center text-rose-400">
-                      <CreditCard size={18} />
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-xs font-bold">{account.cardName}</span>
-                      <span className="text-[10px] text-slate-400">{account.maskedCard}</span>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xs font-black text-emerald-400">
-                      {account.balance.toLocaleString('ru-RU', { minimumFractionDigits: 2 })} {account.currency}
-                    </span>
-                    <span className="block text-[9px] text-slate-400">баланс счета</span>
-                  </div>
+              {/* File Info badge */}
+              <div className="p-3 rounded-2xl bg-slate-100 flex justify-between items-center text-xs">
+                <div className="flex items-center gap-2 truncate">
+                  <FileText size={16} className="text-rose-600 shrink-0" />
+                  <span className="font-bold text-slate-800 truncate">{fileName || 'Выписка Альфа-Банка'}</span>
                 </div>
-              )}
+                <span className="text-[10px] px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-600 font-bold shrink-0">
+                  {parsedList.length} операций
+                </span>
+              </div>
 
               {/* Status & Member selector */}
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-black text-slate-800">Найдено: {parsedList.length}</span>
+                  <span className="text-xs font-black text-slate-800">К импорту: {selectedTxIds.size}</span>
                   {duplicateCount > 0 && (
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-bold">
                       {duplicateCount} дублей скрыто
@@ -503,7 +357,7 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
                   onClick={resetAll}
                   className="py-3 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors"
                 >
-                  Заново
+                  Другой файл
                 </button>
                 <button
                   type="button"
@@ -524,22 +378,22 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
             </div>
           )}
 
-          {/* ── STEP 4: SUCCESS ── */}
+          {/* ── STEP 3: SUCCESS ── */}
           {step === 'success' && (
             <div className="flex flex-col items-center text-center gap-4 py-6 animate-fade-in">
               <div className="w-16 h-16 rounded-3xl bg-emerald-50 text-emerald-500 border border-emerald-100 flex items-center justify-center shadow-lg shadow-emerald-500/10">
                 <CheckCircle2 size={36} />
               </div>
               <div className="flex flex-col gap-1">
-                <h3 className="text-base font-black text-slate-800">Синхронизация завершена!</h3>
-                <p className="text-xs text-slate-400">Все выбранные операции добавлены в семейный бюджет</p>
+                <h3 className="text-base font-black text-slate-800">Выписка успешно загружена!</h3>
+                <p className="text-xs text-slate-400">Все операции добавлены в бюджет и обновят графики</p>
               </div>
               <button
                 type="button"
                 onClick={() => { resetAll(); onClose(); }}
                 className="w-full py-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-md mt-2"
               >
-                Отлично, к бюджету
+                Вернуться к бюджету
               </button>
             </div>
           )}

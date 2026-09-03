@@ -113,9 +113,9 @@ const HomeScreen: React.FC = () => {
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-black text-slate-800">Альфа-Банк Беларусь</span>
-                <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-rose-100 text-rose-700 font-bold">InSync</span>
+                <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-rose-100 text-rose-700 font-bold">PDF / InSync</span>
               </div>
-              <span className="text-[11px] text-slate-400">Синхронизация и загрузка операций</span>
+              <span className="text-[11px] text-slate-400">Импорт официальной PDF-выписки</span>
             </div>
           </div>
           <button 

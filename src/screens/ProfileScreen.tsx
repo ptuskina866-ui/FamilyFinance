@@ -205,7 +205,7 @@ const ProfileScreen: React.FC = () => {
               </div>
               <div className="flex flex-col">
                 <span className="text-xs font-black text-slate-800">Альфа-Банк Беларусь</span>
-                <span className="text-[10px] text-slate-400">Вход через InSync / импорт выписки</span>
+                <span className="text-[10px] text-slate-400">Импорт официальной выписки в PDF</span>
               </div>
             </div>
             <button

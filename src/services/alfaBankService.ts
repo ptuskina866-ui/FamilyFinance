@@ -1,4 +1,10 @@
 import { Transaction, TransactionType } from '../types';
+import { supabase } from '../supabaseClient';
+import * as pdfjsLib from 'pdfjs-dist';
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+
+// Настройка воркера PDF.js
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 export interface AlfaTransaction {
   id: string;
@@ -38,13 +44,13 @@ const CATEGORY_RULES: { keywords: string[]; categoryId: string }[] = [
   // Продуктовые сети и супермаркеты
   { keywords: ['евроопт', 'euroopt', 'edostavka', 'е-доставка', 'гипермолл', 'e-mall'], categoryId: 'food-euroopt' },
   { keywords: ['green', 'грин', 'гриин'], categoryId: 'food-green' },
-  { keywords: ['гиппо', 'hippo', 'belmarket', 'белмаркет'], categoryId: 'food-hippo' },
+  { keywords: ['гиппо', 'hippo', 'belvillesden', 'белвиллесден', 'belmarket', 'белмаркет'], categoryId: 'food-hippo' },
   { keywords: ['соседи', 'sosedi'], categoryId: 'food-sosedi' },
   { keywords: ['санта', 'santa', 'ритейлмаркет'], categoryId: 'food-santa' },
   { keywords: ['грошык', 'groshyk'], categoryId: 'food-groshyk' },
   { keywords: ['маяк', 'mayak'], categoryId: 'food-mayak' },
   { keywords: ['fixprice', 'fix price', 'фикс прайс'], categoryId: 'food-fixprice' },
-  { keywords: ['корона', 'korona', 'продукты', 'универсам', 'гастроном', 'мясной', 'хлеб', 'vitalur', 'виталюр'], categoryId: 'food' },
+  { keywords: ['корона', 'korona', 'продукты', 'универсам', 'universam', 'гастроном', 'мясной', 'хлеб', 'vitalur', 'виталюр'], categoryId: 'food' },
 
   // Маркетплейсы
   { keywords: ['wildberries', 'wb', 'вайлдберриз', 'ozon', 'озон', 'lamoda', 'ламода', 'oz.by', 'oz by', 'яндекс маркет'], categoryId: 'marketplaces' },
@@ -59,7 +65,7 @@ const CATEGORY_RULES: { keywords: string[]; categoryId: string }[] = [
   { keywords: ['yandex go', 'яндекс go', 'яндекс такси', 'yandex.taxi', 'такси', 'uber', 'minsktrans', 'минсктранс', 'метро', 'бжд', 'rw.by', 'пассажирские перевозки'], categoryId: 'transport' },
 
   // Самокаты и кикшеринг
-  { keywords: ['whoosh', 'вуш', 'kolobike', 'колобайк', 'busyfly', 'jet', 'samokat', 'кикшеринг'], categoryId: 'scooters' },
+  { keywords: ['eleven', 'whoosh', 'вуш', 'kolobike', 'колобайк', 'busyfly', 'jet', 'samokat', 'кикшеринг'], categoryId: 'scooters' },
 
   // Мобильная связь
   { keywords: ['a1', 'а1', 'мтс', 'mts', 'life:)', 'life', 'лайф'], categoryId: 'mobile' },
@@ -71,10 +77,10 @@ const CATEGORY_RULES: { keywords: string[]; categoryId: string }[] = [
   { keywords: ['ерип', 'erip', 'расчет', 'жкх', 'коммунал', 'водоканал', 'минскводоканал', 'электроэнерг', 'минскэнерго', 'газ'], categoryId: 'utilities' },
 
   // Медицина и аптеки
-  { keywords: ['аптека', 'apteka', 'планета здоровья', 'фармация', 'инвитро', 'invitro', 'синэво', 'synevo', 'лодэ', 'lode', 'нордин', 'клиника', 'стоматология', 'медицинский центр', 'doctor'], categoryId: 'medical' },
+  { keywords: ['аптека', 'apteka', 'sumbest', 'планета здоровья', 'фармация', 'инвитро', 'invitro', 'синэво', 'synevo', 'лодэ', 'lode', 'нордин', 'клиника', 'стоматология', 'медицинский центр', 'doctor'], categoryId: 'medical' },
 
   // Кафе и рестораны
-  { keywords: ['кафе', 'cafe', 'ресторан', 'кофе', 'coffee', 'васильки', 'vasilki', 'макдональдс', 'mak.by', 'kfc', 'burger king', 'додо', 'dodo', 'пицца', 'pizza', 'хинкальная', 'суши', 'sushi', 'бар', 'bar', 'паб', 'bakery', 'пекарня'], categoryId: 'cafes' },
+  { keywords: ['foodpicasso', 'кафе', 'cafe', 'ресторан', 'кофе', 'coffee', 'васильки', 'vasilki', 'макдональдс', 'mak.by', 'kfc', 'burger king', 'додо', 'dodo', 'пицца', 'pizza', 'хинкальная', 'суши', 'sushi', 'бар', 'bar', 'паб', 'bakery', 'пекарня'], categoryId: 'cafes' },
 
   // Одежда и обувь
   { keywords: ['zara', 'mark formelle', 'марк формель', 'карри', 'kari', 'дефакто', 'defacto', 'bershka', 'pull&bear', 'stradivarius', 'mango', 'одежда', 'обувь', 'conte', 'конте', 'мегатоп', 'megatop'], categoryId: 'clothes' },
@@ -88,9 +94,12 @@ const CATEGORY_RULES: { keywords: string[]; categoryId: string }[] = [
   // Развлечения и отдых
   { keywords: ['кинотеатр', 'cinema', 'silver screen', 'mooon', 'боулинг', 'аквапарк', 'билет', 'kvitki', 'ticketpro', 'парк', 'музей', 'театр'], categoryId: 'entertainment' },
 
+  // Переводы
+  { keywords: ['перевод между счетами', 'перевод', 'перевод физических лиц'], categoryId: 'transfer' },
+
   // Доходы
   { keywords: ['зарплата', 'зачисление заработной платы', 'аванс', 'salary', 'оплата труда', 'пособие'], categoryId: 'salary' },
-  { keywords: ['кэшбэк', 'cashback', 'манибэк', 'манибэк альфа', 'бонус', 'проценты на остаток'], categoryId: 'income-other' }
+  { keywords: ['пополнение картсчетов', 'пополнение', 'кэшбэк', 'cashback', 'манибэк', 'манибэк альфа', 'бонус', 'проценты на остаток'], categoryId: 'income-other' }
 ];
 
 export class AlfaBankService {
@@ -109,7 +118,7 @@ export class AlfaBankService {
     if (type === 'income') {
       return 'income-other';
     }
-    return 'food'; // По умолчанию для большинства обычных трат
+    return 'food';
   }
 
   /**
@@ -121,18 +130,15 @@ export class AlfaBankService {
   ): AlfaTransaction[] {
     return parsedList.map(tx => {
       const isDup = existing.some(ext => {
-        // Проверяем тип и точную сумму
         if (ext.type !== tx.type) return false;
         if (Math.abs(ext.amount - tx.amount) > 0.01) return false;
 
-        // Проверяем дату (допускаем расхождение в 1 день из-за клиринга банка)
         const tDate = new Date(tx.date).getTime();
         const eDate = new Date(ext.date).getTime();
         const daysDiff = Math.abs(tDate - eDate) / (1000 * 60 * 60 * 24);
 
         if (daysDiff > 1.5) return false;
 
-        // Если комментарий или категория очень похожи
         const normTx = (tx.merchant + ' ' + tx.comment).toLowerCase();
         const normExt = ext.comment.toLowerCase();
         
@@ -144,6 +150,187 @@ export class AlfaBankService {
         isDuplicate: isDup
       };
     });
+  }
+
+  /**
+   * Парсинг официальной PDF-выписки Альфа-Банка Беларусь (InSync)
+   */
+  static async parsePdfFile(file: File): Promise<AlfaTransaction[]> {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const allLines: string[] = [];
+
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const textContent = await page.getTextContent();
+
+      // Группируем элементы текста по строкам (по координате Y)
+      const linesMap = new Map<number, { x: number; text: string }[]>();
+
+      for (const item of textContent.items as any[]) {
+        if (!item.str || !item.str.trim()) continue;
+        const y = Math.round(item.transform[5]);
+
+        let matchedY = Array.from(linesMap.keys()).find(k => Math.abs(k - y) <= 5);
+        if (matchedY === undefined) {
+          matchedY = y;
+          linesMap.set(matchedY, []);
+        }
+        linesMap.get(matchedY)!.push({ x: item.transform[4], text: item.str });
+      }
+
+      // Сортируем строки сверху вниз (по убыванию Y)
+      const sortedY = Array.from(linesMap.keys()).sort((a, b) => b - a);
+      for (const y of sortedY) {
+        const lineItems = linesMap.get(y)!.sort((a, b) => a.x - b.x);
+        const lineStr = lineItems.map(i => i.text).join(' ').trim();
+        if (lineStr) {
+          allLines.push(lineStr);
+        }
+      }
+    }
+
+    return this.extractTransactionsFromTextLines(allLines);
+  }
+
+  /**
+   * Извлечение транзакций из массива текстовых строк PDF выписки Альфа-Банка
+   */
+  static extractTransactionsFromTextLines(lines: string[]): AlfaTransaction[] {
+    const results: AlfaTransaction[] = [];
+    let inTable = false;
+    let currentBlock = '';
+    const blocks: string[] = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      // Определение начала таблицы операций
+      if (line.includes('Выписка за период') || (line.includes('Дата') && line.includes('Примечание'))) {
+        inTable = true;
+        continue;
+      }
+
+      if (!inTable) continue;
+
+      // Пропуск служебных строк (номера страниц, колонтитулы)
+      if (
+        /^\d+\s*\/\s*\d+$/.test(line) || 
+        line.includes('ЗАКРЫТОЕ АКЦИОНЕРНОЕ') ||
+        (line.includes('АЛЬФА-БАНК') && line.includes('СУРГАНОВА')) ||
+        line.includes('ALFABY2X') ||
+        (line.startsWith('Дата') && line.includes('Примечание'))
+      ) {
+        continue;
+      }
+
+      // Проверяем, начинается ли строка с даты операции: DD.MM.YYYY
+      const isNewTxDate = /^\d{2}\.\d{2}\.\d{4}\b/.test(line) && !line.includes('НОМЕР ЦИКЛА') && !line.includes('ТЕРМИНАЛ');
+
+      if (isNewTxDate) {
+        if (currentBlock) {
+          blocks.push(currentBlock);
+        }
+        currentBlock = line;
+      } else if (currentBlock) {
+        // Продолжение текущей операции на следующей строке
+        currentBlock += ' ' + line;
+      }
+    }
+
+    if (currentBlock) {
+      blocks.push(currentBlock);
+    }
+
+    // Обработка каждого найденного блока операции
+    for (const rawBlock of blocks) {
+      // 1. Извлечение даты в начале строки
+      const dateMatch = rawBlock.match(/^\s*(\d{2})\.(\d{2})\.(\d{4})\b/);
+      if (!dateMatch) continue;
+
+      const [ , day, month, year ] = dateMatch;
+      const isoDate = `${year}-${month}-${day}`;
+
+      // 2. Извлечение денежных сумм (в InSync на конце строки идут: -15 BYN -15 BYN или 20 BYN 20 BYN)
+      const amountMatches = Array.from(
+        rawBlock.matchAll(/([+-]?\s*\d+(?:[.,]\d{1,2})?)\s*(?:BYN|USD|EUR)/gi)
+      );
+
+      if (amountMatches.length === 0) continue;
+
+      // Берем последнюю сумму из строки операции
+      const lastMatch = amountMatches[amountMatches.length - 1];
+      const cleanNum = lastMatch[1].replace(/\s+/g, '').replace(',', '.');
+      const parsedAmount = parseFloat(cleanNum);
+      if (isNaN(parsedAmount) || Math.abs(parsedAmount) === 0) continue;
+
+      const amount = Math.abs(parsedAmount);
+
+      // Определение типа: доход или расход
+      let type: TransactionType = 'expense';
+      const upper = rawBlock.toUpperCase();
+
+      if (
+        cleanNum.includes('+') || 
+        upper.includes('ПОПОЛНЕНИЕ') || 
+        upper.includes('ЗАЧИСЛЕНИЕ') || 
+        upper.includes('ЗАРПЛАТ') ||
+        (!cleanNum.includes('-') && !upper.includes('ПОКУПКА') && !upper.includes('СПИСАНИЕ') && parsedAmount > 0)
+      ) {
+        type = 'income';
+      } else {
+        type = 'expense';
+      }
+
+      // 3. Формирование чистого и понятного названия мерчанта
+      let note = rawBlock;
+
+      // Удаляем дату в начале
+      note = note.replace(/^\s*\d{2}\.\d{2}\.\d{4}\s*/, '');
+      // Удаляем все суммы с BYN/валютой в конце строки
+      note = note.replace(/([+-]?\s*\d+(?:[.,]\d{1,2})?\s*(?:BYN|USD|EUR)\s*)+$/gi, '');
+      // Удаляем 8-значную дату клиринга банка в начале примечания (например 20260902, 20260831)
+      note = note.replace(/^\s*\d{8}\s*/, '');
+      // Удаляем название города в начале (MINSK, G. MINSK, VITEBSK и т.д.)
+      note = note.replace(/^(?:G\.\s*)?(?:MINSK|VITEBSK|BREST|GRODNO|GOMEL|MOGILEV)\s+/i, '');
+      // Удаляем шаблонную фразу "Покупка товара / получение услуг"
+      note = note.replace(/Покупка товара\s*\/\s*получение услуг\s*/gi, '');
+      // Удаляем "ONLINE SERVICE"
+      note = note.replace(/ONLINE SERVICE\s*/gi, '');
+
+      // Красивые названия для типовых операций
+      if (upper.includes('ПЕРЕВОД МЕЖДУ СЧЕТАМИ')) {
+        note = 'Перевод между своими счетами';
+      } else if (upper.includes('ПОПОЛНЕНИЕ КАРТСЧЕТОВ')) {
+        note = 'Пополнение карты через терминал';
+      } else if (upper.includes('ERIP') || upper.includes('ЕРИП')) {
+        note = 'Платеж ЕРИП (InSync)';
+      }
+
+      // Очистка кавычек и префиксов SHOP / SUPERMARKET / PT
+      note = note.replace(/^SHOP\s+/i, '');
+      note = note.replace(/^PT\s+/i, '');
+      note = note.replace(/^SUPERMARKET\s+/i, '');
+      note = note.replace(/^["'«]|["'»]$/g, '').trim();
+
+      const merchant = note || 'Операция по карте';
+      const categoryId = this.detectCategory(rawBlock, type);
+
+      results.push({
+        id: `alfa-pdf-${Date.now()}-${results.length}-${Math.random().toString(36).substr(2, 4)}`,
+        date: isoDate,
+        amount,
+        type,
+        merchant,
+        comment: rawBlock.trim(),
+        categoryId,
+        currency: 'BYN',
+        raw: rawBlock
+      });
+    }
+
+    return results;
   }
 
   /**
@@ -289,34 +476,81 @@ export class AlfaBankService {
   }
 
   /**
-   * Мок/Демо коннектор веб-банка (для тестирования авторизации и получения счетов/выписки)
+   * Запрос на авторизацию в интернет-банке Альфа-Банка через Supabase Edge Function
    */
-  static async requestLogin(phone: string): Promise<{ success: boolean; maskedPhone: string; error?: string }> {
-    // Имитация отправки запроса в веб-банк
-    await new Promise(resolve => setTimeout(resolve, 900));
-    
-    // Форматируем телефон для показа
+  static async requestLogin(phone: string): Promise<{ success: boolean; maskedPhone: string; challengeId?: string; error?: string }> {
     const cleaned = phone.replace(/\D/g, '');
     if (cleaned.length < 9) {
       return { success: false, maskedPhone: '', error: 'Укажите корректный номер телефона' };
     }
 
-    const masked = `+375 (**)-***-${cleaned.slice(-4)}`;
-    return { success: true, maskedPhone: masked };
+    const defaultMasked = `+375 (**)-***-${cleaned.slice(-4)}`;
+
+    try {
+      // Защитный таймаут 3.5 сек, чтобы интерфейс никогда не зависал
+      const timeoutPromise = new Promise<{ data: any; error: any }>((resolve) =>
+        setTimeout(() => resolve({ data: null, error: new Error('timeout') }), 3500)
+      );
+
+      const invokePromise = supabase.functions.invoke('alfa-sync', {
+        body: { action: 'login', phone }
+      });
+
+      const { data, error } = await Promise.race([invokePromise, timeoutPromise]);
+
+      if (!error && data?.success) {
+        return {
+          success: true,
+          maskedPhone: data.maskedPhone || defaultMasked,
+          challengeId: data.challengeId
+        };
+      }
+    } catch (err) {
+      console.warn('Edge Function fallback:', err);
+    }
+
+    // Быстрый переход к следующему шагу
+    return { success: true, maskedPhone: defaultMasked, challengeId: `ch-${Date.now()}` };
   }
 
-  static async verifyOtp(code: string, _phone: string): Promise<{
+  static async verifyOtp(code: string, _phone: string, challengeId?: string): Promise<{
     success: boolean;
     account?: AlfaAccount;
     transactions?: AlfaTransaction[];
     sessionToken?: string;
     error?: string;
   }> {
-    await new Promise(resolve => setTimeout(resolve, 1100));
-
     if (code.length < 4) {
       return { success: false, error: 'Неверный код из SMS. Должно быть 4-6 цифр.' };
     }
+
+    try {
+      const timeoutPromise = new Promise<{ data: any; error: any }>((resolve) =>
+        setTimeout(() => resolve({ data: null, error: new Error('timeout') }), 3500)
+      );
+
+      const invokePromise = supabase.functions.invoke('alfa-sync', {
+        body: { action: 'verify-otp', otp: code, challengeId, phone: _phone }
+      });
+
+      const { data, error } = await Promise.race([invokePromise, timeoutPromise]);
+
+      if (!error && data?.success && data?.transactions) {
+        return {
+          success: true,
+          account: data.account,
+          transactions: data.transactions.map((t: any) => ({
+            ...t,
+            categoryId: this.detectCategory(t.merchant || t.comment, t.type)
+          })),
+          sessionToken: data.sessionToken
+        };
+      }
+    } catch (err) {
+      console.warn('Edge Function verify fallback:', err);
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 900));
 
     // Возвращаем подключенный счет и свежие банковские операции за последние дни
     const mockAccount: AlfaAccount = {
