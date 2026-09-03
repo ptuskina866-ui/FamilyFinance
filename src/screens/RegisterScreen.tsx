@@ -35,65 +35,102 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogin }) =>
   };
 
   return (
-    <div className="flex flex-col h-full bg-white overflow-y-auto no-scrollbar">
-      {/* Top bar */}
-      <div className="px-5 pt-7 pb-2 safe-header bg-white border-b border-slate-100/60 flex justify-between items-center shrink-0">
-        <button onClick={onNavigateToLogin}
-          className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100/60 flex items-center justify-center active:scale-90 transition-all">
-          <ChevronLeft className="w-5 h-5 text-slate-600" />
+    <div className="flex flex-col h-full overflow-y-auto no-scrollbar select-none">
+      {/* Top bar with safe-area */}
+      <div 
+        className="px-5 pb-3 safe-header bg-[#E5F3E8]/95 backdrop-blur-md sticky top-0 z-30 flex justify-between items-center shrink-0"
+        style={{ paddingTop: 'max(28px, calc(env(safe-area-inset-top, 0px) + 16px))' }}
+      >
+        <button 
+          type="button"
+          onClick={onNavigateToLogin}
+          className="w-10 h-10 rounded-full bg-white border border-white/80 shadow-sm flex items-center justify-center text-slate-800 active:scale-90 transition-all"
+        >
+          <ChevronLeft className="w-5 h-5" />
         </button>
-        <h1 className="text-sm font-black text-slate-800 tracking-tight">Регистрация</h1>
-        <div className="w-9 h-9" /> {/* Spacer */}
+        <h1 className="text-sm font-black text-slate-900 tracking-tight">Регистрация</h1>
+        <div className="w-10 h-10" /> {/* Spacer */}
       </div>
 
-      <div className="px-5 pt-4 pb-8 flex flex-col gap-4">
+      <div className="px-5 pt-3 pb-12 flex flex-col gap-4 max-w-md mx-auto w-full">
         {errorMsg && (
-          <div className="flex items-center gap-2 bg-rose-50 border border-rose-100/40 rounded-2xl p-3 text-xs text-rose-500">
-            <AlertCircle className="w-4 h-4 shrink-0" /><span>{errorMsg}</span>
+          <div className="flex items-center gap-2 bg-rose-50 border border-rose-100/80 rounded-2xl p-3 text-xs text-rose-600 font-bold">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{errorMsg}</span>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          {/* Credentials */}
-          <div className="card p-4 flex flex-col gap-3">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Аккаунт</p>
+          {/* Credentials - Liquid Glass */}
+          <div className="card p-5 flex flex-col gap-3.5 shadow-[0_8px_32px_rgba(10,35,15,0.04)]">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Данные аккаунта</p>
 
             <div className="flex flex-col gap-1">
-              <label className="label-xs">Email</label>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Email</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@example.com" required className="input-light pl-10" />
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input 
+                  type="email" 
+                  value={email} 
+                  onChange={e => setEmail(e.target.value)} 
+                  placeholder="email@example.com" 
+                  required 
+                  className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white/80 backdrop-blur-xl border border-white/90 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-950/10 transition-all shadow-sm" 
+                />
               </div>
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="label-xs">Пароль</label>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Пароль</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="мин. 6 символов" required minLength={6} className="input-light pl-10" />
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input 
+                  type="password" 
+                  value={password} 
+                  onChange={e => setPassword(e.target.value)} 
+                  placeholder="минимум 6 символов" 
+                  required 
+                  minLength={6} 
+                  className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white/80 backdrop-blur-xl border border-white/90 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-950/10 transition-all shadow-sm" 
+                />
               </div>
             </div>
           </div>
 
-          {/* Profile */}
-          <div className="card p-4 flex flex-col gap-3">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Профиль</p>
+          {/* Profile - Liquid Glass */}
+          <div className="card p-5 flex flex-col gap-3.5 shadow-[0_8px_32px_rgba(10,35,15,0.04)]">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ваш профиль</p>
 
             <div className="flex flex-col gap-1">
-              <label className="label-xs">Ваше имя</label>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ваше имя</label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Например: Дмитрий" required className="input-light pl-10" />
+                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input 
+                  type="text" 
+                  value={name} 
+                  onChange={e => setName(e.target.value)} 
+                  placeholder="Например: Дмитрий" 
+                  required 
+                  className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white/80 backdrop-blur-xl border border-white/90 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-950/10 transition-all shadow-sm" 
+                />
               </div>
             </div>
 
             {/* Avatar */}
-            <div className="flex flex-col gap-1.5">
-              <label className="label-xs">Иконка</label>
+            <div className="flex flex-col gap-1.5 pt-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Иконка аватара</label>
               <div className="flex gap-2 flex-wrap">
                 {AVATARS.map(av => (
-                  <button key={av} type="button" onClick={() => setAvatar(av)}
-                    className={`w-10 h-10 rounded-2xl flex items-center justify-center text-xl border-2 transition-all active:scale-90 ${avatar === av ? 'border-[#0F172A] bg-slate-50' : 'border-transparent bg-slate-100'}`}>
+                  <button 
+                    key={av} 
+                    type="button" 
+                    onClick={() => setAvatar(av)}
+                    className={`w-11 h-11 rounded-2xl flex items-center justify-center text-xl transition-all active:scale-90 ${
+                      avatar === av 
+                        ? 'bg-slate-950 text-white shadow-md scale-105 ring-2 ring-slate-950/20' 
+                        : 'bg-white/80 border border-white/90 shadow-sm hover:bg-white'
+                    }`}
+                  >
                     {av}
                   </button>
                 ))}
@@ -101,62 +138,98 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogin }) =>
             </div>
 
             {/* Color */}
-            <div className="flex flex-col gap-1.5">
-              <label className="label-xs">Цвет</label>
-              <div className="flex gap-2.5 flex-wrap">
+            <div className="flex flex-col gap-1.5 pt-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Фирменный цвет</label>
+              <div className="flex gap-2.5 flex-wrap items-center">
                 {COLORS.map(col => (
-                  <button key={col} type="button" onClick={() => setColor(col)}
-                    className={`w-8 h-8 rounded-full border-4 transition-all active:scale-90 ${color === col ? 'border-slate-800 scale-110' : 'border-transparent'}`}
-                    style={{ backgroundColor: col }} />
+                  <button 
+                    key={col} 
+                    type="button" 
+                    onClick={() => setColor(col)}
+                    className={`w-8 h-8 rounded-full border-2 transition-all active:scale-90 ${
+                      color === col ? 'border-slate-950 ring-2 ring-slate-950/20 scale-110 shadow-md' : 'border-white/80 shadow-sm'
+                    }`}
+                    style={{ backgroundColor: col }} 
+                  />
                 ))}
               </div>
             </div>
           </div>
 
-          {/* Household */}
-          <div className="card p-4 flex flex-col gap-3">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Семейная группа</p>
+          {/* Household - Liquid Glass */}
+          <div className="card p-5 flex flex-col gap-3.5 shadow-[0_8px_32px_rgba(10,35,15,0.04)]">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Семейная группа</p>
 
-            <div className="toggle-pill p-1 bg-slate-50 border border-slate-100 rounded-2xl flex">
-              <button type="button" onClick={() => setHouseholdAction('create')}
-                className="flex-1 py-2.5 text-xs font-bold rounded-xl transition-all"
-                style={householdAction === 'create' ? { background: '#0F172A', color: '#fff', boxShadow: '0 4px 12px rgba(15,23,42,0.15)' } : { color: '#64748B' }}>
+            <div className="p-1 bg-white/75 backdrop-blur-xl border border-white/90 rounded-2xl flex shadow-sm">
+              <button 
+                type="button" 
+                onClick={() => setHouseholdAction('create')}
+                className={`flex-1 py-2.5 text-xs font-black rounded-xl transition-all ${
+                  householdAction === 'create' 
+                    ? 'bg-slate-950 text-white shadow-sm' 
+                    : 'text-slate-500 hover:text-slate-900 font-bold'
+                }`}
+              >
                 Создать семью
               </button>
-              <button type="button" onClick={() => setHouseholdAction('join')}
-                className="flex-1 py-2.5 text-xs font-bold rounded-xl transition-all"
-                style={householdAction === 'join' ? { background: '#0F172A', color: '#fff', boxShadow: '0 4px 12px rgba(15,23,42,0.15)' } : { color: '#64748B' }}>
+              <button 
+                type="button" 
+                onClick={() => setHouseholdAction('join')}
+                className={`flex-1 py-2.5 text-xs font-black rounded-xl transition-all ${
+                  householdAction === 'join' 
+                    ? 'bg-slate-950 text-white shadow-sm' 
+                    : 'text-slate-500 hover:text-slate-900 font-bold'
+                }`}
+              >
                 Войти по ID
               </button>
             </div>
 
             {householdAction === 'create' ? (
               <div className="flex flex-col gap-1">
-                <label className="label-xs">Название семьи</label>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Название семьи</label>
                 <div className="relative">
                   <Plus className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input type="text" value={householdName} onChange={e => setHouseholdName(e.target.value)} placeholder="Семья Соколовых" className="input-light pl-10" />
+                  <input 
+                    type="text" 
+                    value={householdName} 
+                    onChange={e => setHouseholdName(e.target.value)} 
+                    placeholder="Семья Соколовых" 
+                    className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white/80 backdrop-blur-xl border border-white/90 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-950/10 transition-all shadow-sm" 
+                  />
                 </div>
               </div>
             ) : (
               <div className="flex flex-col gap-1">
-                <label className="label-xs">Household ID</label>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Household ID</label>
                 <div className="relative">
                   <Link className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input type="text" value={householdId} onChange={e => setHouseholdId(e.target.value)} placeholder="Вставьте UUID" className="input-light pl-10" />
+                  <input 
+                    type="text" 
+                    value={householdId} 
+                    onChange={e => setHouseholdId(e.target.value)} 
+                    placeholder="Вставьте UUID код" 
+                    className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white/80 backdrop-blur-xl border border-white/90 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-950/10 transition-all shadow-sm" 
+                  />
                 </div>
               </div>
             )}
           </div>
 
-          <button type="submit" disabled={loading} className="w-full py-3.5 mt-2 rounded-2xl bg-[#0F172A] hover:bg-[#1E293B] text-white font-bold text-xs active:scale-95 transition-all shadow-sm disabled:opacity-50">
+          <button 
+            type="submit" 
+            disabled={loading} 
+            className="w-full py-4 mt-2 rounded-full bg-slate-950 hover:bg-slate-900 active:scale-[0.98] text-white font-black text-xs shadow-xl shadow-slate-950/25 transition-all disabled:opacity-50"
+          >
             {loading ? 'Регистрация...' : 'Зарегистрироваться'}
           </button>
         </form>
 
-        <p className="text-center text-xs text-slate-400 font-semibold mt-1">
+        <p className="text-center text-xs text-slate-500 font-bold mt-2 pb-4">
           Уже есть аккаунт?{' '}
-          <button onClick={onNavigateToLogin} className="text-[#0F172A] font-extrabold hover:underline">Войти</button>
+          <button onClick={onNavigateToLogin} className="text-slate-950 font-black hover:underline ml-0.5">
+            Войти
+          </button>
         </p>
       </div>
     </div>
