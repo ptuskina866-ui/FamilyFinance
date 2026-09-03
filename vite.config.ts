@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'prompt',
+      registerType: 'autoUpdate',
       injectRegister: 'auto',
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
@@ -18,8 +18,8 @@ export default defineConfig({
         name: 'FamilyFinance',
         short_name: 'FinApp',
         description: 'Удобное мобильное приложение для учета семейных финансов',
-        theme_color: '#0f172a',
-        background_color: '#0f172a',
+        theme_color: '#E5F3E8',
+        background_color: '#E5F3E8',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',
