@@ -414,29 +414,68 @@ export class AlfaBankService {
     // Извлечение сводных метаданных выписки
     const metadata: StatementMetadata = {};
     for (const line of allLines) {
-      if (line.includes('Период')) {
-        const m = line.match(/Период\s*(\d{2}\.\d{2}\.\d{4}\s*-\s*\d{2}\.\d{2}\.\d{4})/i);
-        if (m) metadata.period = m[1];
+      if (/период/i.test(line)) {
+        const m = line.match(/(?:период)[:\s]*(\d{2}\.\d{2}\.\d{4}\s*-\s*\d{2}\.\d{2}\.\d{4})/i);
+        if (m && !metadata.period) metadata.period = m[1];
       }
-      if (line.includes('Привязанные карты')) {
-        const m = line.match(/Привязанные карты\s*(.+)$/i);
-        if (m) metadata.card = m[1].trim();
+      if (/привязанные карты/i.test(line)) {
+        const m = line.match(/привязанные карты\s*(.+)$/i);
+        if (m && !metadata.card) metadata.card = m[1].trim();
       }
-      if (line.includes('Расход')) {
+      if (/детальная информация по карте/i.test(line)) {
+        const m = line.match(/детальная информация по карте\s+([^,]+)(?:,\s*(.+))?/i);
+        if (m) {
+          if (!metadata.card) metadata.card = m[1].trim();
+          if (m[2] && !metadata.client) metadata.client = m[2].trim();
+        }
+      }
+      if (/номер карты:/i.test(line)) {
+        const m = line.match(/номер карты:\s*(\S+)/i);
+        if (m) {
+          metadata.card = metadata.card ? `${metadata.card} (${m[1]})` : m[1];
+        }
+      }
+      if (/([cс]чета|номер счета):/i.test(line)) {
+        const m = line.match(/(?:[cс]чета|номер счета):\s*([A-Z0-9]+)/i);
+        if (m && !metadata.account) metadata.account = m[1].trim();
+      }
+      if (/клиент/i.test(line) && !metadata.client) {
+        const m = line.match(/клиент\s+(.+)$/i);
+        if (m) metadata.client = m[1].trim();
+      }
+      if (/расход/i.test(line)) {
         const m = line.match(/Расход\s*([+-]?\s*[\d\s]+(?:[.,]\d{2})?)\s*BYN/i);
-        if (m) metadata.totalExpense = Math.abs(parseFloat(m[1].replace(/\s+/g, '').replace(',', '.')));
+        if (m && metadata.totalExpense === undefined) {
+          metadata.totalExpense = Math.abs(parseFloat(m[1].replace(/\s+/g, '').replace(',', '.')));
+        }
       }
-      if (line.includes('Приход')) {
+      if (/приход/i.test(line)) {
         const m = line.match(/Приход\s*([+-]?\s*[\d\s]+(?:[.,]\d{2})?)\s*BYN/i);
-        if (m) metadata.totalIncome = Math.abs(parseFloat(m[1].replace(/\s+/g, '').replace(',', '.')));
+        if (m && metadata.totalIncome === undefined) {
+          metadata.totalIncome = Math.abs(parseFloat(m[1].replace(/\s+/g, '').replace(',', '.')));
+        }
       }
-      if (line.includes('Доступный остаток')) {
+      if (/доступный остаток/i.test(line)) {
         const m = line.match(/Доступный остаток\s*([+-]?\s*[\d\s]+(?:[.,]\d{2})?)\s*BYN/i);
-        if (m) metadata.balance = parseFloat(m[1].replace(/\s+/g, '').replace(',', '.'));
+        if (m && metadata.balance === undefined) {
+          metadata.balance = parseFloat(m[1].replace(/\s+/g, '').replace(',', '.'));
+        }
       }
     }
 
     const transactions = this.extractTransactionsFromTextLines(allLines);
+
+    if (metadata.totalExpense === undefined) {
+      metadata.totalExpense = transactions
+        .filter(t => t.type === 'expense')
+        .reduce((sum, t) => sum + t.amount, 0);
+    }
+    if (metadata.totalIncome === undefined) {
+      metadata.totalIncome = transactions
+        .filter(t => t.type === 'income')
+        .reduce((sum, t) => sum + t.amount, 0);
+    }
+
     return { metadata, transactions };
   }
 
@@ -444,6 +483,139 @@ export class AlfaBankService {
    * Извлечение транзакций из массива текстовых строк PDF выписки Альфа-Банка
    */
   static extractTransactionsFromTextLines(lines: string[]): AlfaTransaction[] {
+    const isCardStatement = lines.some(l => 
+      /детальная информация по карте/i.test(l) || 
+      /выписка по карте/i.test(l) ||
+      (/номер/i.test(l) && /транзакции/i.test(l))
+    );
+
+    if (isCardStatement) {
+      return this.parseCardStatementLines(lines);
+    }
+    return this.parseAccountStatementLines(lines);
+  }
+
+  /**
+   * Парсинг выписки по карте Альфа-Банка ("Детальная информация по карте")
+   */
+  private static parseCardStatementLines(lines: string[]): AlfaTransaction[] {
+    const results: AlfaTransaction[] = [];
+    let inTable = false;
+    let currentBlock = '';
+    const blocks: string[] = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      if (
+        (line.includes('Номер') && (line.includes('Время') || line.includes('транзакции') || line.includes('Тип операции'))) ||
+        (line.includes('транзакции') && line.includes('операции'))
+      ) {
+        inTable = true;
+        continue;
+      }
+
+      if (!inTable) continue;
+
+      // Пропуск служебных колонтитулов и шапок страниц
+      if (
+        /^\d+\s*\/\s*\d+$/.test(line) || 
+        line.includes('ЗАКРЫТОЕ АКЦИОНЕРНОЕ') ||
+        (line.includes('АЛЬФА-БАНК') && line.includes('СУРГАНОВА')) ||
+        line.includes('ALFABY2X')
+      ) {
+        continue;
+      }
+
+      const isNewTx = /^\d{10,24}\b/.test(line) || /^\d{4}-\d{2}-\d{2}\b/.test(line) || /^\d{2}\.\d{2}\.\d{4}\b/.test(line);
+
+      if (isNewTx) {
+        if (currentBlock) blocks.push(currentBlock);
+        currentBlock = line;
+      } else if (currentBlock) {
+        currentBlock += ' ' + line;
+      }
+    }
+
+    if (currentBlock) {
+      blocks.push(currentBlock);
+    }
+
+    for (const block of blocks) {
+      const lower = block.toLowerCase();
+      if (lower.includes('отклонено') || lower.includes('не успешно') || lower.includes('отменено')) {
+        continue;
+      }
+
+      const dateMatch = block.match(/(\d{4}-\d{2}-\d{2})/) || block.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+      if (!dateMatch) continue;
+
+      let isoDate = '';
+      if (dateMatch[1] && dateMatch[1].includes('-')) {
+        isoDate = dateMatch[1];
+      } else {
+        isoDate = `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`;
+      }
+
+      const amountMatch = block.match(/([\d\s]+(?:[.,]\d{2})?)\s*(BYN|USD|EUR|RUB)/i);
+      if (!amountMatch) continue;
+
+      const rawAmountStr = amountMatch[1].replace(/\s+/g, '').replace(',', '.');
+      const amount = parseFloat(rawAmountStr);
+      if (isNaN(amount) || amount === 0) continue;
+      const currency = amountMatch[2].toUpperCase();
+
+      let type: TransactionType = 'expense';
+      if (
+        lower.includes('пополнение') || 
+        lower.includes('зачисление') || 
+        lower.includes('перевод на карту') || 
+        lower.includes('внесение наличных') ||
+        lower.includes('зарплат') ||
+        lower.includes('альфа-бонус')
+      ) {
+        type = 'income';
+      } else {
+        type = 'expense';
+      }
+
+      const amountIndex = block.indexOf(amountMatch[0]);
+      let afterAmount = block.slice(amountIndex + amountMatch[0].length).trim();
+      let details = afterAmount;
+
+      const countryMatch = afterAmount.match(/^(?:.*?\s+)?([A-Z]{2,3})\s+(.+)$/);
+      if (countryMatch) {
+        details = countryMatch[2].trim();
+      }
+
+      if (!details || details.length < 2) {
+        details = afterAmount || (type === 'income' ? 'Пополнение карты' : 'Безналичная оплата');
+      }
+
+      const merchant = this.cleanMerchantName(details, type);
+      const categoryId = this.detectCategory(details + ' ' + block, type, merchant);
+
+      results.push({
+        id: `alfa-card-${Date.now()}-${results.length}-${Math.random().toString(36).substr(2, 4)}`,
+        date: isoDate,
+        amount,
+        type,
+        merchant,
+        comment: details,
+        categoryId,
+        currency,
+        raw: block
+      });
+    }
+
+    return results;
+  }
+
+  /**
+   * Парсинг выписки по банковскому счету Альфа-Банка ("Выписка по операциям...")
+   */
+  private static parseAccountStatementLines(lines: string[]): AlfaTransaction[] {
     const results: AlfaTransaction[] = [];
     let inTable = false;
     let currentBlock = '';
