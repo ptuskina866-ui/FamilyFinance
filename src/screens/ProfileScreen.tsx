@@ -13,22 +13,28 @@ interface ProfileScreenProps {
 
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ onOpenStatement }) => {
   const { members, budgetLimit, setBudgetLimit, monthlyExpense } = useApp();
-  const { profile, household, signOut } = useAuth();
+  const { profile, household, signOut, createHouseholdInvite } = useAuth();
 
   const [editLimit, setEditLimit] = useState(false);
   const [limitVal, setLimitVal]   = useState(budgetLimit.toString());
   const [copied, setCopied]       = useState(false);
   const [bankSyncOpen, setBankSyncOpen] = useState(false);
+  const [inviteToken, setInviteToken] = useState('');
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
 
   const pct = Math.min(100, Math.round((monthlyExpense / budgetLimit) * 100));
   const over = monthlyExpense > budgetLimit;
 
-  const handleCopy = () => {
-    if (household?.id) {
-      navigator.clipboard.writeText(household.id);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+  const handleCopy = async () => {
+    setInviteLoading(true); setInviteError(null);
+    try {
+      const token = inviteToken || await createHouseholdInvite();
+      setInviteToken(token);
+      await navigator.clipboard.writeText(token);
+      setCopied(true); setTimeout(() => setCopied(false), 2000);
+    } catch (error) { setInviteError(error instanceof Error ? error.message : 'Не удалось создать или скопировать приглашение.'); }
+    finally { setInviteLoading(false); }
   };
 
   const handleSaveLimit = () => {
@@ -73,11 +79,12 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onOpenStatement }) => {
           {/* Household ID */}
           {household?.id && (
             <div className="bg-slate-50/50 rounded-2xl p-3 border border-slate-100/60">
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-2">ID семьи (для приглашения партнера)</p>
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-2">Приглашение в семью · действует 7 дней</p>
               <div className="flex items-center gap-2">
-                <p className="text-[11px] font-mono text-slate-600 flex-1 truncate">{household.id}</p>
+                <p className="text-[11px] text-slate-600 flex-1 min-w-0 break-all">{inviteToken || 'Одноразовый код для регистрации партнера'}</p>
                 <button
                   onClick={handleCopy}
+                  disabled={inviteLoading}
                   className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all active:scale-95 shadow-sm ${
                     copied ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-white border border-slate-200 text-slate-600'
                   }`}
@@ -90,11 +97,13 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onOpenStatement }) => {
                   ) : (
                     <>
                       <Copy className="w-3 h-3" />
-                      <span>Копировать</span>
+                      <span>{inviteLoading ? 'Создаем…' : 'Пригласить'}</span>
                     </>
                   )}
                 </button>
               </div>
+              {inviteError && <p role="alert" className="text-xs text-rose-600 mt-2">{inviteError}</p>}
+              {inviteToken && <button type="button" className="text-xs mt-2 underline text-slate-500" onClick={() => { setInviteToken(''); setCopied(false); }}>Создать новое приглашение</button>}
             </div>
           )}
         </div>

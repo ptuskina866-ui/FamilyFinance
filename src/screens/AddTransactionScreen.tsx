@@ -3,12 +3,12 @@ import { useApp } from '../AppContext';
 import { useAuth } from '../AuthContext';
 import { DynamicIcon } from '../components/CategoryGrid';
 import { ChevronLeft, Check, MessageSquare, Calendar } from 'lucide-react';
+import { parseMoneyInput, fromMinorUnits, toMinorUnits, localDateISO } from '../lib/money';
+import type { TransactionType } from '../types';
 
 interface AddTransactionScreenProps {
   onNavigateHome: () => void;
 }
-
-type TransactionType = 'expense' | 'income';
 
 const CATEGORY_GROUPS: Record<string, string> = {
   // Еда и кафе
@@ -68,7 +68,7 @@ const GROUPS = [
 const QUICK_AMOUNTS = [5, 10, 20, 50, 100];
 
 const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateHome }) => {
-  const { categories = [], addTransaction, members = [], balance = 0 } = useApp();
+  const { categories = [], addTransaction, members = [], availableBalance = 0, accounts, accountBalances, accountsReady, schemaReady, financeLoading } = useApp();
   const { profile } = useAuth();
 
   const [txType, setTxType] = useState<TransactionType>('expense');
@@ -76,10 +76,16 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [selectedMemberId, setSelectedMemberId] = useState('');
   const [comment, setComment] = useState('');
-  const [txDate, setTxDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [txDate, setTxDate] = useState<string>(localDateISO());
+  const [accountId, setAccountId] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [selectedGroup, setSelectedGroup] = useState('all');
 
   const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (!accounts.some(a => a.id === accountId && !a.is_archived)) setAccountId(accounts.find(a => !a.is_archived)?.id || '');
+  }, [accounts, accountId]);
 
   // Set default category and member
   useEffect(() => {
@@ -112,24 +118,29 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
   };
 
   const handleQuickAdd = (delta: number) => {
-    const current = parseFloat(amountStr) || 0;
-    setAmountStr((current + delta).toFixed(2));
+    const current = parseMoneyInput(amountStr) || 0;
+    setAmountStr(fromMinorUnits(toMinorUnits(current) + toMinorUnits(delta)).toFixed(2));
   };
 
   const handleSave = async () => {
-    const amount = parseFloat(amountStr);
-    if (isNaN(amount) || amount <= 0) return;
+    if (saving) return;
+    const amount = parseMoneyInput(amountStr);
+    if (amount === null || amount <= 0) return;
     if (!selectedCategoryId) return;
 
-    await addTransaction({
+    setSaving(true); setError(null);
+    try { await addTransaction({
       type: txType,
       amount,
       categoryId: selectedCategoryId,
-      date: txDate || new Date().toISOString().split('T')[0],
+      date: txDate || localDateISO(),
       comment: comment.trim(),
-      addedBy: selectedMemberId || 'dad'
+      addedBy: selectedMemberId || profile?.id || '',
+      accountId: accountId || null
     });
     onNavigateHome();
+    } catch (err) { setError(err instanceof Error ? err.message : 'Не удалось сохранить операцию.'); }
+    finally { setSaving(false); }
   };
 
   const isIncome = txType === 'income';
@@ -164,7 +175,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
 
         {/* Account indicator */}
         <div className="px-3 py-1 rounded-full bg-white/80 border border-white/80 shadow-sm text-xs font-black text-slate-800">
-          BYN · Основной счет
+          BYN · {accounts.find(a => a.id === accountId)?.name || 'Основной счет'}
         </div>
 
         <div className="w-10 h-10 rounded-full bg-white border border-white/80 shadow-sm flex items-center justify-center text-base">
@@ -174,6 +185,13 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
 
       {/* ── Scrollable Body ── */}
       <div className="px-5 pt-3 pb-32 flex flex-col gap-4">
+        {error && <p role="alert" className="card p-3 text-xs text-rose-600">{error}</p>}
+        {accountsReady && <label className="card p-3 flex flex-col gap-1 text-xs font-bold text-slate-500">Счет операции
+          <select aria-label="Счет операции" value={accountId} onChange={e => setAccountId(e.target.value)} className="w-full rounded-xl bg-slate-50 p-2 text-slate-800">
+            {accounts.filter(a => !a.is_archived).map(a => <option key={a.id} value={a.id}>{a.name} · {(accountBalances[a.id] || 0).toFixed(2)} Br</option>)}
+          </select>
+        </label>}
+        {schemaReady && !accountsReady && <p className="card p-3 text-xs text-amber-800">Подключите счета на главной, затем добавьте операцию.</p>}
 
         {/* ── Amount Hero Section ── */}
         <div className="card p-6 flex flex-col items-center justify-center gap-2 text-center bg-white border border-white/80 shadow-sm">
@@ -184,6 +202,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
           <div className="flex items-baseline justify-center gap-1.5 w-full">
             <input
               ref={inputRef}
+              aria-label="Сумма новой операции"
               type="text"
               inputMode="decimal"
               value={amountStr}
@@ -200,7 +219,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
           </div>
 
           <span className="text-[11px] font-bold text-slate-400">
-            Доступно: <strong className="text-slate-700">{balance.toLocaleString('ru-RU', { maximumFractionDigits: 2 })} Br</strong>
+            Свободно: <strong className="text-slate-700">{availableBalance.toLocaleString('ru-RU', { maximumFractionDigits: 2 })} Br</strong>
           </span>
 
           {/* Quick Amount Chips */}
@@ -362,6 +381,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
               <input
                 type="text"
                 value={comment}
+                aria-label="Комментарий новой операции"
                 onChange={e => setComment(e.target.value)}
                 placeholder="Например: Продукты в Евроопте"
                 className="w-full min-w-0 max-w-full pl-10 pr-4 py-2.5 bg-transparent text-xs font-medium text-slate-800 focus:outline-none block"
@@ -374,7 +394,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
         <button
           type="button"
           onClick={handleSave}
-          disabled={!amountStr || parseFloat(amountStr) <= 0 || !selectedCategoryId}
+          disabled={saving || financeLoading || (schemaReady && !accountsReady) || !amountStr || (parseMoneyInput(amountStr) || 0) <= 0 || !selectedCategoryId}
           className={`w-full flex items-center justify-center gap-2 py-4 rounded-full text-white font-black text-sm active:scale-95 transition-all shadow-xl disabled:opacity-40 disabled:pointer-events-none ${
             isIncome 
               ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20' 
@@ -382,7 +402,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
           }`}
         >
           <Check className="w-5 h-5" strokeWidth={3} />
-          <span>Сохранить {isIncome ? 'доход' : 'расход'} · {parseFloat(amountStr) || 0} Br</span>
+          <span>{saving ? 'Сохраняем…' : `Сохранить ${isIncome ? 'доход' : 'расход'} · ${parseMoneyInput(amountStr) || 0} Br`}</span>
         </button>
 
       </div>

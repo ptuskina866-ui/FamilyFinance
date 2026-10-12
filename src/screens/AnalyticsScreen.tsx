@@ -5,6 +5,8 @@ import { DynamicIcon } from '../components/CategoryGrid';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Calendar, ChevronLeft, ChevronRight, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { MoneyLeaksCard } from '../components/MoneyLeaksCard';
+import { isCashflow } from '../lib/finance';
+import { sumMoney } from '../lib/money';
 
 const fmt = (n: number) => n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' Br';
 
@@ -22,15 +24,15 @@ const AnalyticsScreen: React.FC = () => {
   // Calculate dynamic totals for the selected month
   const selectedMonthExpensesList = transactions.filter(t => {
     const d = new Date(t.date);
-    return t.type === 'expense' && d.getMonth() === cm && d.getFullYear() === cy;
+    return isCashflow(t) && t.type === 'expense' && d.getMonth() === cm && d.getFullYear() === cy;
   });
   const selectedMonthIncomesList = transactions.filter(t => {
     const d = new Date(t.date);
-    return t.type === 'income' && d.getMonth() === cm && d.getFullYear() === cy;
+    return isCashflow(t) && t.type === 'income' && d.getMonth() === cm && d.getFullYear() === cy;
   });
 
-  const selectedMonthExpenseTotal = selectedMonthExpensesList.reduce((s, t) => s + t.amount, 0);
-  const selectedMonthIncomeTotal = selectedMonthIncomesList.reduce((s, t) => s + t.amount, 0);
+  const selectedMonthExpenseTotal = sumMoney(selectedMonthExpensesList.map(t => t.amount));
+  const selectedMonthIncomeTotal = sumMoney(selectedMonthIncomesList.map(t => t.amount));
 
   const totalAmountForTab = activeTab === 'income' ? selectedMonthIncomeTotal : selectedMonthExpenseTotal;
 
@@ -51,18 +53,16 @@ const AnalyticsScreen: React.FC = () => {
     const currentMonthTx = transactions
       .filter(t => {
         const d = new Date(t.date);
-        return t.type === activeTab && d.getMonth() === cm && d.getFullYear() === cy;
+        return isCashflow(t) && t.type === activeTab && d.getMonth() === cm && d.getFullYear() === cy;
       })
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = `${cy}-${String(cm + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       
-      const dailySum = currentMonthTx
-        .filter(t => t.date === dateStr)
-        .reduce((sum, t) => sum + t.amount, 0);
+      const dailySum = sumMoney(currentMonthTx.filter(t => t.date === dateStr).map(t => t.amount));
         
-      cumulative += dailySum;
+      cumulative = sumMoney([cumulative, dailySum]);
       
       points.push({
         day: day,
@@ -77,7 +77,7 @@ const AnalyticsScreen: React.FC = () => {
   const tabCategories = categories.filter(c =>
     activeTab === 'income'
       ? c.id === 'salary' || c.id.startsWith('income-')
-      : !c.id.startsWith('income-') && c.id !== 'salary' && c.id !== 'food'
+      : !c.id.startsWith('income-') && c.id !== 'salary'
   );
 
   const selectedMonthTxList = activeTab === 'income' ? selectedMonthIncomesList : selectedMonthExpensesList;
@@ -85,12 +85,18 @@ const AnalyticsScreen: React.FC = () => {
   const breakdownData = tabCategories
     .map(cat => ({
       name: cat.name,
-      value: selectedMonthTxList.filter(t => t.categoryId === cat.id).reduce((s, t) => s + t.amount, 0),
+      value: sumMoney(selectedMonthTxList.filter(t => t.categoryId === cat.id).map(t => t.amount)),
       accentColor: cat.accentColor,
       category: cat
     }))
     .filter(d => d.value > 0)
     .sort((a, b) => b.value - a.value);
+  const unmapped = sumMoney(selectedMonthTxList.filter(t => !tabCategories.some(c => c.id === t.categoryId)).map(t => t.amount));
+  if (unmapped > 0) {
+    const category = { id: 'unmapped', name: 'Без категории', icon: 'HelpCircle', color: 'text-slate-400', bgColor: 'bg-slate-50', borderColor: 'border-slate-100', accentColor: '#64748b' };
+    breakdownData.push({ name: category.name, value: unmapped, accentColor: category.accentColor, category });
+    breakdownData.sort((a, b) => b.value - a.value);
+  }
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (!active || !payload?.length) return null;

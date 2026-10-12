@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase } from './supabaseClient';
 import { Session, User } from '@supabase/supabase-js';
+import { AuthLoadTicket, createAuthLoadGuard } from './lib/authLoadGuard';
 
 interface Profile {
   id: string;
@@ -17,7 +18,7 @@ interface Household {
   created_at: string;
 }
 
-interface AuthContextType {
+export interface AuthContextType {
   session: Session | null;
   user: User | null;
   profile: Profile | null;
@@ -35,9 +36,10 @@ interface AuthContextType {
   ) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  createHouseholdInvite: () => Promise<string>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
@@ -45,8 +47,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<Profile | null>(null);
   const [household, setHousehold] = useState<Household | null>(null);
   const [loading, setLoading] = useState(true);
+  const loadGuard = useRef(createAuthLoadGuard());
 
-  const fetchProfileAndHousehold = async (userId: string) => {
+  const fetchProfileAndHousehold = async (userId: string, ticket: AuthLoadTicket) => {
+    const isCurrent = () => loadGuard.current.isCurrent(ticket) && ticket.userId === userId;
+    if (!isCurrent()) return;
     try {
       // 1. Fetch Profile
       let { data: profileData, error: profileError } = await supabase
@@ -54,15 +59,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .select('*')
         .eq('id', userId)
         .single();
+      if (!isCurrent()) return;
 
       // Retry once after 600ms if profile row was just created by trigger
       if (profileError && profileError.code === 'PGRST116') {
         await new Promise(r => setTimeout(r, 600));
+        if (!isCurrent()) return;
         const retry = await supabase
           .from('profiles')
           .select('*')
           .eq('id', userId)
           .single();
+        if (!isCurrent()) return;
         profileData = retry.data;
         profileError = retry.error;
       }
@@ -78,6 +86,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
+      if (!profileData || profileData.id !== userId) {
+        setProfile(null);
+        setHousehold(null);
+        return;
+      }
       setProfile(profileData);
 
       // 2. Fetch Household if profile has one
@@ -87,6 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .select('*')
           .eq('id', profileData.household_id)
           .single();
+        if (!isCurrent()) return;
 
         if (householdError) {
           console.error('Ошибка загрузки семьи:', householdError);
@@ -98,35 +112,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setHousehold(null);
       }
     } catch (err) {
-      console.error('Ошибка получения профиля и семьи:', err);
+      if (isCurrent()) console.error('Ошибка получения профиля и семьи:', err);
     }
   };
 
   useEffect(() => {
     let active = true;
+    loadGuard.current.activate();
+    const initialTicket = loadGuard.current.snapshot();
 
     // Safety timeout: Never hang on loading screen for more than 5 seconds
     const safetyTimer = setTimeout(() => {
-      if (active) {
+      if (active && loadGuard.current.isCurrent(initialTicket)) {
         setLoading(false);
       }
     }, 5000);
 
     const handleSession = async (currentSession: Session | null) => {
+      if (!active) return;
+      const nextUserId = currentSession?.user.id ?? null;
+      const identityChanged = loadGuard.current.userId !== nextUserId;
+      const ticket = loadGuard.current.begin(nextUserId);
+      const isCurrent = () => active && loadGuard.current.isCurrent(ticket);
+      if (identityChanged) {
+        setProfile(null);
+        setHousehold(null);
+        setLoading(nextUserId !== null);
+      }
+      const profileTimer = setTimeout(() => { if (isCurrent()) setLoading(false); }, 5000);
       try {
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
 
         if (currentSession?.user) {
-          await fetchProfileAndHousehold(currentSession.user.id);
+          await fetchProfileAndHousehold(currentSession.user.id, ticket);
         } else {
           setProfile(null);
           setHousehold(null);
         }
       } catch (err) {
-        console.error('Ошибка при обработке сессии:', err);
+        if (isCurrent()) console.error('Ошибка при обработке сессии:', err);
       } finally {
-        if (active) {
+        clearTimeout(profileTimer);
+        if (isCurrent()) {
           setLoading(false);
         }
       }
@@ -134,24 +162,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // 1. Initial auth check
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (active) {
-        handleSession(session);
+      if (active && loadGuard.current.isCurrent(initialTicket)) {
+        void handleSession(session);
       }
     }).catch(err => {
-      console.error('Ошибка getSession:', err);
-      if (active) setLoading(false);
+      if (active && loadGuard.current.isCurrent(initialTicket)) {
+        console.error('Ошибка getSession:', err);
+        setLoading(false);
+      }
     });
 
     // 2. Auth state changes listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!active) return;
       if (event === 'INITIAL_SESSION') return;
 
-      await handleSession(session);
+      void handleSession(session);
     });
 
     return () => {
       active = false;
+      loadGuard.current.invalidate();
       clearTimeout(safetyTimer);
       subscription.unsubscribe();
     };
@@ -171,33 +202,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     householdAction: 'create' | 'join',
     householdNameOrId: string
   ) => {
-    let householdId = null;
-
-    // 1. Сначала создаем/находим семейную группу (чтобы передать ее ID в метаданных)
-    if (householdAction === 'create') {
-      const { data: newHousehold, error: createError } = await supabase
-        .from('households')
-        .insert({ name: householdNameOrId })
-        .select()
-        .single();
-
-      if (createError) throw createError;
-      householdId = newHousehold.id;
-    } else {
-      // Проверка существования семьи по ID
-      const { data: existingHousehold, error: checkError } = await supabase
-        .from('households')
-        .select('id')
-        .eq('id', householdNameOrId)
-        .single();
-
-      if (checkError || !existingHousehold) {
-        throw new Error('Семейная группа с таким ID не найдена. Проверьте правильность UUID.');
-      }
-      householdId = existingHousehold.id;
-    }
-
-    // 2. Register user with profile metadata for trigger
+    const { data: schemaVersion, error: schemaError } = await supabase.rpc('finance_schema_version');
+    if (schemaError || schemaVersion !== 1) throw new Error('Для регистрации требуется обновление базы приложения.');
+    // The registration trigger creates a household or redeems a one-use invitation.
+    // Clients never grant themselves membership using an arbitrary household UUID.
     const { error: signUpError } = await supabase.auth.signUp({
       email,
       password,
@@ -206,7 +214,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           name,
           avatar,
           color,
-          household_id: householdId
+          household_action: householdAction,
+          household_name: householdAction === 'create' ? householdNameOrId.trim() : null,
+          invite_token: householdAction === 'join' ? householdNameOrId.trim() : null
         }
       }
     });
@@ -220,9 +230,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const refreshProfile = async () => {
-    if (user) {
-      await fetchProfileAndHousehold(user.id);
+    if (!user || loadGuard.current.userId !== user.id) return;
+    const ticket = loadGuard.current.begin(user.id);
+    const profileTimer = setTimeout(() => { if (loadGuard.current.isCurrent(ticket)) setLoading(false); }, 5000);
+    try { await fetchProfileAndHousehold(user.id, ticket); }
+    finally {
+      clearTimeout(profileTimer);
+      if (loadGuard.current.isCurrent(ticket)) setLoading(false);
     }
+  };
+  const createHouseholdInvite = async () => {
+    const { data, error } = await supabase.rpc('create_household_invite');
+    if (error) throw new Error(error.message);
+    if (typeof data !== 'string') throw new Error('Не удалось создать приглашение.');
+    return data;
   };
 
   return (
@@ -236,7 +257,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signIn,
         signUp,
         signOut,
-        refreshProfile
+        refreshProfile,
+        createHouseholdInvite
       }}
     >
       {children}

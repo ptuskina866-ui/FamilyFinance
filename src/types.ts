@@ -1,4 +1,17 @@
 export type TransactionType = 'income' | 'expense';
+export type TransactionKind = 'cashflow' | 'transfer' | 'goal_deposit' | 'goal_release';
+export type AccountKind = 'bank' | 'cash' | 'savings';
+
+export interface Account {
+  id: string;
+  household_id: string;
+  name: string;
+  kind: AccountKind;
+  currency: 'BYN';
+  opening_balance: number;
+  is_archived: boolean;
+  created_at: string;
+}
 
 export interface Category {
   id: string;
@@ -40,6 +53,7 @@ export interface SavingsGoal {
   emoji: string;
   deadline: string | null; // ISO date YYYY-MM-DD
   is_completed: boolean;
+  is_archived?: boolean;
   created_at: string;
 }
 
@@ -51,6 +65,11 @@ export interface Transaction {
   date: string; // ISO date string (YYYY-MM-DD)
   comment: string;
   addedBy: string; // FamilyMember ID
+  kind?: TransactionKind;
+  accountId?: string | null;
+  targetAccountId?: string | null;
+  goalId?: string | null;
+  recurringId?: string | null;
 }
 
 export interface AppState {

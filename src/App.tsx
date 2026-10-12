@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { lazy, Suspense, useState } from 'react';
 import { AppProvider } from './AppContext';
 import { AuthProvider, useAuth } from './AuthContext';
 import Layout from './components/Layout';
@@ -15,7 +15,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 
 export type TabType = 'home' | 'add' | 'analytics' | 'plans' | 'profile';
 
-const AppContent: React.FC = () => {
+export const AppContent: React.FC<{ notice?: React.ReactNode }> = ({ notice }) => {
   const { user, loading } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [authView, setAuthView] = useState<'login' | 'register'>('login');
@@ -24,6 +24,7 @@ const AppContent: React.FC = () => {
   if (loading) {
     return (
       <Layout>
+        {notice}
         <div className="flex-1 flex flex-col items-center justify-center gap-3">
           <div className="w-10 h-10 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin"></div>
           <span className="text-xs text-slate-500 tracking-wider uppercase font-semibold">Загрузка...</span>
@@ -35,6 +36,7 @@ const AppContent: React.FC = () => {
   if (!user) {
     return (
       <Layout>
+        {notice}
         <div className="flex-1 overflow-y-auto no-scrollbar pb-6">
           {authView === 'login' ? (
             <LoginScreen onNavigateToRegister={() => setAuthView('register')} />
@@ -50,6 +52,7 @@ const AppContent: React.FC = () => {
   if (showStatement) {
     return (
       <Layout>
+        {notice}
         <BankStatementScreen onBack={() => setShowStatement(false)} />
       </Layout>
     );
@@ -68,6 +71,7 @@ const AppContent: React.FC = () => {
 
   return (
     <Layout>
+      {notice}
       <div className="flex-1 flex flex-col min-h-0 relative">
         {renderScreen()}
       </div>
@@ -76,7 +80,13 @@ const AppContent: React.FC = () => {
   );
 };
 
-const App: React.FC = () => (
+const DemoApp = import.meta.env.DEV ? lazy(() => import('./demo/DemoApp')) : null;
+
+const App: React.FC = () => {
+  if (DemoApp && new URLSearchParams(window.location.search).get('demo') === '1') {
+    return <ErrorBoundary><Suspense fallback={<Layout><p className="m-auto text-xs text-slate-500">Загрузка демо…</p></Layout>}><DemoApp /></Suspense></ErrorBoundary>;
+  }
+  return (
   <ErrorBoundary>
     <AuthProvider>
       <AppProvider>
@@ -84,6 +94,7 @@ const App: React.FC = () => (
       </AppProvider>
     </AuthProvider>
   </ErrorBoundary>
-);
+  );
+};
 
 export default App;

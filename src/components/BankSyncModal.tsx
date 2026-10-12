@@ -1,4 +1,5 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
+import { isCashflow } from '../lib/finance';
 import { useApp } from '../AppContext';
 import { useAuth } from '../AuthContext';
 import { AlfaBankService, AlfaTransaction, StatementMetadata } from '../services/alfaBankService';
@@ -30,7 +31,7 @@ type StepType = 'upload' | 'preview' | 'success';
 type TabFilter = 'all' | 'expense' | 'income' | 'duplicates';
 
 export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose }) => {
-  const { transactions = [], categories = [], members = [], addTransactionsBatch } = useApp();
+  const { transactions = [], categories = [], members = [], addTransactionsBatch, accounts, accountsReady } = useApp();
   const { profile } = useAuth();
 
   const [step, setStep] = useState<StepType>('upload');
@@ -52,6 +53,15 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
   // Data states
   const [parsedList, setParsedList] = useState<AlfaTransaction[]>([]);
   const [selectedTxIds, setSelectedTxIds] = useState<Set<string>>(new Set());
+  const [selectedAccountId, setSelectedAccountId] = useState('');
+  useEffect(() => {
+    if (!accounts.some(a => a.id === selectedAccountId && !a.is_archived)) setSelectedAccountId(accounts.find(a => !a.is_archived)?.id || '');
+  }, [accounts, selectedAccountId]);
+  const changeAccount = (id: string) => {
+    setSelectedAccountId(id);
+    const marked = AlfaBankService.markDuplicates(parsedList, transactions.filter(t => isCashflow(t) && (!accountsReady || t.accountId === id)));
+    setParsedList(marked); setSelectedTxIds(new Set(marked.filter(t => !t.isDuplicate).map(t => t.id)));
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -85,7 +95,7 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
       setMetadata(meta);
 
       // Проверка на дубликаты среди уже сохраненных в бюджете
-      const marked = AlfaBankService.markDuplicates(rawTxs, transactions || []);
+      const marked = AlfaBankService.markDuplicates(rawTxs, transactions.filter(t => isCashflow(t) && (!accountsReady || t.accountId === selectedAccountId)));
       setParsedList(marked);
 
       // По умолчанию выбираем только новые операции (не дубликаты)
@@ -180,7 +190,8 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
         amount: t.amount,
         categoryId: t.categoryId,
         comment: t.merchant || t.comment || 'Импорт выписки',
-        addedBy: selectedMemberId || 'dad',
+        addedBy: selectedMemberId || profile?.id || '',
+        accountId: selectedAccountId || null,
         date: t.date
       }));
 
@@ -598,6 +609,7 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
                 </div>
 
                 {/* Primary Actions */}
+                {accountsReady && <label className="text-xs font-bold text-slate-600">Счет выписки<select aria-label="Счет выписки" value={selectedAccountId} onChange={e => changeAccount(e.target.value)} disabled={loading} className="w-full p-2 mt-1 rounded-xl bg-white border border-slate-200">{accounts.filter(a => !a.is_archived).map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label>}
                 <div className="flex gap-2.5">
                   <button
                     type="button"

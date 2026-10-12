@@ -27,11 +27,7 @@ if (typeof (Promise as any).withResolvers === 'undefined') {
 
 import { Transaction, TransactionType } from '../types';
 import { supabase } from '../supabaseClient';
-import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-
-// Настройка воркера PDF.js
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 export interface AlfaTransaction {
   id: string;
@@ -377,6 +373,8 @@ export class AlfaBankService {
    * Парсинг официальной PDF-выписки Альфа-Банка Беларусь (InSync)
    */
   static async parsePdfFile(file: File): Promise<ParseResult> {
+    const pdfjsLib = await import('pdfjs-dist');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     const allLines: string[] = [];
