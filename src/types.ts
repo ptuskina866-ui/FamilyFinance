@@ -70,6 +70,34 @@ export interface Transaction {
   targetAccountId?: string | null;
   goalId?: string | null;
   recurringId?: string | null;
+  incomeDistributionId?: string | null;
+}
+
+export interface CategoryBudget {
+  id: string;
+  household_id: string;
+  month: string;
+  category_id: string;
+  allocated_amount: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IncomeAllocation {
+  targetType: 'budget' | 'goal';
+  targetId: string;
+  amount: number;
+}
+
+export interface IncomeDistribution {
+  id: string;
+  household_id: string;
+  income_transaction_id: string;
+  month: string;
+  total_amount: number;
+  items: IncomeAllocation[];
+  created_by: string;
+  created_at: string;
 }
 
 export interface AppState {

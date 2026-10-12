@@ -2,7 +2,7 @@
 
 # Current work
 
-Accounts/savings migration applied to working Supabase with private backup and unchanged financial rows verified. Frontend publishing through connected Cloudflare Workers Builds is underway. Stage two: shared category budgets and confirmed income distribution. Development demo: `http://127.0.0.1:5173/?demo=1`.
+Working site restored after configuring Supabase build variables; deployed login and upstream APIs verified. Shared category budgets, confirmed income distribution and cashflow calendar implemented and tested. Stage-two database installed with private backup and existing rows unchanged; frontend release follows through connected Cloudflare Workers Builds. Development demo: `http://127.0.0.1:5173/?demo=1`.
 
 ## Project maintenance backlog
 
@@ -21,6 +21,15 @@ Accounts/savings migration applied to working Supabase with private backup and u
 - Review Supabase schema and RLS consistency (including full execution of `supabase_schema.sql` and trigger testing in an isolated test PostgreSQL/Supabase instance; audit household isolation).
 
 ## Recently completed
+
+- Second stage: shared monthly budgets, atomic income distribution and a 35-day recurring cashflow calendar, preserving existing visuals.
+  - Goals and remaining category budgets both reserve capital; funded expenses and funded future bills do not consume the free daily pool twice.
+  - Food category/store overlap prevented; zero budget releases remaining money; no automatic rollover or unconfirmed income allocation.
+  - Income distribution validated against actual income and unassigned funds; unique source, guarded income editing/deletion and transactional rollback.
+  - Planning tables have household RLS, read-only client grants and Realtime; RPCs lock the household. Private pre-budget snapshots saved before deployment.
+  - Working database checked: existing transactions, goals and accounts unchanged; no budgets or distributions created on behalf of the user.
+  - 31 calculation/auth tests and 112 SQL checks pass; mobile 320/390 px and local confirmed distribution verified. Hosted authenticated Realtime and concurrent connections still need dedicated staging validation.
+- Repaired Cloudflare publication: configured build variables with the owner, triggered a new build, verified deployed login with no runtime errors and real Auth/capability endpoints returning 200. Added a missing-variable build guard.
 
 - Connected Supabase and applied the accounts release to the working database on 2026-10-12:
   - Inspected actual columns, constraints, functions and policies. Confirmed profiles.role NOT NULL with default 'Участник'; no invalid transaction/goal values or cross-household attributed members found.

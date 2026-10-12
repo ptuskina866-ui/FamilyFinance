@@ -8,6 +8,7 @@ import { AccountsPanel } from '../components/AccountsPanel';
 import { TransactionEditor } from '../components/TransactionEditor';
 import { calculateSafeDaily, isCashflow } from '../lib/finance';
 import { localDateISO } from '../lib/money';
+import { planningDateISO, unassignedDailyTransactions, uncoveredRecurring } from '../lib/planning';
 import { Transaction } from '../types';
 import { 
   Trash2, 
@@ -55,7 +56,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
     getCategoryById, 
     getMemberById,
     savingsGoals,
-    availableBalance, reservedBalance, accounts, recurringTransactions, accountsReady
+    availableBalance, reservedBalance, budgetReservedBalance, categoryBudgets, accounts, recurringTransactions, accountsReady
   } = useApp();
   const { profile } = useAuth();
 
@@ -70,8 +71,9 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
 
   // Daily budget calculation
   const safeDaily = useMemo(() => {
-    return calculateSafeDaily(availableBalance, transactions, recurringTransactions, localDateISO());
-  }, [availableBalance, transactions, recurringTransactions]);
+    const today = planningDateISO();
+    return calculateSafeDaily(availableBalance, unassignedDailyTransactions(transactions, categoryBudgets, today), uncoveredRecurring(recurringTransactions, categoryBudgets, transactions, today), today);
+  }, [availableBalance, transactions, recurringTransactions, categoryBudgets]);
 
   // Car goal quick glance
   const carGoal = useMemo(() => {
@@ -166,6 +168,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
           {accountsReady && <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-800">
             <span>Свободно: <strong>{hideBalance ? '••••' : fmt(availableBalance)}</strong></span>
             <span>В целях: <strong>{hideBalance ? '••••' : fmt(reservedBalance)}</strong></span>
+            {budgetReservedBalance > 0 && <span>В бюджетах: <strong>{hideBalance ? '••••' : fmt(budgetReservedBalance)}</strong></span>}
           </div>}
 
           {/* Balance Amount */}
@@ -266,7 +269,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
                 <span className="text-xl font-black text-slate-900 leading-tight">
                   {fmt(safeDaily.remaining)}
                 </span>
-                <span className="text-[9px] text-slate-500 block mt-1">После целей и ближайших платежей</span>
+                <span className="text-[9px] text-slate-500 block mt-1">После целей, бюджетов и платежей</span>
               </div>
             </div>
 

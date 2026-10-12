@@ -4,6 +4,7 @@ import { useAuth } from '../AuthContext';
 import { DynamicIcon } from '../components/CategoryGrid';
 import { CATEGORIES } from '../mockData';
 import { CarGoalForecastCard } from '../components/CarGoalForecastCard';
+import { BudgetPlanner } from '../components/BudgetPlanner';
 import { Target, Plus, Trash2, Archive, X, Check, RefreshCw, Calendar, ArrowUpRight } from 'lucide-react';
 import { goalMonthlyNeeded } from '../lib/finance';
 import { localDateISO, parseMoneyInput, sumMoney } from '../lib/money';
@@ -32,7 +33,7 @@ const PlansScreen: React.FC = () => {
   const { profile } = useAuth();
 
   // Tab: 'goals' or 'recurring'
-  const [activeSubTab, setActiveSubTab] = useState<'goals' | 'recurring'>('goals');
+  const [activeSubTab, setActiveSubTab] = useState<'goals' | 'recurring' | 'budget'>('goals');
 
   // Modals
   const [showGoalForm, setShowGoalForm] = useState(false);
@@ -217,14 +218,14 @@ const PlansScreen: React.FC = () => {
       >
         <div className="w-9 h-9" /> {/* Spacer */}
         <h1 className="text-sm font-black text-slate-900 tracking-tight">Планы</h1>
-        <button
+        {activeSubTab !== 'budget' ? <button
           onClick={() => { if (activeSubTab === 'goals') { setGoalError(''); setShowGoalForm(true); } else { setRecError(''); setShowRecForm(true); } }}
           aria-label={activeSubTab === 'goals' ? 'Создать цель накопления' : 'Создать регулярный платеж'}
           disabled={financeLoading || !!actionLoadingId}
           className="w-9 h-9 rounded-full bg-slate-950 text-white flex items-center justify-center shadow-sm active:scale-90 transition-all"
         >
           <Plus className="w-5 h-5" strokeWidth={2.5} />
-        </button>
+        </button> : <div className="w-9 h-9" />}
       </div>
 
       {/* Pill Toggle subtabs */}
@@ -240,7 +241,7 @@ const PlansScreen: React.FC = () => {
             }`}
           >
             <Target className="w-4 h-4" />
-            Цели накопления
+            Цели
           </button>
           <button
             type="button"
@@ -252,15 +253,16 @@ const PlansScreen: React.FC = () => {
             }`}
           >
             <RefreshCw className="w-4 h-4" />
-            Автоплатежи
+            Платежи
           </button>
+          <button type="button" onClick={() => setActiveSubTab('budget')} className={`flex-1 py-2.5 text-xs font-bold rounded-xl ${activeSubTab === 'budget' ? 'bg-[#0F172A] text-white shadow-sm' : 'text-slate-400'}`}>Бюджет</button>
         </div>
       </div>
 
       {/* Content wrapper */}
       <div className="flex-1 overflow-y-auto no-scrollbar px-5 pt-3 pb-36">
         {actionError && !archivingGoalId && <p role="alert" className="rounded-2xl bg-rose-50 p-3 mb-3 text-xs text-rose-700 break-words">{actionError}</p>}
-        {activeSubTab === 'goals' ? (
+        {activeSubTab === 'budget' ? <BudgetPlanner /> : activeSubTab === 'goals' ? (
           /* ========================================================================= */
           /* GOALS TAB */
           /* ========================================================================= */
