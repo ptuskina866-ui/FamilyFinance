@@ -191,7 +191,7 @@ is used by RLS policies to resolve the authenticated user's household.
 
 Client code must not circumvent this model.
 
-The accounts release adds one-use, seven-day household invitations. Signup creates a household or consumes a validated invitation in the registration trigger; arbitrary household UUID metadata and direct profile membership changes are rejected. Existing memberships remain intact. These rules take effect only after the release migration is applied; the live database has not been migrated during development.
+The installed accounts release adds one-use, seven-day household invitations. Signup creates a household or consumes a validated invitation in the registration trigger; arbitrary household UUID metadata and direct profile membership changes are rejected. Existing memberships remain intact.
 
 ## Authentication
 
@@ -330,3 +330,17 @@ Bank parser fixtures and robust server-side import identity remain future test/i
 Apply `supabase/migrations/20261012_accounts_and_savings.sql` together with the updated frontend after reviewing the actual schema. The same SQL section is included in `supabase_schema.sql` for fresh installations. Details: `docs/migration-accounts.md`.
 
 The accounts migration was applied to the configured Supabase project on 2026-10-12 after inspection and a private same-project backup. `finance_schema_version()` returns 1. All 131 existing transactions and four goals were compared with the backup and remained unchanged. The live `profiles.role` field is NOT NULL with a default of 'Участник', compatible with the revised registration trigger. Cloudflare Workers Builds is connected to GitHub main for frontend publishing. Account initialization remains an explicit, reviewed user action.
+
+Working URL: https://familyfinance.ptuskina866.workers.dev/. Cloudflare must set the two VITE variables in **Build variables and secrets**. Runtime Worker bindings do not configure this static Vite bundle. Builds now fail before publishing if either variable is absent. The corrected deployed bundle, login screen, Supabase Auth settings and accounts capability RPC were verified successfully with the deployed public key.
+
+## Shared monthly budgets and income distribution
+
+`src/lib/planning.ts` calculates envelope spending/reservations, unassigned daily consumption, uncovered recurring bills, and a 35-day cashflow scenario in integer kopecks. `src/components/BudgetPlanner.tsx` is the third Plans subtab. `category_budgets` and `income_distributions` are household-owned, RLS-enabled, Realtime tables; direct client writes are revoked. Funding is performed only through household-locked RPCs `set_category_budget` and `distribute_income`.
+
+Budgets represent the total monthly category allocation; only its unspent part is reserved. Available funds equal capital minus active goals minus unspent current-month budgets. Funded purchases and scheduled bills are excluded from the unassigned daily pool to prevent double reservation. General food and individual food-store budgets cannot overlap. Setting a budget to zero releases its remaining funds, preserving expense history. Budgets expire at the month boundary and do not carry forward automatically.
+
+Planning uses Europe/Minsk as the shared BYN household calendar, including travel across time zones. The application refreshes at a planning-day boundary. Planning rows and ledger rows are paginated to avoid hosted API response limits.
+
+Income distribution is a confirmed, atomic, one-use action for an already posted income in the current month. Its allocations cannot exceed either that income or current free funds. It adds available budget money above already spent amounts, reserves goal contributions and records the decision without creating a second income. Source income cannot be deleted, re-dated, changed to an expense or reduced below the distribution total. Releasing a goal or budget does not make that income eligible for a second distribution. Full reversal/editing of a distribution is future work; partial plans must be reviewed before confirming.
+
+`supabase/migrations/20261012_shared_budgets.sql` was installed on 2026-10-12 after a private snapshot of current transactions, goals, accounts and affected RPC definitions. All existing rows remained unchanged. The accounts capability marker stays at 1 for installed-client compatibility; `finance_planning_version()` is 1. The same migration is appended to the fresh-install schema. Details and validation: `docs/budgets-release.md`.

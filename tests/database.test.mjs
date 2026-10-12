@@ -51,7 +51,7 @@ test('accounts, savings and household security migration', async (t) => {
       (gen_random_uuid(), '${h}', '${a}', 'expense', 50, 'food', '', '2026-10-03');
   `);
   const migration = await fs.readFile(`${root}/supabase/migrations/20261012_accounts_and_savings.sql`, 'utf8');
-  assert.equal(baseline.split('-- 12. Accounts and atomic savings (2026-10-12)')[1].trim(), migration.trim()); checks++;
+  assert.equal(baseline.split('-- 12. Accounts and atomic savings (2026-10-12)')[1].split('-- 13. Shared budgets')[0].trim(), migration.trim()); checks++;
   await db.exec(migration);
   await db.exec(migration); checks++;
   await actor(a);

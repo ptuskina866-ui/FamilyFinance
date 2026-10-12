@@ -1,10 +1,11 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { Account, AccountKind, Transaction, Category, FamilyMember, RecurringTransaction, SavingsGoal } from './types';
+import { Account, AccountKind, Transaction, Category, FamilyMember, RecurringTransaction, SavingsGoal, CategoryBudget, IncomeAllocation, IncomeDistribution } from './types';
 import { CATEGORIES } from './mockData';
 import { useAuth } from './AuthContext';
 import { supabase } from './supabaseClient';
 import { accountBalances as calculateAccountBalances, cashflowTotals, reservedGoals, totalAccountBalance, isCashflow } from './lib/finance';
 import { fromMinorUnits, localDateISO, toMinorUnits } from './lib/money';
+import { allocationTotal, budgetReserved, planningDateISO, planningErrorMessage } from './lib/planning';
 
 export interface AppContextType {
   transactions: Transaction[]; categories: Category[]; members: FamilyMember[];
@@ -13,6 +14,9 @@ export interface AppContextType {
   balance: number; availableBalance: number; reservedBalance: number;
   monthlyIncome: number; monthlyExpense: number; budgetLimit: number;
   recurringTransactions: RecurringTransaction[]; savingsGoals: SavingsGoal[];
+  categoryBudgets: CategoryBudget[]; incomeDistributions: IncomeDistribution[]; planningReady: boolean; budgetReservedBalance: number;
+  setCategoryBudget: (categoryId: string, amount: number) => Promise<void>;
+  distributeIncome: (incomeId: string, items: IncomeAllocation[]) => Promise<void>;
   addTransaction: (tx: Omit<Transaction, 'id'>) => Promise<void>;
   updateTransaction: (id: string, tx: Omit<Transaction, 'id'>) => Promise<void>;
   addTransactionsBatch: (txs: Omit<Transaction, 'id'>[]) => Promise<void>;
@@ -35,8 +39,10 @@ interface TransactionRow {
   id: string; type: Transaction['type']; amount: number | string;
   category_id: string; comment: string | null; added_by: string | null; date: string;
   kind?: Transaction['kind']; account_id?: string | null; target_account_id?: string | null;
-  goal_id?: string | null; recurring_id?: string | null;
+  goal_id?: string | null; recurring_id?: string | null; income_distribution_id?: string | null;
 }
+type BudgetRow = Omit<CategoryBudget, 'allocated_amount'> & { allocated_amount: number | string };
+type DistributionRow = Omit<IncomeDistribution, 'total_amount' | 'items'> & { total_amount: number | string; items: (Omit<IncomeAllocation,'amount'> & {amount:number | string})[] };
 const money = (amount: number | string) => fromMinorUnits(toMinorUnits(amount));
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { profile, user } = useAuth();
@@ -50,6 +56,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [budgetLimit, setBudgetLimitState] = useState(1500);
   const [recurringTransactions, setRecurringTransactions] = useState<RecurringTransaction[]>([]);
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
+  const [categoryBudgets, setCategoryBudgets] = useState<CategoryBudget[]>([]);
+  const [incomeDistributions, setIncomeDistributions] = useState<IncomeDistribution[]>([]);
+  const [planningReady, setPlanningReady] = useState(false);
   const loadVersion = useRef(0);
   const currentHousehold = useRef(householdId);
   currentHousehold.current = householdId;
@@ -69,16 +78,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (page.length < 500 || version !== loadVersion.current) return { data: rows, error: null };
       }
     };
-    const [txResult, memberResult, accountResult, goalResult, recurringResult] = await Promise.all([
+    const fetchPlanning = async <T,>(table: 'category_budgets' | 'income_distributions') => {
+      const rows: T[] = [];
+      for (let offset = 0; ; offset += 500) {
+        const result = await supabase.from(table).select('*').eq('household_id', householdId)
+          .eq('month', `${planningDateISO().slice(0,7)}-01`).order('created_at').order('id').range(offset,offset+499);
+        if (result.error) return {data:rows,error:result.error};
+        rows.push(...result.data as unknown as T[]);
+        if (result.data.length < 500 || version !== loadVersion.current) return {data:rows,error:null};
+      }
+    };
+    const [txResult, memberResult, accountResult, goalResult, recurringResult, budgetResult, distributionResult] = await Promise.all([
       fetchLedger(),
       supabase.from('profiles').select('id, name, avatar, color').eq('household_id', householdId),
       supabase.from('accounts').select('*').eq('household_id', householdId).order('created_at'),
       supabase.from('savings_goals').select('*').eq('household_id', householdId).order('created_at', { ascending: false }),
-      supabase.from('recurring_transactions').select('*').eq('household_id', householdId).eq('is_active', true).order('created_at', { ascending: false })
+      supabase.from('recurring_transactions').select('*').eq('household_id', householdId).eq('is_active', true).order('created_at', { ascending: false }),
+      fetchPlanning<BudgetRow>('category_budgets'),
+      fetchPlanning<DistributionRow>('income_distributions')
     ]);
     if (version !== loadVersion.current || currentHousehold.current !== householdId) return;
     const missingSchema = accountResult.error && ['PGRST205', '42P01'].includes(accountResult.error.code);
-    const failed = txResult.error || memberResult.error || goalResult.error || recurringResult.error || (!missingSchema && accountResult.error);
+    const planningMissing = [budgetResult.error, distributionResult.error].some(error => error && ['PGRST205', '42P01'].includes(error.code));
+    const failed = txResult.error || memberResult.error || goalResult.error || recurringResult.error || (!missingSchema && accountResult.error)
+      || (!planningMissing && (budgetResult.error || distributionResult.error));
+    setPlanningReady(!budgetResult.error && !distributionResult.error);
     setSchemaReady(!accountResult.error);
     if (failed) { setFinanceError('Не удалось обновить данные. ' + failed.message); setFinanceLoading(false); return; }
     try {
@@ -86,11 +110,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const rows = txResult.data as unknown as TransactionRow[];
       setTransactions(rows.map(t => ({ id: t.id, type: t.type, amount: money(t.amount), categoryId: t.category_id,
         comment: t.comment || '', addedBy: t.added_by || '', date: t.date, kind: t.kind || 'cashflow',
-        accountId: t.account_id, targetAccountId: t.target_account_id, goalId: t.goal_id, recurringId: t.recurring_id })));
+        accountId: t.account_id, targetAccountId: t.target_account_id, goalId: t.goal_id, recurringId: t.recurring_id, incomeDistributionId: t.income_distribution_id })));
       setMembers(memberResult.data as FamilyMember[]);
       setAccounts((accountResult.data || []).map(a => ({ ...a, opening_balance: money(a.opening_balance) })) as Account[]);
       setSavingsGoals((goalResult.data || []).map(g => ({ ...g, target_amount: money(g.target_amount), current_amount: money(g.current_amount ?? 0) })) as SavingsGoal[]);
       setRecurringTransactions((recurringResult.data || []).map(r => ({ ...r, amount: money(r.amount) })) as RecurringTransaction[]);
+      setCategoryBudgets((budgetResult.data || []).map(b => ({ ...b, allocated_amount: money(b.allocated_amount) })) as CategoryBudget[]);
+      setIncomeDistributions((distributionResult.data || []).map(d => ({ ...d, total_amount: money(d.total_amount), items: d.items.map(i => ({ ...i, amount: money(i.amount) })) })));
       setFinanceError(missingSchema ? 'Для новых счетов и накоплений требуется обновление базы приложения.' : null);
     } catch { setFinanceError('Не удалось прочитать денежные значения. Проверьте данные перед продолжением.'); }
     setFinanceLoading(false);
@@ -98,15 +124,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     ++loadVersion.current;
     setTransactions([]); setMembers([]); setAccounts([]); setSavingsGoals([]); setRecurringTransactions([]);
+    setCategoryBudgets([]); setIncomeDistributions([]); setPlanningReady(false);
     setSchemaReady(false); setFinanceError(null); setFinanceLoading(!!householdId);
     if (!householdId) return;
     void refresh();
     const channel = supabase.channel(`finance-${householdId}`);
-    for (const table of ['transactions', 'profiles', 'accounts', 'savings_goals', 'recurring_transactions']) {
+    for (const table of ['transactions', 'profiles', 'accounts', 'savings_goals', 'recurring_transactions', 'category_budgets', 'income_distributions']) {
       channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `household_id=eq.${householdId}` }, () => { void refresh(); });
     }
     channel.subscribe();
-    return () => { ++loadVersion.current; void supabase.removeChannel(channel); };
+    let loadedDay = planningDateISO();
+    const clock = window.setInterval(() => {
+      const day = planningDateISO();
+      if (day !== loadedDay) {loadedDay = day; void refresh();}
+    },60_000);
+    return () => { window.clearInterval(clock); ++loadVersion.current; void supabase.removeChannel(channel); };
   }, [householdId, refresh]);
   const accountsReady = accounts.length > 0;
   const requireHousehold = () => {
@@ -122,7 +154,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const runRpc = async (name: string, args: Record<string, unknown>) => {
     requireHousehold();
     const { error } = await supabase.rpc(name, args);
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(planningErrorMessage(error.message));
     await refresh();
   };
   const recurringSignature = recurringTransactions.map(r => `${r.id}:${r.last_applied}:${r.day_of_month}`).join('|');
@@ -227,12 +259,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const balances = calculateAccountBalances(accounts, transactions);
   const balance = accountsReady ? totalAccountBalance(accounts, transactions) : cashflowTotals(transactions).net;
   const reservedBalance = reservedGoals(savingsGoals);
+  const budgetReservedBalance = budgetReserved(categoryBudgets, transactions);
+  const setCategoryBudget = async (categoryId: string, amount: number) => {
+    requireAccounts();
+    if (!planningReady) throw new Error('Бюджеты появятся после обновления приложения.');
+    await runRpc('set_category_budget', { p_category_id: categoryId, p_amount: money(amount), p_month: `${planningDateISO().slice(0,7)}-01` });
+  };
+  const distributeIncome = async (incomeId: string, items: IncomeAllocation[]) => {
+    requireAccounts();
+    if (!planningReady) throw new Error('Распределение появится после обновления приложения.');
+    allocationTotal(items);
+    await runRpc('distribute_income', { p_income_id: incomeId, p_items: items, p_month: `${planningDateISO().slice(0,7)}-01` });
+  };
   // Legacy deposits already reduce the balance until the reviewed migration is accepted.
-  const availableBalance = accountsReady ? fromMinorUnits(toMinorUnits(balance) - toMinorUnits(reservedBalance)) : balance;
+  const availableBalance = accountsReady ? fromMinorUnits(toMinorUnits(balance) - toMinorUnits(reservedBalance) - toMinorUnits(budgetReservedBalance)) : balance;
   const monthly = cashflowTotals(transactions.filter(t => t.date.startsWith(localDateISO().slice(0, 7))));
   return <AppContext.Provider value={{ transactions, categories: CATEGORIES, members, accounts, accountBalances: balances,
     accountsReady, schemaReady, financeLoading, financeError, balance, availableBalance, reservedBalance,
     monthlyIncome: monthly.income, monthlyExpense: monthly.expense, budgetLimit, recurringTransactions, savingsGoals,
+    categoryBudgets, incomeDistributions, planningReady, budgetReservedBalance, setCategoryBudget, distributeIncome,
     addTransaction, updateTransaction, addTransactionsBatch, deleteTransaction, initializeFinance, createAccount, transferBetweenAccounts,
     setBudgetLimit, getCategoryById: id => CATEGORIES.find(c => c.id === id), getMemberById: id => members.find(m => m.id === id),
     addRecurring, deleteRecurring, addGoal, deleteGoal, updateGoalAmount, withdrawGoalAmount }}>{children}</AppContext.Provider>;

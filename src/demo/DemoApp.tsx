@@ -3,11 +3,12 @@ import { AppContent } from '../App';
 import { AppContext, type AppContextType } from '../AppContext';
 import { AuthContext, type AuthContextType } from '../AuthContext';
 import { CATEGORIES } from '../mockData';
-import type { Account, FamilyMember, RecurringTransaction, SavingsGoal, Transaction } from '../types';
+import type { Account, FamilyMember, RecurringTransaction, SavingsGoal, Transaction, CategoryBudget, IncomeDistribution } from '../types';
 import { accountBalances, cashflowTotals, isCashflow, reservedGoals, totalAccountBalance } from '../lib/finance';
 import { fromMinorUnits, localDateISO, toMinorUnits } from '../lib/money';
+import { allocationTotal, budgetProgress, budgetReserved, planningDateISO, validateBudgetScopes } from '../lib/planning';
 
-const STORAGE_KEY = 'ff_demo_v1';
+const STORAGE_KEY = 'ff_demo_v2';
 const HOUSEHOLD_ID = '00000000-0000-4000-8000-000000000001';
 const MEMBER_ID = '00000000-0000-4000-8000-000000000002';
 const CREATED_AT = '2026-01-01T00:00:00Z';
@@ -29,12 +30,14 @@ const DEMO_AUTH: AuthContextType = {
 };
 
 interface DemoData {
-  version: 1;
+  version: 2;
   accounts: Account[];
   transactions: Transaction[];
   goals: SavingsGoal[];
   recurring: RecurringTransaction[];
   budgetLimit: number;
+  budgets: CategoryBudget[];
+  distributions: IncomeDistribution[];
 }
 
 const normalizeMoney = (amount: number) => fromMinorUnits(toMinorUnits(amount));
@@ -80,7 +83,7 @@ function fixtures(): DemoData {
   ].map(goal => ({ ...goal, household_id: HOUSEHOLD_ID, is_completed: false, is_archived: false, created_at: `${oldDate}T12:00:00` }));
   const transaction = (id: string, type: Transaction['type'], amount: number, categoryId: string, date: string, comment: string): Transaction => ({ id, type, amount, categoryId, date, comment, addedBy: MEMBER_ID, accountId: 'demo-main', kind: 'cashflow' });
   const transactions: Transaction[] = [
-    transaction('demo-salary', 'income', 2000, 'salary', shiftedDate(today, -10), 'Зарплата'),
+    transaction('demo-salary', 'income', 2000, 'salary', `${today.slice(0,7)}-01`, 'Зарплата'),
     transaction('demo-rent', 'expense', 1490, 'housing', shiftedDate(today, -9), 'Аренда и обязательные расходы'),
     transaction('demo-food', 'expense', 80, 'food-hippo', today, 'Продукты на неделю'),
     transaction('demo-house', 'expense', 110, 'household', shiftedDate(today, -4), 'Покупки для дома'),
@@ -92,13 +95,13 @@ function fixtures(): DemoData {
       transactions.push({ id: `${goalId}-deposit-${index}`, type: 'expense', amount, categoryId: 'savings', date: monthDate(today, index - 2, index === 2 ? Math.min(2, Number(today.slice(8))) : 2), comment: `Резервирование: ${name}`, addedBy: MEMBER_ID, kind: 'goal_deposit', goalId });
     }
   }
-  return { version: 1, accounts, goals, transactions, budgetLimit: 2200, recurring: [
+  return { version: 2, accounts, goals, transactions, budgets: [], distributions: [], budgetLimit: 2200, recurring: [
     { id: 'demo-bill', household_id: HOUSEHOLD_ID, added_by: MEMBER_ID, type: 'expense', amount: 450, category_id: 'utilities', comment: 'Коммунальные и связь', day_of_month: 20, last_applied: monthDate(today, -1, 20), is_active: true, created_at: CREATED_AT },
   ] };
 }
 
 function assertData(data: DemoData): void {
-  if (data.version !== 1 || !Array.isArray(data.accounts) || data.accounts.length === 0 || !Array.isArray(data.transactions) || !Array.isArray(data.goals) || !Array.isArray(data.recurring)) throw new Error('Некорректные демо-данные.');
+  if (data.version !== 2 || !Array.isArray(data.accounts) || data.accounts.length === 0 || !Array.isArray(data.transactions) || !Array.isArray(data.goals) || !Array.isArray(data.recurring) || !Array.isArray(data.budgets) || !Array.isArray(data.distributions)) throw new Error('Некорректные демо-данные.');
   positiveMoney(data.budgetLimit);
   const ids = new Set<string>();
   for (const account of data.accounts) {
@@ -134,6 +137,28 @@ function assertData(data: DemoData): void {
     recurringIds.add(item.id);
   }
   totalAccountBalance(data.accounts, data.transactions); reservedGoals(data.goals);
+  for (const b of data.budgets) {
+    if (b.household_id !== HOUSEHOLD_ID || toMinorUnits(b.allocated_amount) < 0 || !/^\d{4}-\d{2}-01$/.test(b.month)) throw new Error('Некорректный бюджет.');
+    validateBudgetScopes(data.budgets,b.category_id,b.allocated_amount,b.month);
+  }
+  const distributedIncome = new Set<string>();
+  for (const d of data.distributions) {
+    const source = data.transactions.find(t => t.id === d.income_transaction_id && isCashflow(t) && t.type === 'income');
+    if (d.household_id !== HOUSEHOLD_ID || !source || distributedIncome.has(source.id) || toMinorUnits(allocationTotal(d.items)) !== toMinorUnits(d.total_amount) || source.amount < d.total_amount) throw new Error('Некорректное распределение.');
+    distributedIncome.add(source.id);
+  }
+}
+
+const freeCents = (state: DemoData) => toMinorUnits(totalAccountBalance(state.accounts,state.transactions)) - toMinorUnits(reservedGoals(state.goals)) - toMinorUnits(budgetReserved(state.budgets,state.transactions));
+function withBudget(state: DemoData, categoryId: string, amount: number): DemoData {
+  const month = `${planningDateISO().slice(0,7)}-01`;
+  if (!CATEGORIES.some(c => c.id === categoryId && c.id !== 'salary' && c.id !== 'savings' && !c.id.startsWith('income-')) || toMinorUnits(amount) < 0) throw new Error('Выберите категорию и неотрицательную сумму.');
+  validateBudgetScopes(state.budgets,categoryId,amount,month);
+  const old = state.budgets.find(b => b.category_id === categoryId && b.month === month);
+  const budget: CategoryBudget = {id:old?.id || newId(), household_id:HOUSEHOLD_ID,month,category_id:categoryId,allocated_amount:normalizeMoney(amount),created_at:old?.created_at || new Date().toISOString(),updated_at:new Date().toISOString()};
+  const next = {...state,budgets:[...state.budgets.filter(b => b.id !== old?.id),budget]};
+  if (freeCents(next) < 0 && freeCents(next) < freeCents(state)) throw new Error('Недостаточно свободных денег.');
+  return next;
 }
 
 function applyDueRecurring(data: DemoData): DemoData {
@@ -193,7 +218,7 @@ export default function DemoApp() {
     if (!goal) throw new Error('Активная цель не найдена.');
     const cents = toMinorUnits(positiveMoney(amount));
     if (release && toMinorUnits(goal.current_amount) < cents) throw new Error('Нельзя вернуть больше, чем накоплено.');
-    const free = toMinorUnits(totalAccountBalance(state.accounts, state.transactions)) - toMinorUnits(reservedGoals(state.goals));
+    const free = freeCents(state);
     if (!release && free < cents) throw new Error('Недостаточно свободных денег.');
     const nextAmount = fromMinorUnits(toMinorUnits(goal.current_amount) + (release ? -cents : cents));
     const transaction: Transaction = { id: newId(), kind: release ? 'goal_release' : 'goal_deposit', type: release ? 'income' : 'expense', amount: fromMinorUnits(cents), categoryId: 'savings', goalId, date: localDateISO(), comment: `${release ? 'Возврат из цели' : 'Резервирование'}: ${goal.name}`, addedBy: MEMBER_ID };
@@ -202,12 +227,37 @@ export default function DemoApp() {
 
   const balance = totalAccountBalance(data.accounts, data.transactions);
   const reservedBalance = reservedGoals(data.goals);
+  const budgetReservedBalance = budgetReserved(data.budgets,data.transactions);
   const monthly = cashflowTotals(data.transactions.filter(tx => tx.date.startsWith(localDateISO().slice(0, 7))));
   const context: AppContextType = {
     transactions: [...data.transactions].sort((a, b) => b.date.localeCompare(a.date)), categories: CATEGORIES, members: MEMBERS,
     accounts: data.accounts, accountBalances: accountBalances(data.accounts, data.transactions), accountsReady: true, schemaReady: true,
     financeLoading: false, financeError: storageError, balance, reservedBalance,
-    availableBalance: fromMinorUnits(toMinorUnits(balance) - toMinorUnits(reservedBalance)), monthlyIncome: monthly.income, monthlyExpense: monthly.expense,
+    availableBalance: fromMinorUnits(freeCents(data)), monthlyIncome: monthly.income, monthlyExpense: monthly.expense,
+    categoryBudgets: data.budgets, incomeDistributions: data.distributions, planningReady: true, budgetReservedBalance,
+    setCategoryBudget: async (categoryId,amount) => {commit(withBudget(current.current,categoryId,amount));},
+    distributeIncome: async (incomeId,items) => {
+      const state = current.current;
+      const source = state.transactions.find(tx => tx.id === incomeId && isCashflow(tx) && tx.type === 'income' && tx.date.startsWith(planningDateISO().slice(0,7)) && tx.date <= planningDateISO());
+      if (!source || state.distributions.some(d => d.income_transaction_id === incomeId)) throw new Error('Доход недоступен или уже распределён.');
+      const total = allocationTotal(items);
+      if (toMinorUnits(total) > toMinorUnits(source.amount) || toMinorUnits(total) > freeCents(state)) throw new Error('Недостаточно дохода или свободных денег.');
+      const id = newId(); let next = state;
+      for (const item of items) {
+        if (item.targetType === 'budget') {
+          const existing = next.budgets.find(b => b.month === `${planningDateISO().slice(0,7)}-01` && b.category_id === item.targetId);
+          const budget = existing || {category_id:item.targetId,month:`${planningDateISO().slice(0,7)}-01`,allocated_amount:0} as CategoryBudget;
+          const base = Math.max(toMinorUnits(budget.allocated_amount),toMinorUnits(budgetProgress(budget,next.transactions).spent));
+          next = withBudget(next,item.targetId,fromMinorUnits(base + toMinorUnits(item.amount)));
+        } else {
+          const goal = next.goals.find(g => g.id === item.targetId && !g.is_archived);
+          if (!goal) throw new Error('Активная цель не найдена.');
+          const amount = fromMinorUnits(toMinorUnits(goal.current_amount)+toMinorUnits(item.amount));
+          next = {...next,goals:next.goals.map(g => g.id === goal.id ? {...g,current_amount:amount,is_completed:amount >= g.target_amount} : g),transactions:[...next.transactions,{id:newId(),kind:'goal_deposit',type:'expense',amount:item.amount,categoryId:'savings',goalId:goal.id,incomeDistributionId:id,date:planningDateISO(),comment:`Резервирование: ${goal.name}`,addedBy:MEMBER_ID}]};
+        }
+      }
+      commit({...next,distributions:[...next.distributions,{id,household_id:HOUSEHOLD_ID,income_transaction_id:incomeId,month:`${planningDateISO().slice(0,7)}-01`,total_amount:total,items,created_by:MEMBER_ID,created_at:new Date().toISOString()}]});
+    },
     budgetLimit: data.budgetLimit, recurringTransactions: data.recurring, savingsGoals: data.goals,
     getCategoryById: id => CATEGORIES.find(category => category.id === id), getMemberById: id => MEMBERS.find(member => member.id === id),
     addTransaction: async input => { const state = current.current; commit({ ...state, transactions: [...state.transactions, { ...normalizeTransaction(input, state), id: newId() }] }); },
@@ -216,12 +266,12 @@ export default function DemoApp() {
       const existing = state.transactions.find(tx => tx.id === id);
       if (!existing || !isCashflow(existing)) throw new Error('Эту операцию нельзя изменить как доход или расход.');
       if (existing.recurringId && input.date !== existing.date) throw new Error('Дата регулярной операции не меняется. Можно исправить сумму или другие детали.');
+      const distribution = state.distributions.find(d => d.income_transaction_id === id);
+      if (distribution && (input.type !== 'income' || input.amount < distribution.total_amount || input.date !== existing.date)) throw new Error('Распределённый доход сохраняет дату, тип и выделенную сумму.');
       const update = normalizeTransaction(input, state);
-      const capital = toMinorUnits(totalAccountBalance(state.accounts, state.transactions));
-      const nextCapital = capital - (existing.type === 'income' ? 1 : -1) * toMinorUnits(existing.amount)
-        + (update.type === 'income' ? 1 : -1) * toMinorUnits(update.amount);
-      if (nextCapital < toMinorUnits(reservedGoals(state.goals)) && nextCapital < capital) throw new Error('Сначала освободите деньги из целей, чтобы уменьшить общий остаток.');
-      commit({ ...state, transactions: state.transactions.map(tx => tx.id === id ? { ...tx, ...update, id, recurringId: existing.recurringId } : tx) });
+      const next = { ...state, transactions: state.transactions.map(tx => tx.id === id ? { ...tx, ...update, id, recurringId: existing.recurringId } : tx) };
+      if (freeCents(next) < 0 && freeCents(next) < freeCents(state)) throw new Error('Изменение затрагивает резерв. Сначала освободите деньги.');
+      commit(next);
     },
     addTransactionsBatch: async inputs => {
       const state = current.current;
@@ -231,20 +281,21 @@ export default function DemoApp() {
       const state = current.current;
       const tx = state.transactions.find(item => item.id === id);
       if (!tx) throw new Error('Операция не найдена.');
+      if (state.distributions.some(d => d.income_transaction_id === id)) throw new Error('Распределённый доход нельзя удалить.');
       let goals = state.goals;
       if (tx.kind === 'goal_deposit' || tx.kind === 'goal_release') {
         const goal = state.goals.find(item => item.id === tx.goalId && !item.is_archived);
         if (!goal) throw new Error('Нельзя отменить движение архивной цели.');
         const amount = toMinorUnits(goal.current_amount) + (tx.kind === 'goal_deposit' ? -1 : 1) * toMinorUnits(tx.amount);
         if (amount < 0) throw new Error('Деньги из этого взноса уже возвращены.');
-        const free = toMinorUnits(totalAccountBalance(state.accounts, state.transactions)) - toMinorUnits(reservedGoals(state.goals));
+        const free = freeCents(state);
         if (tx.kind === 'goal_release' && free < toMinorUnits(tx.amount)) throw new Error('Недостаточно свободных денег для восстановления резерва.');
         goals = state.goals.map(item => item.id === goal.id ? { ...item, current_amount: fromMinorUnits(amount), is_completed: amount >= toMinorUnits(item.target_amount) } : item);
       } else if (tx.kind === 'transfer') {
         const target = accountBalances(state.accounts, state.transactions)[tx.targetAccountId || ''] ?? 0;
         if (toMinorUnits(target) < toMinorUnits(tx.amount)) throw new Error('Переведенные деньги уже потрачены.');
       } else if (tx.type === 'income') {
-        const reserved = toMinorUnits(reservedGoals(goals));
+        const reserved = toMinorUnits(reservedGoals(goals)) + toMinorUnits(budgetReserved(state.budgets,state.transactions));
         if (reserved > 0 && toMinorUnits(totalAccountBalance(state.accounts, state.transactions)) - toMinorUnits(tx.amount) < reserved) throw new Error('Сначала освободите деньги из целей.');
       }
       commit({ ...state, goals, transactions: state.transactions.filter(item => item.id !== id) });

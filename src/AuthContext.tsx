@@ -203,7 +203,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     householdNameOrId: string
   ) => {
     const { data: schemaVersion, error: schemaError } = await supabase.rpc('finance_schema_version');
-    if (schemaError || schemaVersion !== 1) throw new Error('Для регистрации требуется обновление базы приложения.');
+    if (schemaError || !Number.isInteger(schemaVersion) || schemaVersion < 1) throw new Error('Для регистрации требуется обновление базы приложения.');
     // The registration trigger creates a household or redeems a one-use invitation.
     // Clients never grant themselves membership using an arbitrary household UUID.
     const { error: signUpError } = await supabase.auth.signUp({
