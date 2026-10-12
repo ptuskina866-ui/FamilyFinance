@@ -4,11 +4,17 @@ import { useAuth } from '../AuthContext';
 import { DynamicIcon } from '../components/CategoryGrid';
 import { BankSyncModal } from '../components/BankSyncModal';
 import { PayDreamFirstBanner } from '../components/PayDreamFirstBanner';
+import { AccountsPanel } from '../components/AccountsPanel';
+import { TransactionEditor } from '../components/TransactionEditor';
+import { calculateSafeDaily, isCashflow } from '../lib/finance';
+import { localDateISO } from '../lib/money';
+import { Transaction } from '../types';
 import { 
   Trash2, 
   Landmark, 
   Eye, 
   EyeOff, 
+  Pencil, Search,
   TrendingUp, 
   Target, 
   ShieldCheck, 
@@ -22,16 +28,16 @@ const formatDateGroup = (iso: string) => {
   const now = new Date();
   
   // Format to YYYY-MM-DD for simple day comparison
-  const dStr = d.toISOString().split('T')[0];
-  const nowStr = now.toISOString().split('T')[0];
+  const dStr = iso;
+  const nowStr = localDateISO(now);
   
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
-  const yStr = yesterday.toISOString().split('T')[0];
+  const yStr = localDateISO(yesterday);
 
   if (dStr === nowStr) return 'Сегодня';
   if (dStr === yStr) return 'Вчера';
-  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', ...(d.getFullYear() !== now.getFullYear() ? { year: 'numeric' as const } : {}) });
 };
 
 interface HomeScreenProps {
@@ -49,49 +55,38 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
     getCategoryById, 
     getMemberById,
     savingsGoals,
-    updateGoalAmount 
+    availableBalance, reservedBalance, accounts, recurringTransactions, accountsReady
   } = useApp();
   const { profile } = useAuth();
 
   const [bankSyncOpen, setBankSyncOpen] = useState(false);
   const [hideBalance, setHideBalance] = useState(false);
   const [filterType, setFilterType] = useState<'all' | 'expense' | 'income'>('all');
+  const [search, setSearch] = useState('');
+  const [accountFilter, setAccountFilter] = useState('');
+  const [editing, setEditing] = useState<Transaction | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [operationError, setOperationError] = useState<string | null>(null);
 
   // Daily budget calculation
   const safeDaily = useMemo(() => {
-    const now = new Date();
-    const todayISO = now.toISOString().split('T')[0];
-    const totalDays = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    const daysLeft = Math.max(1, totalDays - now.getDate() + 1);
-
-    const spentToday = transactions
-      .filter(t => t.date === todayISO && t.type === 'expense')
-      .reduce((sum, t) => sum + t.amount, 0);
-
-    const freePool = Math.max(0, balance * 0.8);
-    const limit = Math.max(25, Math.round(freePool / daysLeft));
-    const remaining = Math.max(0, limit - spentToday);
-
-    return {
-      limit,
-      spentToday,
-      remaining,
-      daysLeft,
-      isOver: spentToday > limit
-    };
-  }, [balance, transactions]);
+    return calculateSafeDaily(availableBalance, transactions, recurringTransactions, localDateISO());
+  }, [availableBalance, transactions, recurringTransactions]);
 
   // Car goal quick glance
   const carGoal = useMemo(() => {
-    return savingsGoals.find(
+    return savingsGoals.filter(g => !g.is_archived).find(
       g => g.name.toLowerCase().includes('машин') || g.name.toLowerCase().includes('авто') || g.emoji === '🚗'
-    ) || savingsGoals[0];
+    ) || savingsGoals.find(g => !g.is_archived);
   }, [savingsGoals]);
 
   // Grouped transactions by Date
   const groupedTransactions = useMemo(() => {
     const filtered = transactions.filter(tx => {
-      return filterType === 'all' || tx.type === filterType;
+      const query = search.trim().toLocaleLowerCase('ru-RU');
+      return (filterType === 'all' || (isCashflow(tx) && tx.type === filterType)) &&
+        (!accountFilter || tx.accountId === accountFilter || tx.targetAccountId === accountFilter) &&
+        (!query || `${tx.comment} ${getCategoryById(tx.categoryId)?.name || ''} ${tx.amount}`.toLocaleLowerCase('ru-RU').includes(query));
     });
 
     const groups: { dateLabel: string; items: typeof transactions }[] = [];
@@ -107,7 +102,15 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
     }
 
     return groups;
-  }, [transactions, filterType]);
+  }, [transactions, filterType, search, accountFilter, getCategoryById]);
+
+  const handleDelete = async (tx: Transaction) => {
+    if (!window.confirm('Удалить операцию? Остатки и связанный резерв будут пересчитаны.')) return;
+    setDeletingId(tx.id); setOperationError(null);
+    try { await deleteTransaction(tx.id); }
+    catch (error) { setOperationError(error instanceof Error ? error.message : 'Не удалось удалить операцию.'); }
+    finally { setDeletingId(null); }
+  };
 
   return (
     <div className="flex flex-col overflow-y-auto no-scrollbar h-full select-none">
@@ -149,7 +152,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/10 text-slate-900 text-xs font-black">
               <span>BYN</span>
-              <span className="text-[10px] text-slate-700 font-bold">· Основной счет</span>
+              <span className="text-[10px] text-slate-700 font-bold">· Все счета</span>
             </div>
 
             <button
@@ -160,6 +163,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
               {hideBalance ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
+          {accountsReady && <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-800">
+            <span>Свободно: <strong>{hideBalance ? '••••' : fmt(availableBalance)}</strong></span>
+            <span>В целях: <strong>{hideBalance ? '••••' : fmt(reservedBalance)}</strong></span>
+          </div>}
 
           {/* Balance Amount */}
           <div className="flex flex-col gap-0.5 my-1">
@@ -180,6 +187,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
             </span>
           </div>
         </div>
+
+        <AccountsPanel hideBalances={hideBalance} />
 
         {/* ── Quick Action Buttons (like Pay, Transfer, Receive in reference) ── */}
         <div className="flex justify-around items-center px-2">
@@ -224,9 +233,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
         <PayDreamFirstBanner
           transactions={transactions}
           goals={savingsGoals}
-          onDepositToGoal={async (goalId, amount) => {
-            await updateGoalAmount(goalId, amount);
-          }}
+          availableBalance={availableBalance}
+          onOpenPlans={() => onNavigateTab?.('plans')}
         />
 
         {/* ── Horizontal Widgets (Currency/Goals like reference middle screen) ── */}
@@ -254,10 +262,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
                 </span>
               </div>
               <div>
-                <span className="text-[10px] font-bold text-slate-400 block">На сегодня</span>
+                <span className="text-[10px] font-bold text-slate-400 block">На сегодня · оценка</span>
                 <span className="text-xl font-black text-slate-900 leading-tight">
                   {fmt(safeDaily.remaining)}
                 </span>
+                <span className="text-[9px] text-slate-500 block mt-1">После целей и ближайших платежей</span>
               </div>
             </div>
 
@@ -302,6 +311,14 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
 
         {/* ── Latest Transactions Section ── */}
         <div className="flex flex-col gap-3 pt-1">
+          {operationError && <p role="alert" className="text-xs text-rose-600">{operationError}</p>}
+          <label className="card px-3 py-2.5 flex items-center gap-2">
+            <Search className="w-4 h-4 text-slate-400" />
+            <input aria-label="Поиск операций" value={search} onChange={e => setSearch(e.target.value)} placeholder="Найти операцию" className="w-full min-w-0 bg-transparent text-xs outline-none" />
+          </label>
+          {accountsReady && <select aria-label="Фильтр по счету" value={accountFilter} onChange={e => setAccountFilter(e.target.value)} className="card p-3 text-xs">
+            <option value="">Все счета</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>}
           <div className="flex justify-between items-center px-1">
             <span className="text-xs font-black text-slate-800 tracking-tight">Последние операции</span>
             
@@ -341,6 +358,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
                     {group.items.map(tx => {
                       const cat = getCategoryById(tx.categoryId);
                       const isIncome = tx.type === 'income';
+                      const cashflow = isCashflow(tx);
+                      const label = tx.kind === 'transfer' ? 'Перевод между счетами' : tx.kind === 'goal_deposit' ? 'Резерв в цель' : tx.kind === 'goal_release' ? 'Возврат из цели' : cat?.name || 'Без категории';
                       const member = getMemberById(tx.addedBy);
 
                       return (
@@ -356,21 +375,24 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
 
                             <div className="flex flex-col min-w-0">
                               <span className="text-xs font-black text-slate-900 truncate">
-                                {tx.comment || cat?.name || 'Операция'}
+                                {(tx.comment || label).replace(/\s*\[goal_id:[^\]]+\]/g, '')}
                               </span>
                               <span className="text-[10px] font-bold text-slate-400">
-                                {cat?.name || 'Без категории'} {member ? `· ${member.name}` : ''}
+                                {label} {member ? `· ${member.name}` : ''}
                               </span>
                             </div>
                           </div>
 
                           <div className="flex items-center gap-2 shrink-0">
                             <span className={`text-xs font-black ${isIncome ? 'text-emerald-600' : 'text-slate-900'}`}>
-                              {isIncome ? '+' : '-'}{fmt(tx.amount)}
+                              {cashflow ? (isIncome ? '+' : '-') : '↔ '}{fmt(tx.amount)}
                             </span>
+                            {cashflow && accountsReady && <button type="button" aria-label="Редактировать операцию" onClick={() => setEditing(tx)} className="w-8 h-8 rounded-full text-slate-400 flex items-center justify-center"><Pencil className="w-3.5 h-3.5" /></button>}
                             <button
                               type="button"
-                              onClick={() => deleteTransaction(tx.id)}
+                              aria-label="Удалить операцию"
+                              disabled={deletingId !== null}
+                              onClick={() => { void handleDelete(tx); }}
                               className="w-7 h-7 rounded-full hover:bg-rose-50 hover:text-rose-500 text-slate-300 flex items-center justify-center transition-colors"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -390,6 +412,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
 
       {/* Bank Sync Modal fallback */}
       <BankSyncModal isOpen={bankSyncOpen} onClose={() => setBankSyncOpen(false)} />
+      {editing && <TransactionEditor transaction={editing} onClose={() => setEditing(null)} />}
     </div>
   );
 };

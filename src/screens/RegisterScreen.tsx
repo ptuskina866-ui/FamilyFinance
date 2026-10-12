@@ -18,19 +18,21 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogin }) =>
   const [householdName,   setHouseholdName]   = useState('');
   const [householdId,     setHouseholdId]     = useState('');
   const [errorMsg, setErrorMsg] = useState<string|null>(null);
+  const [success, setSuccess] = useState(false);
   const [loading,  setLoading]  = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !email || !password) { setErrorMsg('Заполните все обязательные поля.'); return; }
     if (householdAction === 'create' && !householdName) { setErrorMsg('Укажите название семьи.'); return; }
-    if (householdAction === 'join'   && !householdId)   { setErrorMsg('Укажите Household ID.'); return; }
+    if (householdAction === 'join'   && !householdId)   { setErrorMsg('Укажите код приглашения.'); return; }
     try {
       setErrorMsg(null); setLoading(true);
       const target = householdAction === 'create' ? householdName.trim() : householdId.trim();
       await signUp(email, password, name.trim(), avatar, color, householdAction, target);
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Ошибка регистрации.');
+      setSuccess(true);
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Ошибка регистрации.');
     } finally { setLoading(false); }
   };
 
@@ -53,6 +55,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogin }) =>
       </div>
 
       <div className="px-5 pt-3 pb-12 flex flex-col gap-4 max-w-md mx-auto w-full">
+        {success && <div role="status" className="card p-4 text-xs text-emerald-800">Регистрация принята. Если включено подтверждение email, откройте письмо и подтвердите адрес.<button type="button" onClick={onNavigateToLogin} className="block mt-2 font-bold underline">Перейти ко входу</button></div>}
         {errorMsg && (
           <div className="flex items-center gap-2 bg-rose-50 border border-rose-100/80 rounded-2xl p-3 text-xs text-rose-600 font-bold">
             <AlertCircle className="w-4 h-4 shrink-0" />
@@ -181,7 +184,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogin }) =>
                     : 'text-slate-500 hover:text-slate-900 font-bold'
                 }`}
               >
-                Войти по ID
+                По приглашению
               </button>
             </div>
 
@@ -201,14 +204,14 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogin }) =>
               </div>
             ) : (
               <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Household ID</label>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Код приглашения</label>
                 <div className="relative">
                   <Link className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input 
                     type="text" 
                     value={householdId} 
                     onChange={e => setHouseholdId(e.target.value)} 
-                    placeholder="Вставьте UUID код" 
+                    placeholder="Вставьте код из профиля партнера"
                     className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white/80 backdrop-blur-xl border border-white/90 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-950/10 transition-all shadow-sm" 
                   />
                 </div>

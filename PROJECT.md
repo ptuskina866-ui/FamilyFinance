@@ -76,11 +76,17 @@ Application screens.
 src/services/
 Integration and service logic.
 
+src/lib/money.ts and src/lib/finance.ts
+Exact integer-kopeck arithmetic, account balances, savings reservations, spending estimates and contribution-based goal plans.
+
+src/demo/DemoApp.tsx
+Development-only local demo (`?demo=1`). It reuses application screens, persists only isolated demo records and makes no Supabase requests. It is excluded from production builds.
+
 supabase/functions/
 Supabase Edge Functions.
 
 supabase_schema.sql
-Database schema, functions and RLS policies.
+Database initialization script (tables, functions, RLS policies, registration trigger, and Realtime publications). Changes must be statically checked for syntax and idempotency; full execution verification requires an isolated test Supabase/PostgreSQL environment. Do not assume exact schema identity with the live database without explicit verification.
 
 ## Screens
 
@@ -139,6 +145,13 @@ Fields include:
 - date
 - creator
 - household
+- source account and optional transfer destination
+- kind: cashflow / transfer / goal_deposit / goal_release
+- optional goal and recurring-template links
+
+### Account
+
+Table: `accounts`. Household-owned BYN bank, cash or savings account with an opening balance. Opening capital and transfers are excluded from income/expense analytics. Transfers are one atomic ledger row with both accounts.
 
 ### Recurring transaction
 
@@ -160,6 +173,9 @@ Fields include:
 - current amount
 - deadline
 - completion state
+- archive state
+
+Goal funds are reservations within household capital. Reserving/releasing does not move funds between bank accounts or count as consumption/income. Archive releases funds while preserving history. Server RPCs update goal funds and ledger rows atomically.
 
 ## Security model
 
@@ -174,6 +190,8 @@ public.get_my_household_id()
 is used by RLS policies to resolve the authenticated user's household.
 
 Client code must not circumvent this model.
+
+The accounts release adds one-use, seven-day household invitations. Signup creates a household or consumes a validated invitation in the registration trigger; arbitrary household UUID metadata and direct profile membership changes are rejected. Existing memberships remain intact. These rules take effect only after the release migration is applied; the live database has not been migrated during development.
 
 ## Authentication
 
@@ -190,7 +208,7 @@ AuthContext manages:
 
 ## Bank integration
 
-FinApp contains Alfa-Bank integration and statement parsing.
+FinApp supports bank statement import and parses Alfa-Bank card statement PDF and 1C formats locally via `pdfjs-dist` and `alfaBankService.ts`.
 
 Key implementation areas:
 
@@ -202,7 +220,9 @@ src/screens/BankStatementScreen.tsx
 
 supabase/functions/alfa-sync
 
-PDF parsing is supported through pdfjs-dist.
+docs/alfa-bank-integration-research.md
+
+Direct API synchronization (`alfa-sync`) is currently in demonstration/research mode. Official Open API connectivity research is documented in `docs/alfa-bank-integration-research.md`; bank FAQ confirms Open API is free, but production access for individuals requires contract approval from Alfa-Bank.
 
 Bank import logic is considered sensitive because incorrect parsing can corrupt financial analytics.
 
@@ -228,6 +248,8 @@ Service worker update mode:
 autoUpdate
 
 The application is primarily designed for mobile usage.
+
+PDF.js is loaded on demand; its worker is included in the PWA asset cache. Financial data remains server-backed and requires a network connection; offline entry/synchronization is a future feature.
 
 ## UI
 
@@ -256,6 +278,14 @@ Bank-imported transactions must avoid duplication.
 Savings and forecasting functionality relies on correct historic transaction data.
 
 Financial values must not be silently rounded, altered or dropped.
+
+Accounts initialization previews recognizable old savings deposits/refunds and the resulting capital/reserved/free balances. Only selected rows change their accounting kind; monetary values and category IDs remain untouched. Unselected legacy rows remain cashflow, and incomplete history can leave a visible negative free balance requiring reconciliation.
+
+The daily estimate has no artificial positive minimum, excludes goal reservations and unposted remaining monthly obligations, and never treats forecast income as available funds. Goal forecasts use actual linked net contributions; insufficient history produces no invented savings rate.
+
+Transactions are loaded in stable 500-row pages so the hosted API response limit does not silently truncate account balances. Goals and recurring templates subscribe to household Realtime updates. Regular occurrences are applied atomically with a unique template/date identity; missed months are not backfilled.
+
+Auth profile loading rejects stale responses after user changes or sign-out, and financial loading accepts only a profile belonging to the current authenticated user.
 
 ## Environment
 
@@ -287,13 +317,16 @@ npm run preview
 
 ## Current technical limitations
 
-There is currently no dedicated automated test command in package.json.
+`npm test` checks exact money, financial calculations, forecasts and auth-loading races using the Node test runner and installed TypeScript compiler.
 
-Build/type-check is therefore the minimum required automated verification.
+`npm run test:database` runs executable PostgreSQL migration/RLS/atomicity checks in isolated PGlite. PGlite is a development-only dependency and does not enter the mobile bundle. Hosted Supabase Auth, Realtime and concurrent independent connections still require staging verification.
 
-A future improvement should introduce unit tests for:
+`npm run build` checks TypeScript, production assets and PWA generation.
 
-- bank parsers;
-- financial calculations;
-- forecasting logic;
-- duplicate transaction detection.
+Bank parser fixtures and robust server-side import identity remain future test/implementation work. Account selection now scopes duplicate preview to the chosen account; existing heuristic duplicate detection remains.
+
+## Accounts release deployment
+
+Apply `supabase/migrations/20261012_accounts_and_savings.sql` together with the updated frontend after reviewing the actual schema. The same SQL section is included in `supabase_schema.sql` for fresh installations. Details: `docs/migration-accounts.md`.
+
+The accounts migration was applied to the configured Supabase project on 2026-10-12 after inspection and a private same-project backup. `finance_schema_version()` returns 1. All 131 existing transactions and four goals were compared with the backup and remained unchanged. The live `profiles.role` field is NOT NULL with a default of 'Участник', compatible with the revised registration trigger. Cloudflare Workers Builds is connected to GitHub main for frontend publishing. Account initialization remains an explicit, reviewed user action.
