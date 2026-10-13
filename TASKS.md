@@ -2,7 +2,7 @@
 
 # Current work
 
-Stage two is published and verified at `https://familyfinance.ptuskina866.workers.dev/`: shared category budgets, confirmed income distribution and cashflow calendar. Working login, configured production bundle and planning API verified on 2026-10-13. Database installed with private backup and existing rows unchanged at migration time. Development demo: `http://127.0.0.1:5173/?demo=1`.
+Flexible planning is implemented and tested: category transfers, reviewed income editing/cancellation, previous-month decisions, ordered salary templates, emergency reserves and expense funds. Working database updated with private backup and unchanged existing financial rows verified; frontend publication is in progress through Cloudflare/GitHub. Development demo: `http://127.0.0.1:5173/?demo=1`.
 
 ## Project maintenance backlog
 
@@ -21,6 +21,15 @@ Stage two is published and verified at `https://familyfinance.ptuskina866.worker
 - Review Supabase schema and RLS consistency (including full execution of `supabase_schema.sql` and trigger testing in an isolated test PostgreSQL/Supabase instance; audit household isolation).
 
 ## Recently completed
+
+- Implemented the accepted next release (flexible budgets, salary templates, future-expense funds) on 2026-10-13.
+  - Atomic transfers conserve capital/free balance, including deficits; overspent destinations receive the full transferred remainder.
+  - Current-month distribution editing/cancellation uses refund previews, revision checks, compensating goal movements and an immutable revision journal. Used expenses remain intact.
+  - One reviewed choice per previous month: repeat, carry, save to a goal, or leave free. No automatic/duplicate carryover.
+  - Fixed/percentage salary templates use ordered priorities and exact arithmetic, prepare a reviewed draft, and archive without deleting history.
+  - Funds reuse goals and reserve accounting; emergency coverage has user-confirmed essential expenses and expense funds have target/deadline.
+  - 38 calculation/auth tests and 176 executable SQL checks pass. Local UI flows verified at 320/390 px, including mixed salary plan, revision/cancellation, month review, transfers, template creation and fund contributions. Production/PWA build passes.
+  - Supabase CLI generated migration file; installed with private pre-release snapshot. Existing transactions/goals/accounts/budgets/distributions unchanged. New tables have household policies/read-only client grants; internal helpers are private.
 
 - Final production verification on 2026-10-13: PR #3 merged as `8cbe769`; Cloudflare build succeeded, version `6c6dcf8a-906f-4743-88f7-7aa8915d3cba`. Deployed `index-C8GZ1VfW.js` includes budget/distribution/calendar features and the configured Supabase project. Login renders without runtime errors at 390 px; planning capability API returns 200/1. Both new tables have all eight household policies and Realtime publication; authenticated read allowed, direct inserts and anonymous read denied.
 

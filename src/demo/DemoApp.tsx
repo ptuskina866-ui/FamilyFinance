@@ -3,12 +3,13 @@ import { AppContent } from '../App';
 import { AppContext, type AppContextType } from '../AppContext';
 import { AuthContext, type AuthContextType } from '../AuthContext';
 import { CATEGORIES } from '../mockData';
-import type { Account, FamilyMember, RecurringTransaction, SavingsGoal, Transaction, CategoryBudget, IncomeDistribution } from '../types';
+import type { Account, FamilyMember, RecurringTransaction, SavingsGoal, Transaction, CategoryBudget, IncomeDistribution, IncomeTemplate, BudgetRollover, DistributionRevision,IncomeAllocation } from '../types';
 import { accountBalances, cashflowTotals, isCashflow, reservedGoals, totalAccountBalance } from '../lib/finance';
-import { fromMinorUnits, localDateISO, toMinorUnits } from '../lib/money';
+import { fromMinorUnits, localDateISO, sumMoney, toMinorUnits } from '../lib/money';
 import { allocationTotal, budgetProgress, budgetReserved, planningDateISO, validateBudgetScopes } from '../lib/planning';
+import { distributionRefund,emergencyTarget,previousBudgetReview,previousPlanningMonth,resolveIncomeTemplate,transferBudgetPreview } from '../lib/flexiblePlanning';
 
-const STORAGE_KEY = 'ff_demo_v2';
+const STORAGE_KEY = 'ff_demo_v3';
 const HOUSEHOLD_ID = '00000000-0000-4000-8000-000000000001';
 const MEMBER_ID = '00000000-0000-4000-8000-000000000002';
 const CREATED_AT = '2026-01-01T00:00:00Z';
@@ -30,7 +31,7 @@ const DEMO_AUTH: AuthContextType = {
 };
 
 interface DemoData {
-  version: 2;
+  version: 3;
   accounts: Account[];
   transactions: Transaction[];
   goals: SavingsGoal[];
@@ -38,6 +39,7 @@ interface DemoData {
   budgetLimit: number;
   budgets: CategoryBudget[];
   distributions: IncomeDistribution[];
+  templates: IncomeTemplate[]; rollovers: BudgetRollover[]; revisions: DistributionRevision[];
 }
 
 const normalizeMoney = (amount: number) => fromMinorUnits(toMinorUnits(amount));
@@ -79,7 +81,7 @@ function fixtures(): DemoData {
   ].map(account => ({ ...account, household_id: HOUSEHOLD_ID, currency: 'BYN', is_archived: false, created_at: CREATED_AT }) as Account);
   const goals: SavingsGoal[] = [
     { id: 'demo-holiday', name: 'Отпуск', target_amount: 3000, current_amount: 900, emoji: '🏖️', deadline: monthDate(today, 6, 12) },
-    { id: 'demo-emergency', name: 'Подушка безопасности', target_amount: 5000, current_amount: 800, emoji: '🛟', deadline: null },
+    { id: 'demo-emergency', name: 'Подушка безопасности', purpose:'emergency' as const,essential_amount:1000,reserve_months:5,essential_categories:['food','housing','utilities'],target_amount: 5000, current_amount: 800, emoji: '🛟', deadline: null },
   ].map(goal => ({ ...goal, household_id: HOUSEHOLD_ID, is_completed: false, is_archived: false, created_at: `${oldDate}T12:00:00` }));
   const transaction = (id: string, type: Transaction['type'], amount: number, categoryId: string, date: string, comment: string): Transaction => ({ id, type, amount, categoryId, date, comment, addedBy: MEMBER_ID, accountId: 'demo-main', kind: 'cashflow' });
   const transactions: Transaction[] = [
@@ -95,13 +97,16 @@ function fixtures(): DemoData {
       transactions.push({ id: `${goalId}-deposit-${index}`, type: 'expense', amount, categoryId: 'savings', date: monthDate(today, index - 2, index === 2 ? Math.min(2, Number(today.slice(8))) : 2), comment: `Резервирование: ${name}`, addedBy: MEMBER_ID, kind: 'goal_deposit', goalId });
     }
   }
-  return { version: 2, accounts, goals, transactions, budgets: [], distributions: [], budgetLimit: 2200, recurring: [
+  return { version: 3, accounts, goals, transactions,
+    budgets: [{id:'demo-last-food',household_id:HOUSEHOLD_ID,month:previousPlanningMonth(today),category_id:'food',allocated_amount:150,created_at:CREATED_AT,updated_at:CREATED_AT}], distributions: [],rollovers:[],revisions:[],
+    templates:[{id:'demo-template',household_id:HOUSEHOLD_ID,name:'Моя зарплата',items:[{targetType:'budget',targetId:'utilities',mode:'fixed',value:450},{targetType:'goal',targetId:'demo-holiday',mode:'percent',value:10},{targetType:'goal',targetId:'demo-emergency',mode:'percent',value:10}],created_at:CREATED_AT,updated_at:CREATED_AT}],
+    budgetLimit: 2200, recurring: [
     { id: 'demo-bill', household_id: HOUSEHOLD_ID, added_by: MEMBER_ID, type: 'expense', amount: 450, category_id: 'utilities', comment: 'Коммунальные и связь', day_of_month: 20, last_applied: monthDate(today, -1, 20), is_active: true, created_at: CREATED_AT },
   ] };
 }
 
 function assertData(data: DemoData): void {
-  if (data.version !== 2 || !Array.isArray(data.accounts) || data.accounts.length === 0 || !Array.isArray(data.transactions) || !Array.isArray(data.goals) || !Array.isArray(data.recurring) || !Array.isArray(data.budgets) || !Array.isArray(data.distributions)) throw new Error('Некорректные демо-данные.');
+  if (data.version !== 3 || !Array.isArray(data.accounts) || data.accounts.length === 0 || !Array.isArray(data.transactions) || !Array.isArray(data.goals) || !Array.isArray(data.recurring) || !Array.isArray(data.budgets) || !Array.isArray(data.distributions) || !Array.isArray(data.templates) || !Array.isArray(data.rollovers) || !Array.isArray(data.revisions)) throw new Error('Некорректные демо-данные.');
   positiveMoney(data.budgetLimit);
   const ids = new Set<string>();
   for (const account of data.accounts) {
@@ -125,6 +130,7 @@ function assertData(data: DemoData): void {
     const ledgerCents = ledger.reduce((total, tx) => total + (tx.kind === 'goal_deposit' ? 1 : -1) * toMinorUnits(tx.amount), 0);
     if (ledgerCents !== toMinorUnits(goal.current_amount) || (goal.is_archived && ledgerCents !== 0)) throw new Error('Сумма цели не совпадает с историей.');
     goalIds.add(goal.id);
+    if(goal.purpose==='emergency'&&toMinorUnits(goal.target_amount)!==toMinorUnits(emergencyTarget(goal.essential_amount || 0,goal.reserve_months || 0)))throw new Error('Некорректный план подушки.');
   }
   for (const tx of data.transactions) {
     if ((tx.kind === 'goal_deposit' || tx.kind === 'goal_release') && (!tx.goalId || !goalIds.has(tx.goalId))) throw new Error('Цель операции не найдена.');
@@ -144,9 +150,11 @@ function assertData(data: DemoData): void {
   const distributedIncome = new Set<string>();
   for (const d of data.distributions) {
     const source = data.transactions.find(t => t.id === d.income_transaction_id && isCashflow(t) && t.type === 'income');
-    if (d.household_id !== HOUSEHOLD_ID || !source || distributedIncome.has(source.id) || toMinorUnits(allocationTotal(d.items)) !== toMinorUnits(d.total_amount) || source.amount < d.total_amount) throw new Error('Некорректное распределение.');
+    if (d.household_id !== HOUSEHOLD_ID || !source || distributedIncome.has(source.id) || toMinorUnits(allocationTotal(d.items)) !== toMinorUnits(d.total_amount) || (d.status!=='cancelled' && source.amount < d.total_amount)) throw new Error('Некорректное распределение.');
     distributedIncome.add(source.id);
   }
+  for(const template of data.templates) resolveIncomeTemplate(template.items,1,1);
+  if(new Set(data.rollovers.map(r=>r.source_month)).size!==data.rollovers.length)throw new Error('Повтор решения по месяцу.');
 }
 
 const freeCents = (state: DemoData) => toMinorUnits(totalAccountBalance(state.accounts,state.transactions)) - toMinorUnits(reservedGoals(state.goals)) - toMinorUnits(budgetReserved(state.budgets,state.transactions));
@@ -159,6 +167,25 @@ function withBudget(state: DemoData, categoryId: string, amount: number): DemoDa
   const next = {...state,budgets:[...state.budgets.filter(b => b.id !== old?.id),budget]};
   if (freeCents(next) < 0 && freeCents(next) < freeCents(state)) throw new Error('Недостаточно свободных денег.');
   return next;
+}
+function withGoalChange(state:DemoData,goalId:string,amount:number,distributionId?:string):DemoData {
+ const goal=state.goals.find(g=>g.id===goalId&&!g.is_archived),cents=toMinorUnits(amount);
+ if(!goal||!cents)throw new Error('Активная цель и ненулевая сумма обязательны.');
+ if(cents>freeCents(state)&&cents>0)throw new Error('Недостаточно свободных денег.');
+ const next=toMinorUnits(goal.current_amount)+cents;
+ if(next<0)throw new Error('Нельзя вернуть больше, чем накоплено.');
+ return {...state,goals:state.goals.map(g=>g.id===goal.id?{...g,current_amount:fromMinorUnits(next),is_completed:next>=toMinorUnits(g.target_amount)}:g),transactions:[...state.transactions,{id:newId(),kind:cents>0?'goal_deposit':'goal_release',type:cents>0?'expense':'income',amount:fromMinorUnits(Math.abs(cents)),categoryId:'savings',goalId:goal.id,incomeDistributionId:distributionId,date:planningDateISO(),comment:`${cents>0?'Резервирование':'Возврат из цели'}: ${goal.name}`,addedBy:MEMBER_ID}]};
+}
+function withAllocations(state:DemoData,items:IncomeAllocation[],distributionId:string):DemoData {
+ let next=state;
+ for(const item of items){
+  if(item.targetType==='goal')next=withGoalChange(next,item.targetId,item.amount,distributionId);
+  else {
+   const budget=next.budgets.find(b=>b.month===`${planningDateISO().slice(0,7)}-01`&&b.category_id===item.targetId) || {category_id:item.targetId,month:`${planningDateISO().slice(0,7)}-01`,allocated_amount:0} as CategoryBudget;
+   next=withBudget(next,item.targetId,fromMinorUnits(Math.max(toMinorUnits(budget.allocated_amount),toMinorUnits(budgetProgress(budget,next.transactions).spent))+toMinorUnits(item.amount)));
+  }
+ }
+ return next;
 }
 
 function applyDueRecurring(data: DemoData): DemoData {
@@ -235,6 +262,52 @@ export default function DemoApp() {
     financeLoading: false, financeError: storageError, balance, reservedBalance,
     availableBalance: fromMinorUnits(freeCents(data)), monthlyIncome: monthly.income, monthlyExpense: monthly.expense,
     categoryBudgets: data.budgets, incomeDistributions: data.distributions, planningReady: true, budgetReservedBalance,
+    flexiblePlanningReady:true,incomeTemplates:data.templates.filter(t=>!t.is_archived),budgetRollovers:data.rollovers,distributionRevisions:data.revisions,
+    transferCategoryBudget:async(from,to,amount)=>{
+     const state=current.current,month=`${planningDateISO().slice(0,7)}-01`;
+     const budgets=transferBudgetPreview(state.budgets,state.transactions,from,to,amount,month).map(b=>b.id.startsWith('preview:')?{...b,id:newId()}:b);
+     const next={...state,budgets};if(freeCents(next)!==freeCents(state))throw new Error('Перенос должен сохранять свободные средства.');commit(next);
+    },
+    changeIncomeDistribution:async(id,items,revision,preview)=>{
+     const state=current.current,d=state.distributions.find(x=>x.id===id&&x.month===`${planningDateISO().slice(0,7)}-01`);
+     if(!d||(d.revision || 1)!==revision)throw new Error('План изменился. Обновите предварительный расчёт.');
+     const refund=distributionRefund(d,state.budgets,state.goals,state.transactions);
+     if(JSON.stringify(refund)!==JSON.stringify(preview))throw new Error('Резервы изменились. Проверьте расчёт ещё раз.');
+     if(d.status==='cancelled'&&!items)return;
+     let next=state;
+     for(const item of refund){if(item.amount<=0)continue;if(item.targetType==='goal')next=withGoalChange(next,item.targetId,-item.amount,d.id);else{const budget=next.budgets.find(b=>b.month===d.month&&b.category_id===item.targetId);if(!budget)throw new Error('Бюджет не найден.');next=withBudget(next,item.targetId,fromMinorUnits(toMinorUnits(budget.allocated_amount)-toMinorUnits(item.amount)));}}
+     const source=state.transactions.find(t=>t.id===d.income_transaction_id&&t.type==='income'&&isCashflow(t));
+     if(items){const total=allocationTotal(items);if(!source||toMinorUnits(total)>toMinorUnits(source.amount)||toMinorUnits(total)>freeCents(next))throw new Error('Распределение превышает доступные деньги.');next=withAllocations(next,items,d.id);}
+     const updated={...d,status:items?'active' as const:'cancelled' as const,items:items || d.items,total_amount:items?allocationTotal(items):d.total_amount,revision:revision+1,updated_at:new Date().toISOString()};
+     commit({...next,distributions:next.distributions.map(x=>x.id===id?updated:x),revisions:[...next.revisions,{id:newId(),household_id:HOUSEHOLD_ID,distribution_id:id,revision:revision+1,action:items?'edit':'cancel',created_at:new Date().toISOString(),before_state:d,after_state:updated,refund}]});
+    },
+    saveIncomeTemplate:async(id,name,items)=>{
+     resolveIncomeTemplate(items,1,1);if(!name.trim()||name.length>80)throw new Error('Введите название шаблона.');
+     const state=current.current;if(items.some(i=>i.targetType==='goal'&&!state.goals.some(g=>g.id===i.targetId&&!g.is_archived)))throw new Error('Активная цель не найдена.');
+     const old=state.templates.find(t=>t.id===id&&!t.is_archived);if(id&&!old)throw new Error('Шаблон не найден.');
+     const template:IncomeTemplate={id:old?.id || newId(),household_id:HOUSEHOLD_ID,name:name.trim(),items,created_at:old?.created_at || new Date().toISOString(),updated_at:new Date().toISOString()};
+     commit({...state,templates:[...state.templates.filter(t=>t.id!==old?.id),template]});
+    },
+    archiveIncomeTemplate:async(id)=>{commit({...current.current,templates:current.current.templates.map(t=>t.id===id?{...t,is_archived:true}:t)});},
+    reviewBudgetMonth:async(mode,goalId,preview)=>{
+     const state=current.current,previous=previousPlanningMonth(),month=`${planningDateISO().slice(0,7)}-01`;
+     if(state.rollovers.some(r=>r.source_month===previous))throw new Error('Решение по этому месяцу уже сохранено.');
+     const expected=previousBudgetReview(state.budgets,state.transactions,mode);if(!expected.length||JSON.stringify(expected)!==JSON.stringify(preview))throw new Error('Данные месяца изменились. Обновите расчёт.');
+     if(mode==='repeat'&&state.budgets.some(b=>b.month===month&&b.allocated_amount>0))throw new Error('В этом месяце уже есть план.');
+     let next=state;const total=sumMoney(expected.map(i=>i.amount));
+     if(mode==='carry'||mode==='repeat')for(const item of expected){const budget=next.budgets.find(b=>b.month===month&&b.category_id===item.targetId) || {month,category_id:item.targetId,allocated_amount:0} as CategoryBudget;const amount=mode==='repeat'?item.amount:fromMinorUnits(Math.max(toMinorUnits(budget.allocated_amount),toMinorUnits(budgetProgress(budget,next.transactions).spent))+toMinorUnits(item.amount));next=withBudget(next,item.targetId,amount);}
+     if(mode==='goal'){if(!goalId)throw new Error('Выберите цель.');next=withGoalChange(next,goalId,total);}
+     commit({...next,rollovers:[...next.rollovers,{id:newId(),household_id:HOUSEHOLD_ID,source_month:previous,target_month:month,mode,amount:total,created_at:new Date().toISOString()}]});
+    },
+    saveFund:async(input)=>{
+     const state=current.current;if(!input.name.trim()||input.name.length>80)throw new Error('Введите название фонда.');
+     const old=state.goals.find(g=>g.id===input.id&&!g.is_archived);if(input.id&&!old)throw new Error('Фонд не найден.');
+     const target=input.purpose==='emergency'?emergencyTarget(input.essentialAmount || 0,input.reserveMonths || 0):positiveMoney(input.targetAmount);
+     if(input.purpose==='emergency'&&!input.essentialCategories?.length)throw new Error('Выберите необходимые категории.');
+     if(input.purpose==='expense_fund'){if(!input.deadline||input.deadline<planningDateISO())throw new Error('Укажите будущую дату.');validateDate(input.deadline);}
+     const goal:SavingsGoal={id:old?.id || newId(),household_id:HOUSEHOLD_ID,name:input.name.trim(),target_amount:target,current_amount:old?.current_amount || 0,emoji:input.purpose==='emergency'?'🛟':'🗓️',deadline:input.purpose==='emergency'?null:input.deadline,purpose:input.purpose,essential_amount:input.purpose==='emergency'?input.essentialAmount:null,reserve_months:input.purpose==='emergency'?input.reserveMonths:null,essential_categories:input.purpose==='emergency'?input.essentialCategories:[],is_completed:toMinorUnits(old?.current_amount || 0)>=toMinorUnits(target),is_archived:false,created_at:old?.created_at || new Date().toISOString()};
+     commit({...state,goals:[...state.goals.filter(g=>g.id!==old?.id),goal]});
+    },
     setCategoryBudget: async (categoryId,amount) => {commit(withBudget(current.current,categoryId,amount));},
     distributeIncome: async (incomeId,items) => {
       const state = current.current;
@@ -267,7 +340,7 @@ export default function DemoApp() {
       if (!existing || !isCashflow(existing)) throw new Error('Эту операцию нельзя изменить как доход или расход.');
       if (existing.recurringId && input.date !== existing.date) throw new Error('Дата регулярной операции не меняется. Можно исправить сумму или другие детали.');
       const distribution = state.distributions.find(d => d.income_transaction_id === id);
-      if (distribution && (input.type !== 'income' || input.amount < distribution.total_amount || input.date !== existing.date)) throw new Error('Распределённый доход сохраняет дату, тип и выделенную сумму.');
+      if (distribution && (input.type !== 'income' || (distribution.status!=='cancelled' && input.amount < distribution.total_amount) || input.date !== existing.date)) throw new Error('Распределённый доход сохраняет дату, тип и выделенную сумму.');
       const update = normalizeTransaction(input, state);
       const next = { ...state, transactions: state.transactions.map(tx => tx.id === id ? { ...tx, ...update, id, recurringId: existing.recurringId } : tx) };
       if (freeCents(next) < 0 && freeCents(next) < freeCents(state)) throw new Error('Изменение затрагивает резерв. Сначала освободите деньги.');
