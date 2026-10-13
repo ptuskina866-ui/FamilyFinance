@@ -1,10 +1,14 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Plus, Pencil, X, Wallet, CalendarDays } from 'lucide-react';
 import { useApp } from '../AppContext';
 import { isCashflow } from '../lib/finance';
 import { allocationTotal, budgetProgress, cashflowCalendar, planningDateISO } from '../lib/planning';
 import { fromMinorUnits, parseMoneyInput, toMinorUnits } from '../lib/money';
 import type { IncomeAllocation } from '../types';
+import { distributionRefund } from '../lib/flexiblePlanning';
+import { sumMoney } from '../lib/money';
+import { BudgetManagement } from './BudgetManagement';
+import { IncomeTemplates } from './IncomeTemplates';
 
 const fmt = (n: number) => n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' Br';
 const field = 'w-full min-w-0 rounded-xl border border-slate-200 bg-white/80 p-3 text-sm text-slate-900';
@@ -13,7 +17,7 @@ interface AllocationDraft { key: number; target: string; amount: string }
 
 export function BudgetPlanner() {
   const { categoryBudgets, incomeDistributions, transactions, savingsGoals, recurringTransactions, categories,
-    availableBalance, budgetReservedBalance, balance, accountsReady, planningReady, financeLoading, setCategoryBudget, distributeIncome } = useApp();
+    availableBalance, budgetReservedBalance, balance, accountsReady, planningReady, flexiblePlanningReady, financeLoading, setCategoryBudget, distributeIncome, changeIncomeDistribution,distributionRevisions } = useApp();
   const today = planningDateISO();
   const month = `${today.slice(0, 7)}-01`;
   const budgets = categoryBudgets.filter(b => b.month === month);
@@ -27,18 +31,26 @@ export function BudgetPlanner() {
   const [category, setCategory] = useState('food');
   const [budgetAmount, setBudgetAmount] = useState('');
   const [incomeId, setIncomeId] = useState('');
+  const [editingDistributionId,setEditingDistributionId]=useState<string | null>(null);
+  const [cancellingId,setCancellingId]=useState<string | null>(null);
   const [drafts, setDrafts] = useState<AllocationDraft[]>([{ key: 0, target: 'budget:food', amount: '' }]);
   const nextKey = useRef(1);
   const pending = useRef(false);
+  const planForm=useRef<HTMLFormElement>(null);
+  useEffect(()=>{if(editingDistributionId)planForm.current?.scrollIntoView({block:'start'});},[editingDistributionId]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [errorAction, setErrorAction] = useState<'budget' | 'income'>('budget');
   const [notice, setNotice] = useState('');
-  const source = eligibleIncome.find(t => t.id === incomeId) || eligibleIncome[0];
+  const selectedDistribution=incomeDistributions.find(d=>d.id===editingDistributionId);
+  const source = selectedDistribution ? transactions.find(t=>t.id===selectedDistribution.income_transaction_id) : eligibleIncome.find(t => t.id === incomeId) || eligibleIncome[0];
+  const refund=selectedDistribution?distributionRefund(selectedDistribution,categoryBudgets,savingsGoals,transactions):[];
+  const restored=sumMoney(refund.map(i=>i.amount));
+  const availableForPlan=fromMinorUnits(toMinorUnits(availableBalance)+toMinorUnits(restored));
   const items: IncomeAllocation[] = drafts.map(d => ({ targetType: d.target.startsWith('goal:') ? 'goal' : 'budget', targetId: d.target.slice(d.target.indexOf(':')+1), amount: parseMoneyInput(d.amount) ?? 0 }));
   let total = 0;
   let validAllocation = false;
-  try { total = allocationTotal(items); validAllocation = !!source && total <= source.amount && total <= availableBalance; } catch { /* Incomplete draft; validated on submission. */ }
+  try { total = allocationTotal(items); validAllocation = !!source && total <= source.amount && total <= availableForPlan; } catch { /* Incomplete draft; validated on submission. */ }
   const perform = async (work: () => Promise<void>, success: string, scope: 'budget' | 'income') => {
     if (pending.current) return;
     pending.current = true; setBusy(true); setError(''); setNotice(''); setErrorAction(scope);
@@ -57,6 +69,7 @@ export function BudgetPlanner() {
       {!accountsReady && <p className="text-xs text-amber-700">Сначала настройте счета на главной странице.</p>}
       <button type="button" className={`${action} flex items-center justify-center gap-2`} disabled={!enabled || busy} onClick={() => openBudget()}><Plus className="w-4 h-4" />Добавить категорию</button>
     </div>
+    <BudgetManagement />
     {editing && <form className="card p-4 flex flex-col gap-3" onSubmit={e => {
       e.preventDefault(); const amount = parseMoneyInput(budgetAmount);
       if (amount === null || amount < 0) { setErrorAction('budget'); setError('Укажите сумму от нуля с точностью до копейки.'); return; }
@@ -81,14 +94,17 @@ export function BudgetPlanner() {
         <p className={`text-xs font-bold ${progress.overspent ? 'text-rose-600' : 'text-emerald-700'}`}>{progress.overspent ? `Превышение ${fmt(progress.overspent)}` : `Осталось ${fmt(progress.remaining)}`}</p>
       </div>;
     })}
-    <form className="card p-4 flex flex-col gap-3" onSubmit={e => { e.preventDefault(); if (!source) return; void perform(async () => {
+    <IncomeTemplates income={source?.amount ?? null} available={availableForPlan} onApply={(plan,shortfalls)=>{setDrafts(plan.map(i=>({key:nextKey.current++,target:`${i.targetType}:${i.targetId}`,amount:String(i.amount)})));setError('');setNotice(shortfalls?`Шаблон подготовлен. Для ${shortfalls} назначений денег не хватило: суммы уменьшены по приоритету. Проверьте план ниже.`:'Шаблон подготовлен. Проверьте и подтвердите план ниже.');planForm.current?.scrollIntoView({block:'start'});}} />
+    <form ref={planForm} className="card p-4 flex flex-col gap-3 scroll-mt-3" onSubmit={e => { e.preventDefault(); if (!source) return; void perform(async () => {
       allocationTotal(items); if (!validAllocation) throw new Error('Распределение превышает доход или свободный остаток.');
-      await distributeIncome(source.id, items); setIncomeId(''); setDrafts([{ key: nextKey.current++, target: 'budget:food', amount: '' }]);
+      if(selectedDistribution) await changeIncomeDistribution(selectedDistribution.id,items,selectedDistribution.revision || 1,refund); else await distributeIncome(source.id, items);
+      setEditingDistributionId(null);setIncomeId(''); setDrafts([{ key: nextKey.current++, target: 'budget:food', amount: '' }]);
     }, 'Доход распределён. Общий остаток на счетах не изменился.', 'income'); }}>
-      <h2 className="text-sm font-black text-slate-900">Дайте доходу назначение</h2>
-      <p className="text-[11px] leading-relaxed text-slate-500">Распределите уже полученный доход между расходами и целями. Подтвердите план целиком: каждый доход распределяется один раз, оставшиеся деньги будут свободными.</p>
+      <h2 className="text-sm font-black text-slate-900">{selectedDistribution?'Изменить распределение':'Дайте доходу назначение'}</h2>
+      {notice.startsWith('Шаблон')&&<p role="status" className="rounded-xl bg-emerald-50 p-3 text-xs text-emerald-800">{notice}</p>}
+      <p className="text-[11px] leading-relaxed text-slate-500">Распределите уже полученный доход между расходами и целями. Действие сохраняется целиком. Позже план можно изменить или отменить; расходы и история сохранятся.</p>
       {source ? <>
-        <select aria-label="Доход для распределения" className={field} value={source.id} disabled={busy} onChange={e => setIncomeId(e.target.value)}>{eligibleIncome.map(t => <option key={t.id} value={t.id}>{t.date.slice(8)} · {t.comment || 'Доход'} · {fmt(t.amount)}</option>)}</select>
+        {selectedDistribution?<div className="rounded-xl bg-amber-50 p-3 text-xs"><p>{source.comment || 'Доход'} · {fmt(source.amount)}</p><p className="mt-1">Перед новым планом освободится {fmt(restored)}. Уже потраченные деньги не возвращаются.</p><button type="button" className="mt-2 font-bold text-slate-600" disabled={busy} onClick={()=>{setEditingDistributionId(null);setDrafts([{key:nextKey.current++,target:'budget:food',amount:''}]);}}>Закрыть изменение</button></div>:<select aria-label="Доход для распределения" className={field} value={source.id} disabled={busy} onChange={e => setIncomeId(e.target.value)}>{eligibleIncome.map(t => <option key={t.id} value={t.id}>{t.date.slice(8)} · {t.comment || 'Доход'} · {fmt(t.amount)}</option>)}</select>}
         {drafts.map((d,index) => <div key={d.key} className="rounded-xl bg-slate-50/80 p-3 flex flex-col gap-2">
           <div className="flex items-center justify-between"><span className="text-[10px] font-bold text-slate-500">Назначение {index+1}</span>{drafts.length > 1 && <button type="button" aria-label={`Удалить назначение ${index+1}`} disabled={busy} onClick={() => setDrafts(rows => rows.filter(r => r.key !== d.key))}><X className="w-4 h-4" /></button>}</div>
           <select aria-label={`Назначение ${index+1}`} className={field} value={d.target} disabled={busy} onChange={e => setDrafts(rows => rows.map(r => r.key === d.key ? { ...r, target: e.target.value } : r))}>
@@ -98,13 +114,17 @@ export function BudgetPlanner() {
           <input aria-label={`Сумма назначения ${index+1}`} className={field} inputMode="decimal" placeholder="Сумма, Br" value={d.amount} disabled={busy} onChange={e => setDrafts(rows => rows.map(r => r.key === d.key ? { ...r, amount: e.target.value } : r))} />
         </div>)}
         <button type="button" disabled={busy || drafts.length >= 32} className="text-xs font-bold text-emerald-700 py-2" onClick={() => setDrafts(rows => [...rows, {key:nextKey.current++,target:'budget:utilities',amount:''}])}>+ Ещё назначение</button>
-        <div className="rounded-xl bg-emerald-50 p-3 text-xs flex flex-col gap-1"><span>Распределяем: <strong>{fmt(total)}</strong></span><span>Свободно после: <strong>{fmt(fromMinorUnits(toMinorUnits(availableBalance)-toMinorUnits(total)))}</strong></span><span>Из дохода останется: <strong>{fmt(fromMinorUnits(toMinorUnits(source.amount)-toMinorUnits(total)))}</strong></span></div>
-        <button className={action} disabled={!enabled || busy || !validAllocation}>{busy ? 'Распределяем…' : 'Подтвердить распределение'}</button>
+        <div className="rounded-xl bg-emerald-50 p-3 text-xs flex flex-col gap-1"><span>Распределяем: <strong>{fmt(total)}</strong></span><span>Свободно после: <strong>{fmt(fromMinorUnits(toMinorUnits(availableForPlan)-toMinorUnits(total)))}</strong></span></div>
+        <button className={action} disabled={!enabled || busy || !validAllocation || (!!selectedDistribution&&!flexiblePlanningReady)}>{busy ? 'Распределяем…' : selectedDistribution?'Подтвердить новый план':'Подтвердить распределение'}</button>
       </> : <p className="text-xs text-slate-500">Добавьте полученный доход за текущий месяц. Будущие доходы можно посмотреть в календаре ниже.</p>}
-      {!!incomeDistributions.length && <div className="border-t border-slate-100 pt-3 flex flex-col gap-2">{incomeDistributions.map(d => <p key={d.id} className="text-[11px] text-slate-500">✓ {transactions.find(t => t.id === d.income_transaction_id)?.comment || 'Доход'}: распределено {fmt(d.total_amount)}</p>)}</div>}
-      {error && errorAction === 'income' && <p role="alert" className="text-xs text-rose-700 break-words">{error}</p>}
+      {error && errorAction === 'income' && !cancellingId && <p role="alert" className="text-xs text-rose-700 break-words">{error}</p>}
     </form>
-    {notice && <p role="status" className="rounded-xl bg-emerald-50 p-3 text-xs text-emerald-800">{notice}</p>}
+    {incomeDistributions.map(d=>{const cancelRefund=distributionRefund(d,categoryBudgets,savingsGoals,transactions),cancelAmount=sumMoney(cancelRefund.map(i=>i.amount));return <div key={d.id} className="card p-4 flex flex-col gap-2"><h3 className="text-xs font-bold">{transactions.find(t=>t.id===d.income_transaction_id)?.comment || 'Доход'}</h3><p className="text-[11px] text-slate-500">{d.status==='cancelled'?'План отменён':`Распределено ${fmt(d.total_amount)}`} · версия {d.revision || 1}</p>
+      <div className="flex flex-wrap gap-3 text-xs"><button type="button" className="py-2 font-bold text-emerald-700" disabled={busy||!flexiblePlanningReady} onClick={()=>{setEditingDistributionId(d.id);setDrafts(d.items.map(i=>({key:nextKey.current++,target:`${i.targetType}:${i.targetId}`,amount:String(i.amount)})));setCancellingId(null);setError('');}}>{d.status==='cancelled'?'Распределить снова':'Изменить план'}</button>{d.status!=='cancelled'&&<button type="button" className="py-2 text-slate-500" disabled={busy||!flexiblePlanningReady} onClick={()=>{setCancellingId(d.id);setError('');}}>Отменить план</button>}</div>
+      {cancellingId===d.id&&<div className="rounded-xl bg-amber-50 p-3 text-xs text-slate-600"><p>Освободится {fmt(cancelAmount)}. Покупки и уже использованные средства останутся в истории.</p>{cancelRefund.filter(i=>i.amount>0).map(i=><p key={`${i.targetType}:${i.targetId}`} className="mt-1">{i.targetType==='budget'?categories.find(c=>c.id===i.targetId)?.name:savingsGoals.find(g=>g.id===i.targetId)?.name}: {fmt(i.amount)}</p>)}<div className="flex gap-3 mt-3"><button type="button" disabled={busy} className="font-bold" onClick={()=>void perform(async()=>{await changeIncomeDistribution(d.id,null,d.revision || 1,cancelRefund);setCancellingId(null);setEditingDistributionId(null);},'План отменён. Доступные резервы освобождены.','income')}>Подтвердить отмену</button><button type="button" disabled={busy} onClick={()=>setCancellingId(null)}>Назад</button></div>{error&&errorAction==='income'&&<p role="alert" className="mt-2 text-rose-700">{error}</p>}</div>}
+      {distributionRevisions.filter(r=>r.distribution_id===d.id).map(r=><p key={r.id} className="text-[10px] text-slate-400">{r.action==='cancel'?'Отмена':'Изменение'} · версия {r.revision} · {new Date(r.created_at).toLocaleDateString('ru-RU')}</p>)}
+    </div>;})}
+    {notice && !notice.startsWith('Шаблон') && <p role="status" className="rounded-xl bg-emerald-50 p-3 text-xs text-emerald-800">{notice}</p>}
     <div className="card p-4 flex flex-col gap-3">
       <div className="flex items-center justify-between"><h2 className="text-sm font-black text-slate-900">Ближайшие 35 дней</h2><CalendarDays className="w-5 h-5 text-slate-500" /></div>
       <p className="text-[11px] text-slate-500 leading-relaxed">Сценарий по регулярным платежам. Остаток ниже — общий на счетах, с учётом только этих событий. Будущие доходы не увеличивают свободные деньги сегодня.</p>

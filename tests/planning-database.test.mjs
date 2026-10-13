@@ -19,7 +19,7 @@ test('shared budgets: exact reservation, atomic income allocation and household 
   const first=await fs.readFile(new URL('../supabase/migrations/20261012_accounts_and_savings.sql',import.meta.url),'utf8');
   const second=await fs.readFile(new URL('../supabase/migrations/20261012_shared_budgets.sql',import.meta.url),'utf8');
   await db.exec(first); await db.exec(second); await db.exec(second); checks++;
-  assert.equal(schema.split('-- 13. Shared budgets (2026-10-12)')[1].trim(),second.trim()); checks++;
+  assert.equal(schema.split('-- 13. Shared budgets (2026-10-12)')[1].split('-- 14. Flexible planning')[0].trim(),second.trim()); checks++;
   const [{month,today}]=await q(`SELECT finance_current_month()::text AS month,(now() AT TIME ZONE 'Europe/Minsk')::date::text AS today`);
   await actor(a); await q(`SELECT initialize_finance('{}'::uuid[])`);
   const [{id:account}]=await q(`SELECT id FROM accounts`);

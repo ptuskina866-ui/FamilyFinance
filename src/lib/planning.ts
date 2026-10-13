@@ -75,12 +75,19 @@ export function allocationTotal(items: readonly IncomeAllocation[]): number {
 
 export function planningErrorMessage(message: string): string {
   const messages: [RegExp,string][] = [
+    [/Transfer exceeds category remainder/,'В выбранной категории недостаточно непотраченных денег.'],
+    [/Distribution changed|Reservations changed/,'План или резервы изменились. Обновите предварительный расчёт.'],
+    [/Current-month household distribution required/,'Изменить или отменить можно распределение текущего месяца.'],
+    [/Previous month already reviewed/,'Решение по прошлому месяцу уже сохранено.'],
+    [/Previous month changed/,'Операции прошлого месяца изменились. Обновите расчёт.'],
+    [/Current month already has a plan/,'В текущем месяце уже есть бюджет. Используйте перенос остатков.'],
+    [/No previous month funds or plan/,'За прошлый месяц нет плана или непотраченных остатков.'],
     [/Insufficient (unassigned|unreserved) funds|Allocation exceeds income or unassigned funds/, 'Недостаточно свободных денег. Уменьшите сумму или освободите часть резерва.'],
     [/Food budgets overlap/, 'Общий бюджет еды и бюджет отдельного магазина пересекаются. Сначала освободите один из них.'],
     [/Income already distributed/, 'Этот доход уже распределён. Обновите данные перед следующим действием.'],
     [/posted income from this month/, 'Выберите уже полученный доход за текущий месяц.'],
     [/Only the current month can be funded/, 'Месяц изменился. Обновите приложение и проверьте план.'],
-    [/Distributed income history cannot be deleted/, 'Распределённый доход нельзя удалить: к нему привязан план расходов и накоплений.'],
+    [/Distributed income history cannot be deleted/, 'Доход нельзя удалить: к нему привязана история распределений.'],
     [/Distributed income must preserve/, 'У распределённого дохода нельзя менять дату, тип или уменьшать сумму ниже выделенной.'],
     [/Release goal reservations or budgets/, 'Сначала освободите часть денег из целей или бюджетов.'],
   ];

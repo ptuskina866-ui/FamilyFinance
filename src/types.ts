@@ -55,6 +55,10 @@ export interface SavingsGoal {
   is_completed: boolean;
   is_archived?: boolean;
   created_at: string;
+  purpose?: 'goal' | 'emergency' | 'expense_fund';
+  essential_amount?: number | null;
+  reserve_months?: number | null;
+  essential_categories?: string[];
 }
 
 export interface Transaction {
@@ -98,6 +102,31 @@ export interface IncomeDistribution {
   items: IncomeAllocation[];
   created_by: string;
   created_at: string;
+  status?: 'active' | 'cancelled';
+  revision?: number;
+  updated_at?: string;
+}
+
+export interface IncomeTemplateItem {
+  targetType: IncomeAllocation['targetType'];
+  targetId: string;
+  mode: 'fixed' | 'percent';
+  value: number;
+}
+export interface IncomeTemplate {
+  id: string; household_id: string; name: string; items: IncomeTemplateItem[]; created_at: string; updated_at: string; is_archived?: boolean;
+}
+export type BudgetRolloverMode = 'repeat' | 'carry' | 'goal' | 'release';
+export interface BudgetRollover {
+  id: string; household_id: string; source_month: string; target_month: string; mode: BudgetRolloverMode; amount: number; created_at: string;
+}
+export interface DistributionRevision {
+  id: string; household_id: string; distribution_id: string; revision: number; action: 'edit' | 'cancel'; created_at: string;
+  before_state?: IncomeDistribution; after_state?: IncomeDistribution; refund?: IncomeAllocation[];
+}
+export interface FundInput {
+  id?: string; name: string; purpose: 'emergency' | 'expense_fund'; targetAmount: number; deadline: string | null;
+  essentialAmount?: number; reserveMonths?: number; essentialCategories?: string[];
 }
 
 export interface AppState {

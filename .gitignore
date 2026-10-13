@@ -29,3 +29,6 @@ dist-ssr
 
 # Local browser verification artifacts
 .playwright-mcp/
+
+# Supabase CLI local cache
+supabase/.temp/

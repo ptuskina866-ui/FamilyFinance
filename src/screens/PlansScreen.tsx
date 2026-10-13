@@ -5,6 +5,7 @@ import { DynamicIcon } from '../components/CategoryGrid';
 import { CATEGORIES } from '../mockData';
 import { CarGoalForecastCard } from '../components/CarGoalForecastCard';
 import { BudgetPlanner } from '../components/BudgetPlanner';
+import { FundsPlanner } from '../components/FundsPlanner';
 import { Target, Plus, Trash2, Archive, X, Check, RefreshCw, Calendar, ArrowUpRight } from 'lucide-react';
 import { goalMonthlyNeeded } from '../lib/finance';
 import { localDateISO, parseMoneyInput, sumMoney } from '../lib/money';
@@ -33,7 +34,7 @@ const PlansScreen: React.FC = () => {
   const { profile } = useAuth();
 
   // Tab: 'goals' or 'recurring'
-  const [activeSubTab, setActiveSubTab] = useState<'goals' | 'recurring' | 'budget'>('goals');
+  const [activeSubTab, setActiveSubTab] = useState<'goals' | 'recurring' | 'budget' | 'funds'>('goals');
 
   // Modals
   const [showGoalForm, setShowGoalForm] = useState(false);
@@ -72,7 +73,7 @@ const PlansScreen: React.FC = () => {
   const [recLoading, setRecLoading] = useState(false);
   const [recError, setRecError] = useState('');
 
-  const activeGoals = savingsGoals.filter(goal => !goal.is_archived);
+  const activeGoals = savingsGoals.filter(goal => !goal.is_archived && (!goal.purpose || goal.purpose==='goal'));
   const modalOpen = showGoalForm || showRecForm || !!addingToGoalId || !!archivingGoalId;
   const modalPending = goalLoading || recLoading || fundsLoading || !!actionLoadingId;
   useEffect(() => {
@@ -218,7 +219,7 @@ const PlansScreen: React.FC = () => {
       >
         <div className="w-9 h-9" /> {/* Spacer */}
         <h1 className="text-sm font-black text-slate-900 tracking-tight">Планы</h1>
-        {activeSubTab !== 'budget' ? <button
+        {(activeSubTab === 'goals' || activeSubTab === 'recurring') ? <button
           onClick={() => { if (activeSubTab === 'goals') { setGoalError(''); setShowGoalForm(true); } else { setRecError(''); setShowRecForm(true); } }}
           aria-label={activeSubTab === 'goals' ? 'Создать цель накопления' : 'Создать регулярный платеж'}
           disabled={financeLoading || !!actionLoadingId}
@@ -230,39 +231,15 @@ const PlansScreen: React.FC = () => {
 
       {/* Pill Toggle subtabs */}
       <div className="px-5 pt-5 shrink-0">
-        <div className="toggle-pill p-1 bg-slate-50 border border-slate-100 rounded-2xl flex">
-          <button
-            type="button"
-            onClick={() => setActiveSubTab('goals')}
-            className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-              activeSubTab === 'goals'
-                ? 'bg-[#0F172A] text-white shadow-sm'
-                : 'text-slate-400'
-            }`}
-          >
-            <Target className="w-4 h-4" />
-            Цели
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveSubTab('recurring')}
-            className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-              activeSubTab === 'recurring'
-                ? 'bg-[#0F172A] text-white shadow-sm'
-                : 'text-slate-400'
-            }`}
-          >
-            <RefreshCw className="w-4 h-4" />
-            Платежи
-          </button>
-          <button type="button" onClick={() => setActiveSubTab('budget')} className={`flex-1 py-2.5 text-xs font-bold rounded-xl ${activeSubTab === 'budget' ? 'bg-[#0F172A] text-white shadow-sm' : 'text-slate-400'}`}>Бюджет</button>
+        <div className="toggle-pill p-1 bg-slate-50 border border-slate-100 rounded-2xl flex gap-1">
+          {([{id:'goals',name:'Цели'},{id:'recurring',name:'Платежи'},{id:'budget',name:'Бюджет'},{id:'funds',name:'Фонды'}] as const).map(tab=><button key={tab.id} type="button" onClick={()=>setActiveSubTab(tab.id)} className={`flex-1 min-w-0 py-2.5 text-[11px] font-bold rounded-xl transition-all ${activeSubTab===tab.id?'bg-[#0F172A] text-white shadow-sm':'text-slate-400'}`}>{tab.name}</button>)}
         </div>
       </div>
 
       {/* Content wrapper */}
       <div className="flex-1 overflow-y-auto no-scrollbar px-5 pt-3 pb-36">
         {actionError && !archivingGoalId && <p role="alert" className="rounded-2xl bg-rose-50 p-3 mb-3 text-xs text-rose-700 break-words">{actionError}</p>}
-        {activeSubTab === 'budget' ? <BudgetPlanner /> : activeSubTab === 'goals' ? (
+        {activeSubTab === 'funds' ? <FundsPlanner /> : activeSubTab === 'budget' ? <BudgetPlanner /> : activeSubTab === 'goals' ? (
           /* ========================================================================= */
           /* GOALS TAB */
           /* ========================================================================= */
