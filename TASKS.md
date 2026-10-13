@@ -2,7 +2,7 @@
 
 # Current work
 
-Flexible planning is implemented and tested: category transfers, reviewed income editing/cancellation, previous-month decisions, ordered salary templates, emergency reserves and expense funds. Working database updated with private backup and unchanged existing financial rows verified; frontend publication is in progress through Cloudflare/GitHub. Development demo: `http://127.0.0.1:5173/?demo=1`.
+Flexible planning is published and verified: category transfers, reviewed income editing/cancellation, previous-month decisions, ordered salary templates, emergency reserves and expense funds. Working database updated with private backup and unchanged existing financial rows verified. Cloudflare release confirmed on 2026-10-13: production bundle and new capability API checked; login renders without errors. Development demo: `http://127.0.0.1:5173/?demo=1`.
 
 ## Project maintenance backlog
 
@@ -21,6 +21,8 @@ Flexible planning is implemented and tested: category transfers, reviewed income
 - Review Supabase schema and RLS consistency (including full execution of `supabase_schema.sql` and trigger testing in an isolated test PostgreSQL/Supabase instance; audit household isolation).
 
 ## Recently completed
+
+- Flexible-planning publication confirmed: PR #5 merged as `896df49`, Cloudflare build succeeded, version `4f8709ee-3385-4295-a8bb-c612da76e699`. Fresh production bundle `index-B3_EbYgB.js` contains funds/templates/revision/month-review APIs, correctly configured project and publishable key; flexible capability endpoint returns 200/1. New tables verified with 12 household policies, three Realtime publications and no direct/anonymous writes/reads. Tests used a fresh browser context to avoid reading a superseded PWA asset; existing tabs need reload after worker activation.
 
 - Implemented the accepted next release (flexible budgets, salary templates, future-expense funds) on 2026-10-13.
   - Atomic transfers conserve capital/free balance, including deficits; overspent destinations receive the full transferred remainder.
