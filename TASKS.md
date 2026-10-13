@@ -2,7 +2,7 @@
 
 # Current work
 
-Working site restored after configuring Supabase build variables; deployed login and upstream APIs verified. Shared category budgets, confirmed income distribution and cashflow calendar implemented and tested. Stage-two database installed with private backup and existing rows unchanged; frontend release follows through connected Cloudflare Workers Builds. Development demo: `http://127.0.0.1:5173/?demo=1`.
+Stage two is published and verified at `https://familyfinance.ptuskina866.workers.dev/`: shared category budgets, confirmed income distribution and cashflow calendar. Working login, configured production bundle and planning API verified on 2026-10-13. Database installed with private backup and existing rows unchanged at migration time. Development demo: `http://127.0.0.1:5173/?demo=1`.
 
 ## Project maintenance backlog
 
@@ -21,6 +21,8 @@ Working site restored after configuring Supabase build variables; deployed login
 - Review Supabase schema and RLS consistency (including full execution of `supabase_schema.sql` and trigger testing in an isolated test PostgreSQL/Supabase instance; audit household isolation).
 
 ## Recently completed
+
+- Final production verification on 2026-10-13: PR #3 merged as `8cbe769`; Cloudflare build succeeded, version `6c6dcf8a-906f-4743-88f7-7aa8915d3cba`. Deployed `index-C8GZ1VfW.js` includes budget/distribution/calendar features and the configured Supabase project. Login renders without runtime errors at 390 px; planning capability API returns 200/1. Both new tables have all eight household policies and Realtime publication; authenticated read allowed, direct inserts and anonymous read denied.
 
 - Second stage: shared monthly budgets, atomic income distribution and a 35-day recurring cashflow calendar, preserving existing visuals.
   - Goals and remaining category budgets both reserve capital; funded expenses and funded future bills do not consume the free daily pool twice.
