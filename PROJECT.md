@@ -333,6 +333,8 @@ Each insight shows original dates/amounts, latest exact-cent price change and an
 
 Suggestions never create recurring templates, write transactions, change categories/amounts or reserve funds; existing confirmed templates retain their current automatic posting behavior. The analysis uses the Minsk planning day, adds no dependencies, schema, external AI or new data stores, and is limited to one monthly cadence. Known limitations: exact normalized descriptions can miss merchants with changing reference text; two payments can be coincidental; completeness still depends on imported history. Release checks and publication status: `docs/automation-insights-release.md`.
 
+Published on 2026-10-16 through PR #7 / merge `edf00e3`; Cloudflare version `3451c6d8-2869-4005-8539-34cbbac1fd77` serves `index-Ca_feLNw.js`. Fresh production login/bundle/capability checks passed. Edge `alfa-sync` version 2 has JWT verification enabled; live unconfigured and unauthenticated requests return 503 and 401 respectively, without fabricated financial data. No database changes were required.
+
 ## Accounts release deployment
 
 Apply `supabase/migrations/20261012_accounts_and_savings.sql` together with the updated frontend after reviewing the actual schema. The same SQL section is included in `supabase_schema.sql` for fresh installations. Details: `docs/migration-accounts.md`.
