@@ -2,7 +2,7 @@
 
 # Current work
 
-Automatic recurring-expense insights implemented on 2026-10-16; local verification and publication in progress. Previous flexible-planning release remains installed. Real bank auto-sync is unavailable: owner has no Developer Hub account/approved access yet, and iPhone receives bank push only. Existing production history spans September/October, so two-payment suggestions are explicitly preliminary. Development demo: `http://127.0.0.1:5173/?demo=1`.
+Automatic recurring-expense insights published and verified on 2026-10-16: PR #7 merged as `edf00e3`, Cloudflare version `3451c6d8-2869-4005-8539-34cbbac1fd77`, production bundle `index-Ca_feLNw.js`. Login renders without runtime errors and capability API returns 200/1. Bank endpoint version 2 explicitly refuses unconfigured sync (503), with anonymous requests denied (401). Real bank auto-sync still requires the owner's Developer Hub registration and approved access; iPhone receives bank push only. September/October history produces explicitly preliminary suggestions. Development demo: `http://127.0.0.1:5173/?demo=1`.
 
 ## Project maintenance backlog
 
@@ -26,7 +26,7 @@ Automatic recurring-expense insights implemented on 2026-10-16; local verificati
   - Account isolation, conservative merchant grouping, ambiguous/repeated/future/malformed row handling and exclusion of auto-posted/transfer/savings rows. No new schema or runtime dependencies.
   - Removed fabricated bank success/accounts/operations from the client and replaced the unused prototype banking endpoint with an explicit unavailable response. Official PDF/1C/CSV parser prefix preserved.
   - Rechecked live bank FAQ: production approval required; Personal route uses Alfa-Business Online and does not establish access for a private household app. Owner confirms no portal account/access. Inquiry/setup steps updated; no message sent to the bank.
-  - 50 calculation/auth/bank checks and all 176 isolated SQL checks pass. Mobile review, hidden amounts and journal restore verified at 320 px; final production checks pending. Details: `docs/automation-insights-release.md`.
+  - 50 calculation/auth/bank checks and all 176 isolated SQL checks pass. Build/PWA passes; mobile review, hidden amounts, journal restore, preliminary and empty results verified at 320/390 px. Fresh production bundle/config/login/API and live bank refusal verified; actual signed-in production UI and cross-device Realtime remain outside this verification. Details: `docs/automation-insights-release.md`.
 
 - Flexible-planning publication confirmed: PR #5 merged as `896df49`, Cloudflare build succeeded, version `4f8709ee-3385-4295-a8bb-c612da76e699`. Fresh production bundle `index-B3_EbYgB.js` contains funds/templates/revision/month-review APIs, correctly configured project and publishable key; flexible capability endpoint returns 200/1. New tables verified with 12 household policies, three Realtime publications and no direct/anonymous writes/reads. Tests used a fresh browser context to avoid reading a superseded PWA asset; existing tabs need reload after worker activation.
 
