@@ -3,6 +3,7 @@ import { isCashflow } from '../lib/finance';
 import { useApp } from '../AppContext';
 import { useAuth } from '../AuthContext';
 import { AlfaBankService, AlfaTransaction, StatementMetadata } from '../services/alfaBankService';
+import { BANK_CONNECTION_UNAVAILABLE } from '../lib/bankConnection';
 import { DynamicIcon } from '../components/CategoryGrid';
 import { 
   ArrowLeft, 
@@ -284,6 +285,7 @@ export const BankStatementScreen: React.FC<BankStatementScreenProps> = ({ onBack
             <span>{errorMsg}</span>
           </div>
         )}
+        {step === 'upload' && <p className="card p-3 text-xs text-slate-500 leading-relaxed">{BANK_CONNECTION_UNAVAILABLE}</p>}
 
         {/* ══════════════════════════════════════════════════
             STEP 1: UPLOAD SCREEN

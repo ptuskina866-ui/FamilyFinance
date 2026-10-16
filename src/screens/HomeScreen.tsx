@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useApp } from '../AppContext';
 import { useAuth } from '../AuthContext';
 import { DynamicIcon } from '../components/CategoryGrid';
@@ -6,6 +6,7 @@ import { BankSyncModal } from '../components/BankSyncModal';
 import { PayDreamFirstBanner } from '../components/PayDreamFirstBanner';
 import { AccountsPanel } from '../components/AccountsPanel';
 import { TransactionEditor } from '../components/TransactionEditor';
+import { RecurringInsights } from '../components/RecurringInsights';
 import { calculateSafeDaily, isCashflow } from '../lib/finance';
 import { localDateISO } from '../lib/money';
 import { planningDateISO, unassignedDailyTransactions, uncoveredRecurring } from '../lib/planning';
@@ -68,6 +69,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [operationError, setOperationError] = useState<string | null>(null);
+  const [insightTransactionIds, setInsightTransactionIds] = useState<string[] | null>(null);
+  const journalRef = useRef<HTMLDivElement>(null);
 
   // Daily budget calculation
   const safeDaily = useMemo(() => {
@@ -86,7 +89,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
   const groupedTransactions = useMemo(() => {
     const filtered = transactions.filter(tx => {
       const query = search.trim().toLocaleLowerCase('ru-RU');
-      return (filterType === 'all' || (isCashflow(tx) && tx.type === filterType)) &&
+      return (!insightTransactionIds || insightTransactionIds.includes(tx.id)) &&
+        (filterType === 'all' || (isCashflow(tx) && tx.type === filterType)) &&
         (!accountFilter || tx.accountId === accountFilter || tx.targetAccountId === accountFilter) &&
         (!query || `${tx.comment} ${getCategoryById(tx.categoryId)?.name || ''} ${tx.amount}`.toLocaleLowerCase('ru-RU').includes(query));
     });
@@ -104,7 +108,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
     }
 
     return groups;
-  }, [transactions, filterType, search, accountFilter, getCategoryById]);
+  }, [transactions, filterType, search, accountFilter, getCategoryById, insightTransactionIds]);
 
   const handleDelete = async (tx: Transaction) => {
     if (!window.confirm('Удалить операцию? Остатки и связанный резерв будут пересчитаны.')) return;
@@ -160,6 +164,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
             <button
               type="button"
               onClick={() => setHideBalance(!hideBalance)}
+              aria-label={hideBalance ? 'Показать суммы' : 'Скрыть суммы'}
               className="w-8 h-8 rounded-full bg-black/10 hover:bg-black/15 flex items-center justify-center text-slate-900 transition-colors"
             >
               {hideBalance ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -240,6 +245,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
           onOpenPlans={() => onNavigateTab?.('plans')}
         />
 
+        <RecurringInsights hideAmounts={hideBalance} onOpenStatement={onOpenStatement || (() => setBankSyncOpen(true))} onReviewTransactions={ids => {
+          setInsightTransactionIds(ids); setSearch(''); setFilterType('all'); setAccountFilter('');
+          journalRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }} />
+
         {/* ── Horizontal Widgets (Currency/Goals like reference middle screen) ── */}
         <div className="flex flex-col gap-2.5">
           <div className="flex justify-between items-center px-1">
@@ -313,8 +323,9 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
         </div>
 
         {/* ── Latest Transactions Section ── */}
-        <div className="flex flex-col gap-3 pt-1">
+        <div ref={journalRef} className="flex flex-col gap-3 pt-1 scroll-mt-24">
           {operationError && <p role="alert" className="text-xs text-rose-600">{operationError}</p>}
+          {insightTransactionIds && <div className="card p-3 text-xs text-slate-600 flex items-center justify-between gap-2"><span>Операции из подсказки</span><button type="button" onClick={() => setInsightTransactionIds(null)} className="min-h-[40px] font-bold text-emerald-800">Показать все</button></div>}
           <label className="card px-3 py-2.5 flex items-center gap-2">
             <Search className="w-4 h-4 text-slate-400" />
             <input aria-label="Поиск операций" value={search} onChange={e => setSearch(e.target.value)} placeholder="Найти операцию" className="w-full min-w-0 bg-transparent text-xs outline-none" />

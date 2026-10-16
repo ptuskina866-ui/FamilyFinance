@@ -3,6 +3,7 @@ import { isCashflow } from '../lib/finance';
 import { useApp } from '../AppContext';
 import { useAuth } from '../AuthContext';
 import { AlfaBankService, AlfaTransaction, StatementMetadata } from '../services/alfaBankService';
+import { BANK_CONNECTION_UNAVAILABLE } from '../lib/bankConnection';
 import { DynamicIcon } from './CategoryGrid';
 import { 
   X, 
@@ -282,6 +283,7 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
           ══════════════════════════════════════════════════ */}
           {step === 'upload' && (
             <div className="flex flex-col gap-5">
+              <p className="text-xs text-slate-500 leading-relaxed">{BANK_CONNECTION_UNAVAILABLE}</p>
               <input 
                 type="file" 
                 ref={fileInputRef}
