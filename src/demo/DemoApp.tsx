@@ -9,7 +9,7 @@ import { fromMinorUnits, localDateISO, sumMoney, toMinorUnits } from '../lib/mon
 import { allocationTotal, budgetProgress, budgetReserved, planningDateISO, validateBudgetScopes } from '../lib/planning';
 import { distributionRefund,emergencyTarget,previousBudgetReview,previousPlanningMonth,resolveIncomeTemplate,transferBudgetPreview } from '../lib/flexiblePlanning';
 
-const STORAGE_KEY = 'ff_demo_v3';
+const STORAGE_KEY = 'ff_demo_v4';
 const HOUSEHOLD_ID = '00000000-0000-4000-8000-000000000001';
 const MEMBER_ID = '00000000-0000-4000-8000-000000000002';
 const CREATED_AT = '2026-01-01T00:00:00Z';
@@ -31,7 +31,7 @@ const DEMO_AUTH: AuthContextType = {
 };
 
 interface DemoData {
-  version: 3;
+  version: 4;
   accounts: Account[];
   transactions: Transaction[];
   goals: SavingsGoal[];
@@ -93,11 +93,19 @@ function fixtures(): DemoData {
     { ...transaction('demo-transfer', 'expense', 150, 'savings', shiftedDate(today, -2), 'Наличные на повседневные расходы'), kind: 'transfer', targetAccountId: 'demo-cash' },
   ];
   for (let index = 0; index < 3; index++) {
+    // Existing goal contributions stay separate from observed recurring consumption.
     for (const [goalId, amount, name] of [['demo-holiday', 300, 'Отпуск'], ['demo-emergency', index === 2 ? 400 : 200, 'Подушка безопасности']] as const) {
       transactions.push({ id: `${goalId}-deposit-${index}`, type: 'expense', amount, categoryId: 'savings', date: monthDate(today, index - 2, index === 2 ? Math.min(2, Number(today.slice(8))) : 2), comment: `Резервирование: ${name}`, addedBy: MEMBER_ID, kind: 'goal_deposit', goalId });
     }
   }
-  return { version: 3, accounts, goals, transactions,
+  for (let index = -3; index <= 0; index++) {
+    const date = monthDate(today, index, 5);
+    if (date <= today) {
+      transactions.push(transaction(`demo-music-${index}`, 'expense', index === 0 ? 13.99 : 12.99, 'mobile', date, 'Music Plus'));
+      transactions.push(transaction(`demo-internet-${index}`, 'expense', 40, 'utilities', date, 'Домашний интернет'));
+    }
+  }
+  return { version: 4, accounts, goals, transactions,
     budgets: [{id:'demo-last-food',household_id:HOUSEHOLD_ID,month:previousPlanningMonth(today),category_id:'food',allocated_amount:150,created_at:CREATED_AT,updated_at:CREATED_AT}], distributions: [],rollovers:[],revisions:[],
     templates:[{id:'demo-template',household_id:HOUSEHOLD_ID,name:'Моя зарплата',items:[{targetType:'budget',targetId:'utilities',mode:'fixed',value:450},{targetType:'goal',targetId:'demo-holiday',mode:'percent',value:10},{targetType:'goal',targetId:'demo-emergency',mode:'percent',value:10}],created_at:CREATED_AT,updated_at:CREATED_AT}],
     budgetLimit: 2200, recurring: [
@@ -106,7 +114,7 @@ function fixtures(): DemoData {
 }
 
 function assertData(data: DemoData): void {
-  if (data.version !== 3 || !Array.isArray(data.accounts) || data.accounts.length === 0 || !Array.isArray(data.transactions) || !Array.isArray(data.goals) || !Array.isArray(data.recurring) || !Array.isArray(data.budgets) || !Array.isArray(data.distributions) || !Array.isArray(data.templates) || !Array.isArray(data.rollovers) || !Array.isArray(data.revisions)) throw new Error('Некорректные демо-данные.');
+  if (data.version !== 4 || !Array.isArray(data.accounts) || data.accounts.length === 0 || !Array.isArray(data.transactions) || !Array.isArray(data.goals) || !Array.isArray(data.recurring) || !Array.isArray(data.budgets) || !Array.isArray(data.distributions) || !Array.isArray(data.templates) || !Array.isArray(data.rollovers) || !Array.isArray(data.revisions)) throw new Error('Некорректные демо-данные.');
   positiveMoney(data.budgetLimit);
   const ids = new Set<string>();
   for (const account of data.accounts) {

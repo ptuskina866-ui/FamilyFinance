@@ -6,6 +6,7 @@ import { CATEGORIES } from '../mockData';
 import { CarGoalForecastCard } from '../components/CarGoalForecastCard';
 import { BudgetPlanner } from '../components/BudgetPlanner';
 import { FundsPlanner } from '../components/FundsPlanner';
+import { RecurringInsights } from '../components/RecurringInsights';
 import { Target, Plus, Trash2, Archive, X, Check, RefreshCw, Calendar, ArrowUpRight } from 'lucide-react';
 import { goalMonthlyNeeded } from '../lib/finance';
 import { localDateISO, parseMoneyInput, sumMoney } from '../lib/money';
@@ -396,6 +397,8 @@ const PlansScreen: React.FC = () => {
                 </p>
               </div>
             </div>
+
+            <RecurringInsights />
 
             {recurringTransactions.length === 0 ? (
               <div className="card p-10 text-center flex flex-col items-center gap-3">

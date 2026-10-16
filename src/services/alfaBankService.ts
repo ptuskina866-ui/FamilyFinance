@@ -26,7 +26,7 @@ if (typeof (Promise as any).withResolvers === 'undefined') {
 }
 
 import { Transaction, TransactionType } from '../types';
-import { supabase } from '../supabaseClient';
+import { BANK_CONNECTION_UNAVAILABLE } from '../lib/bankConnection';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 export interface AlfaTransaction {
@@ -862,189 +862,18 @@ export class AlfaBankService {
     return results;
   }
 
-  /**
-   * Запрос на авторизацию в интернет-банке Альфа-Банка через Supabase Edge Function
-   */
-  static async requestLogin(phone: string): Promise<{ success: boolean; maskedPhone: string; challengeId?: string; error?: string }> {
-    const cleaned = phone.replace(/\D/g, '');
-    if (cleaned.length < 9) {
-      return { success: false, maskedPhone: '', error: 'Укажите корректный номер телефона' };
-    }
-
-    const defaultMasked = `+375 (**)-***-${cleaned.slice(-4)}`;
-
-    try {
-      // Защитный таймаут 3.5 сек, чтобы интерфейс никогда не зависал
-      const timeoutPromise = new Promise<{ data: any; error: any }>((resolve) =>
-        setTimeout(() => resolve({ data: null, error: new Error('timeout') }), 3500)
-      );
-
-      const invokePromise = supabase.functions.invoke('alfa-sync', {
-        body: { action: 'login', phone }
-      });
-
-      const { data, error } = await Promise.race([invokePromise, timeoutPromise]);
-
-      if (!error && data?.success) {
-        return {
-          success: true,
-          maskedPhone: data.maskedPhone || defaultMasked,
-          challengeId: data.challengeId
-        };
-      }
-    } catch (err) {
-      console.warn('Edge Function fallback:', err);
-    }
-
-    // Быстрый переход к следующему шагу
-    return { success: true, maskedPhone: defaultMasked, challengeId: `ch-${Date.now()}` };
+  /** Connection remains unavailable until real bank access is configured and verified. */
+  static async requestLogin(_phone: string): Promise<{ success: boolean; maskedPhone: string; challengeId?: string; error?: string }> {
+    return { success: false, maskedPhone: '', error: BANK_CONNECTION_UNAVAILABLE };
   }
 
-  static async verifyOtp(code: string, _phone: string, challengeId?: string): Promise<{
+  static async verifyOtp(_code: string, _phone: string, _challengeId?: string): Promise<{
     success: boolean;
     account?: AlfaAccount;
     transactions?: AlfaTransaction[];
     sessionToken?: string;
     error?: string;
   }> {
-    if (code.length < 4) {
-      return { success: false, error: 'Неверный код из SMS. Должно быть 4-6 цифр.' };
-    }
-
-    try {
-      const timeoutPromise = new Promise<{ data: any; error: any }>((resolve) =>
-        setTimeout(() => resolve({ data: null, error: new Error('timeout') }), 3500)
-      );
-
-      const invokePromise = supabase.functions.invoke('alfa-sync', {
-        body: { action: 'verify-otp', otp: code, challengeId, phone: _phone }
-      });
-
-      const { data, error } = await Promise.race([invokePromise, timeoutPromise]);
-
-      if (!error && data?.success && data?.transactions) {
-        return {
-          success: true,
-          account: data.account,
-          transactions: data.transactions.map((t: any) => ({
-            ...t,
-            categoryId: this.detectCategory(t.merchant || t.comment, t.type)
-          })),
-          sessionToken: data.sessionToken
-        };
-      }
-    } catch (err) {
-      console.warn('Edge Function verify fallback:', err);
-    }
-
-    await new Promise(resolve => setTimeout(resolve, 900));
-
-    // Возвращаем подключенный счет и свежие банковские операции за последние дни
-    const mockAccount: AlfaAccount = {
-      id: 'alfa-acc-smart-by',
-      name: 'Пакет Smart Standard',
-      number: 'BY44 ALFA 3014 8504 0000 0000',
-      balance: 1482.50,
-      currency: 'BYN',
-      cardName: 'Mastercard Smart Standard BYN',
-      maskedCard: '• • • • 8757'
-    };
-
-    const today = new Date();
-    const fmt = (offsetDays: number) => {
-      const d = new Date(today);
-      d.setDate(d.getDate() - offsetDays);
-      return d.toISOString().split('T')[0];
-    };
-
-    const mockTransactions: AlfaTransaction[] = [
-      {
-        id: 'alfa-tx-live-1',
-        date: fmt(0),
-        amount: 24.80,
-        type: 'expense',
-        merchant: 'Супермаркет Евроопт',
-        comment: 'Оплата картой *8757 в Магазин Евроопт Prime, Минск',
-        categoryId: 'food-euroopt',
-        currency: 'BYN'
-      },
-      {
-        id: 'alfa-tx-live-2',
-        date: fmt(0),
-        amount: 5.50,
-        type: 'expense',
-        merchant: 'Кофейня Варадеро',
-        comment: 'Оплата картой *8757 в Кафе/Кофе на вынос',
-        categoryId: 'cafes',
-        currency: 'BYN'
-      },
-      {
-        id: 'alfa-tx-live-3',
-        date: fmt(1),
-        amount: 65.00,
-        type: 'expense',
-        merchant: 'АЗС Белоруснефть №32',
-        comment: 'Оплата топлива АИ-95 картой *8757',
-        categoryId: 'car',
-        currency: 'BYN'
-      },
-      {
-        id: 'alfa-tx-live-4',
-        date: fmt(1),
-        amount: 14.20,
-        type: 'expense',
-        merchant: 'Аптека Планета Здоровья',
-        comment: 'Покупка медикаментов картой *8757',
-        categoryId: 'medical',
-        currency: 'BYN'
-      },
-      {
-        id: 'alfa-tx-live-5',
-        date: fmt(2),
-        amount: 42.10,
-        type: 'expense',
-        merchant: 'Green Hypermarket',
-        comment: 'Покупка продуктов в гипермаркете Green',
-        categoryId: 'food-green',
-        currency: 'BYN'
-      },
-      {
-        id: 'alfa-tx-live-6',
-        date: fmt(3),
-        amount: 12.00,
-        type: 'expense',
-        merchant: 'A1 Мобильная связь',
-        comment: 'Оплата абонентской платы тариф Безлимит',
-        categoryId: 'mobile',
-        currency: 'BYN'
-      },
-      {
-        id: 'alfa-tx-live-7',
-        date: fmt(4),
-        amount: 8.40,
-        type: 'expense',
-        merchant: 'Yandex Go Такси',
-        comment: 'Поездка на такси Комфорт',
-        categoryId: 'transport',
-        currency: 'BYN'
-      },
-      {
-        id: 'alfa-tx-live-8',
-        date: fmt(5),
-        amount: 1250.00,
-        type: 'income',
-        merchant: 'Альфа-Банк Зачисление ЗП',
-        comment: 'Зачисление зарплаты по реестру организации',
-        categoryId: 'salary',
-        currency: 'BYN'
-      }
-    ];
-
-    return {
-      success: true,
-      account: mockAccount,
-      transactions: mockTransactions,
-      sessionToken: 'alfa-session-' + Date.now()
-    };
+    return { success: false, error: BANK_CONNECTION_UNAVAILABLE };
   }
 }

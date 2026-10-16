@@ -222,7 +222,7 @@ supabase/functions/alfa-sync
 
 docs/alfa-bank-integration-research.md
 
-Direct API synchronization (`alfa-sync`) is currently in demonstration/research mode. Official Open API connectivity research is documented in `docs/alfa-bank-integration-research.md`; bank FAQ confirms Open API is free, but production access for individuals requires contract approval from Alfa-Bank.
+Direct API synchronization (`alfa-sync`) remains unavailable pending approved bank access. Fabricated login success, accounts and transactions have been removed from both client and Edge Function. The endpoint returns an explicit 503 `ALFA_CONNECTION_NOT_CONFIGURED`, keeps JWT verification enabled, and neither reads credentials nor calls undocumented banking endpoints. Statement parsing/import remains available and unchanged. Current access findings and owner setup are documented in `docs/alfa-bank-integration-research.md`.
 
 Bank import logic is considered sensitive because incorrect parsing can corrupt financial analytics.
 
@@ -324,6 +324,14 @@ npm run preview
 `npm run build` checks TypeScript, production assets and PWA generation.
 
 Bank parser fixtures and robust server-side import identity remain future test/implementation work. Account selection now scopes duplicate preview to the chosen account; existing heuristic duplicate detection remains.
+
+## Automatic recurring-expense insights
+
+`src/lib/recurringInsights.ts` derives read-only monthly hypotheses from the already loaded household ledger. Main and Plans → Payments share `src/components/RecurringInsights.tsx`. Two adjacent monthly payments produce an explicitly preliminary suggestion; three to six produce a longer observed rhythm. Each merchant/account group needs exactly one expense per consecutive month and billing days within four days (month-end clamped). Generic comments, invalid/future/stale rows, transfers, savings movements and auto-posted recurring rows do not count as evidence. Merchant punctuation/case are normalized; account and merchant/branch numbers stay distinct.
+
+Each insight shows original dates/amounts, latest exact-cent price change and an estimated next date, including passed dates without treating them as debt. The main screen can filter the journal to those original transaction IDs and restore all operations. Existing active recurring templates are marked only for the same account and merchant. Insufficient history produces a useful empty state; the last recorded operation is displayed without claiming that bank synchronization occurred.
+
+Suggestions never create recurring templates, write transactions, change categories/amounts or reserve funds; existing confirmed templates retain their current automatic posting behavior. The analysis uses the Minsk planning day, adds no dependencies, schema, external AI or new data stores, and is limited to one monthly cadence. Known limitations: exact normalized descriptions can miss merchants with changing reference text; two payments can be coincidental; completeness still depends on imported history. Release checks and publication status: `docs/automation-insights-release.md`.
 
 ## Accounts release deployment
 

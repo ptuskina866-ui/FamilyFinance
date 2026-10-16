@@ -42,6 +42,7 @@ export interface RecurringTransaction {
   last_applied: string | null; // ISO date YYYY-MM-DD
   is_active: boolean;
   created_at: string;
+  account_id?: string | null;
 }
 
 export interface SavingsGoal {
@@ -75,6 +76,20 @@ export interface Transaction {
   goalId?: string | null;
   recurringId?: string | null;
   incomeDistributionId?: string | null;
+}
+
+export interface RecurringExpenseInsight {
+  id: string;
+  merchant: string;
+  accountId: string | null;
+  categoryId: string;
+  lastAmount: number;
+  previousAmount: number;
+  amountChange: number;
+  expectedDate: string;
+  alreadyPlanned: boolean;
+  evidenceLevel: 'preliminary' | 'established';
+  evidence: Pick<Transaction, 'id' | 'date' | 'amount'>[];
 }
 
 export interface CategoryBudget {

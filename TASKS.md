@@ -2,7 +2,7 @@
 
 # Current work
 
-Flexible planning is published and verified: category transfers, reviewed income editing/cancellation, previous-month decisions, ordered salary templates, emergency reserves and expense funds. Working database updated with private backup and unchanged existing financial rows verified. Cloudflare release confirmed on 2026-10-13: production bundle and new capability API checked; login renders without errors. Development demo: `http://127.0.0.1:5173/?demo=1`.
+Automatic recurring-expense insights implemented on 2026-10-16; local verification and publication in progress. Previous flexible-planning release remains installed. Real bank auto-sync is unavailable: owner has no Developer Hub account/approved access yet, and iPhone receives bank push only. Existing production history spans September/October, so two-payment suggestions are explicitly preliminary. Development demo: `http://127.0.0.1:5173/?demo=1`.
 
 ## Project maintenance backlog
 
@@ -21,6 +21,12 @@ Flexible planning is published and verified: category transfers, reviewed income
 - Review Supabase schema and RLS consistency (including full execution of `supabase_schema.sql` and trigger testing in an isolated test PostgreSQL/Supabase instance; audit household isolation).
 
 ## Recently completed
+
+- Automatic monthly expense discovery (2026-10-16): shared main/Payments card, preliminary two-month versus longer three-to-six-month rhythms, source evidence, estimated dates and exact amount-change explanations. Journal filtering opens the original records; browsing does not change balances or financial data.
+  - Account isolation, conservative merchant grouping, ambiguous/repeated/future/malformed row handling and exclusion of auto-posted/transfer/savings rows. No new schema or runtime dependencies.
+  - Removed fabricated bank success/accounts/operations from the client and replaced the unused prototype banking endpoint with an explicit unavailable response. Official PDF/1C/CSV parser prefix preserved.
+  - Rechecked live bank FAQ: production approval required; Personal route uses Alfa-Business Online and does not establish access for a private household app. Owner confirms no portal account/access. Inquiry/setup steps updated; no message sent to the bank.
+  - 50 calculation/auth/bank checks and all 176 isolated SQL checks pass. Mobile review, hidden amounts and journal restore verified at 320 px; final production checks pending. Details: `docs/automation-insights-release.md`.
 
 - Flexible-planning publication confirmed: PR #5 merged as `896df49`, Cloudflare build succeeded, version `4f8709ee-3385-4295-a8bb-c612da76e699`. Fresh production bundle `index-B3_EbYgB.js` contains funds/templates/revision/month-review APIs, correctly configured project and publishable key; flexible capability endpoint returns 200/1. New tables verified with 12 household policies, three Realtime publications and no direct/anonymous writes/reads. Tests used a fresh browser context to avoid reading a superseded PWA asset; existing tabs need reload after worker activation.
 
