@@ -1,3 +1,4 @@
+import { ScreenHeader } from '../components/ScreenHeader';
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../AppContext';
 import { useAuth } from '../AuthContext';
@@ -161,30 +162,10 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
   return (
     <div className="flex flex-col overflow-y-auto no-scrollbar h-full select-none">
       {/* ── Top Header ── */}
-      <div 
-        className="px-5 pb-3 safe-header flex justify-between items-center bg-[#E5F3E8]/95 backdrop-blur-md sticky top-0 z-30"
-        style={{ paddingTop: 'max(28px, calc(env(safe-area-inset-top, 0px) + 16px))' }}
-      >
-        <button
-          type="button"
-          onClick={onNavigateHome}
-          className="w-10 h-10 rounded-full bg-white border border-white/80 shadow-sm flex items-center justify-center text-slate-700 active:scale-90 transition-transform"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-
-        {/* Account indicator */}
-        <div className="px-3 py-1 rounded-full bg-white/80 border border-white/80 shadow-sm text-xs font-black text-slate-800">
-          BYN · {accounts.find(a => a.id === accountId)?.name || 'Основной счет'}
-        </div>
-
-        <div className="w-10 h-10 rounded-full bg-white border border-white/80 shadow-sm flex items-center justify-center text-base">
-          {members.find(m => m.id === selectedMemberId)?.avatar || '👤'}
-        </div>
-      </div>
+      <ScreenHeader title="Новая операция" eyebrow="Быстрая запись" actions={<button type="button" onClick={onNavigateHome} className="icon-button" aria-label="Назад к обзору"><ChevronLeft size={20}/></button>}/>
 
       {/* ── Scrollable Body ── */}
-      <div className="px-5 pt-3 pb-32 flex flex-col gap-4">
+      <div className="screen-body flex flex-col gap-4">
         {error && <p role="alert" className="card p-3 text-xs text-rose-600">{error}</p>}
         {accountsReady && <label className="card p-3 flex flex-col gap-1 text-xs font-bold text-slate-500">Счет операции
           <select aria-label="Счет операции" value={accountId} onChange={e => setAccountId(e.target.value)} className="w-full rounded-xl bg-slate-50 p-2 text-slate-800">
@@ -213,9 +194,9 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
                 }
               }}
               placeholder="0.00"
-              className="text-5xl font-black tracking-tight text-center bg-transparent focus:outline-none w-56 text-slate-950 placeholder:text-slate-300"
+              className="text-5xl font-black tracking-tight text-center bg-transparent focus:outline-none w-full min-w-0 text-slate-950 placeholder:text-slate-300"
             />
-            <span className="text-2xl font-black text-slate-400">Br</span>
+            <span className="text-lg shrink-0 font-bold text-slate-500">Br</span>
           </div>
 
           <span className="text-[11px] font-bold text-slate-400">
@@ -223,13 +204,13 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
           </span>
 
           {/* Quick Amount Chips */}
-          <div className="flex items-center gap-1.5 mt-2 overflow-x-auto no-scrollbar w-full justify-center">
+          <div className="flex items-center gap-1.5 mt-2 overflow-x-auto no-scrollbar w-full">
             {QUICK_AMOUNTS.map(amt => (
               <button
                 key={amt}
                 type="button"
                 onClick={() => handleQuickAdd(amt)}
-                className="px-3 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 active:scale-95 transition-all"
+                className="px-2.5 py-2.5 shrink-0 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 active:scale-95 transition-all"
               >
                 +{amt}
               </button>
@@ -395,7 +376,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
           type="button"
           onClick={handleSave}
           disabled={saving || financeLoading || (schemaReady && !accountsReady) || !amountStr || (parseMoneyInput(amountStr) || 0) <= 0 || !selectedCategoryId}
-          className={`w-full flex items-center justify-center gap-2 py-4 rounded-full text-white font-black text-sm active:scale-95 transition-all shadow-xl disabled:opacity-40 disabled:pointer-events-none ${
+          className={`w-full flex items-center justify-center gap-2 py-4 rounded-2xl text-white font-black text-sm active:scale-95 transition-all shadow-xl disabled:opacity-40 disabled:pointer-events-none ${
             isIncome 
               ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20' 
               : 'bg-slate-950 hover:bg-slate-900 shadow-slate-950/25'

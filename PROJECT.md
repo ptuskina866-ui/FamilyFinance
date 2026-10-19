@@ -297,6 +297,8 @@ Current visual direction:
 
 Neo-Fintech / Liquid Glass.
 
+Premium design update (2026-10-19): warm light surfaces, forest-green financial hero, restrained lime actions and Inter with tabular money. Shared tokens live in `src/index.css`/Tailwind; `ScreenHeader` provides consistent screen headings and `OverviewCards` composes existing context values without changing financial rules. The home order prioritizes balance/actions/daily estimate, with labelled five-item navigation and a readable journal. Reports use category rows, all eight screens share typography/spacing, and Priorbank is the initial bank tab. Mobile safe areas/100dvh, zoom, visible focus and reduced motion are supported. Manifest colors/name match the interface; existing PWA cache policy remains. References, checks and limitations: `docs/premium-design-release.md`.
+
 Key characteristics:
 
 - frosted glass surfaces;

@@ -1,3 +1,4 @@
+import { ScreenHeader } from '../components/ScreenHeader';
 import React, { useState } from 'react';
 import { useAuth } from '../AuthContext';
 import { User, Mail, Lock, Plus, Link, AlertCircle, ChevronLeft } from 'lucide-react';
@@ -38,22 +39,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogin }) =>
 
   return (
     <div className="flex flex-col h-full overflow-y-auto no-scrollbar select-none">
-      {/* Top bar with safe-area */}
-      <div 
-        className="px-5 pb-3 safe-header bg-[#E5F3E8]/95 backdrop-blur-md sticky top-0 z-30 flex justify-between items-center shrink-0"
-        style={{ paddingTop: 'max(28px, calc(env(safe-area-inset-top, 0px) + 16px))' }}
-      >
-        <button 
-          type="button"
-          onClick={onNavigateToLogin}
-          className="w-10 h-10 rounded-full bg-white border border-white/80 shadow-sm flex items-center justify-center text-slate-800 active:scale-90 transition-all"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-        <h1 className="text-sm font-black text-slate-900 tracking-tight">Регистрация</h1>
-        <div className="w-10 h-10" /> {/* Spacer */}
-      </div>
-
+      <ScreenHeader title="Начнём с вас" eyebrow="Регистрация в FinApp" actions={<button type="button" onClick={onNavigateToLogin} className="icon-button" aria-label="Вернуться ко входу"><ChevronLeft size={20}/></button>}/>
       <div className="px-5 pt-3 pb-12 flex flex-col gap-4 max-w-md mx-auto w-full">
         {success && <div role="status" className="card p-4 text-xs text-emerald-800">Регистрация принята. Если включено подтверждение email, откройте письмо и подтвердите адрес.<button type="button" onClick={onNavigateToLogin} className="block mt-2 font-bold underline">Перейти ко входу</button></div>}
         {errorMsg && (
@@ -72,13 +58,13 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogin }) =>
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Email</label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input 
-                  type="email" 
-                  value={email} 
-                  onChange={e => setEmail(e.target.value)} 
-                  placeholder="email@example.com" 
-                  required 
-                  className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white/80 backdrop-blur-xl border border-white/90 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-950/10 transition-all shadow-sm" 
+                <input
+                  aria-label="Email" autoComplete="email" type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="email@example.com"
+                  required
+                  className="input-light pl-10"
                 />
               </div>
             </div>
@@ -87,14 +73,14 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogin }) =>
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Пароль</label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input 
-                  type="password" 
-                  value={password} 
-                  onChange={e => setPassword(e.target.value)} 
-                  placeholder="минимум 6 символов" 
-                  required 
-                  minLength={6} 
-                  className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white/80 backdrop-blur-xl border border-white/90 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-950/10 transition-all shadow-sm" 
+                <input
+                  aria-label="Пароль" autoComplete="new-password" type="password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="минимум 6 символов"
+                  required
+                  minLength={6}
+                  className="input-light pl-10"
                 />
               </div>
             </div>
@@ -108,13 +94,13 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogin }) =>
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ваше имя</label>
               <div className="relative">
                 <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input 
-                  type="text" 
-                  value={name} 
-                  onChange={e => setName(e.target.value)} 
-                  placeholder="Например: Дмитрий" 
-                  required 
-                  className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white/80 backdrop-blur-xl border border-white/90 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-950/10 transition-all shadow-sm" 
+                <input
+                  type="text"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  aria-label="Ваше имя" autoComplete="given-name" placeholder="Например: Дмитрий"
+                  required
+                  className="input-light pl-10"
                 />
               </div>
             </div>
@@ -124,13 +110,13 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogin }) =>
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Иконка аватара</label>
               <div className="flex gap-2 flex-wrap">
                 {AVATARS.map(av => (
-                  <button 
-                    key={av} 
-                    type="button" 
+                  <button
+                    key={av}
+                    type="button"
                     onClick={() => setAvatar(av)}
                     className={`w-11 h-11 rounded-2xl flex items-center justify-center text-xl transition-all active:scale-90 ${
-                      avatar === av 
-                        ? 'bg-slate-950 text-white shadow-md scale-105 ring-2 ring-slate-950/20' 
+                      avatar === av
+                        ? 'bg-slate-950 text-white shadow-md scale-105 ring-2 ring-slate-950/20'
                         : 'bg-white/80 border border-white/90 shadow-sm hover:bg-white'
                     }`}
                   >
@@ -145,14 +131,14 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogin }) =>
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Фирменный цвет</label>
               <div className="flex gap-2.5 flex-wrap items-center">
                 {COLORS.map(col => (
-                  <button 
-                    key={col} 
-                    type="button" 
+                  <button
+                    key={col}
+                    type="button"
                     onClick={() => setColor(col)}
                     className={`w-8 h-8 rounded-full border-2 transition-all active:scale-90 ${
                       color === col ? 'border-slate-950 ring-2 ring-slate-950/20 scale-110 shadow-md' : 'border-white/80 shadow-sm'
                     }`}
-                    style={{ backgroundColor: col }} 
+                    style={{ backgroundColor: col }}
                   />
                 ))}
               </div>
@@ -164,23 +150,23 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogin }) =>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Семейная группа</p>
 
             <div className="p-1 bg-white/75 backdrop-blur-xl border border-white/90 rounded-2xl flex shadow-sm">
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setHouseholdAction('create')}
                 className={`flex-1 py-2.5 text-xs font-black rounded-xl transition-all ${
-                  householdAction === 'create' 
-                    ? 'bg-slate-950 text-white shadow-sm' 
+                  householdAction === 'create'
+                    ? 'bg-slate-950 text-white shadow-sm'
                     : 'text-slate-500 hover:text-slate-900 font-bold'
                 }`}
               >
                 Создать семью
               </button>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setHouseholdAction('join')}
                 className={`flex-1 py-2.5 text-xs font-black rounded-xl transition-all ${
-                  householdAction === 'join' 
-                    ? 'bg-slate-950 text-white shadow-sm' 
+                  householdAction === 'join'
+                    ? 'bg-slate-950 text-white shadow-sm'
                     : 'text-slate-500 hover:text-slate-900 font-bold'
                 }`}
               >
@@ -193,12 +179,12 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogin }) =>
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Название семьи</label>
                 <div className="relative">
                   <Plus className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input 
-                    type="text" 
-                    value={householdName} 
-                    onChange={e => setHouseholdName(e.target.value)} 
-                    placeholder="Семья Соколовых" 
-                    className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white/80 backdrop-blur-xl border border-white/90 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-950/10 transition-all shadow-sm" 
+                  <input
+                    type="text"
+                    value={householdName}
+                    onChange={e => setHouseholdName(e.target.value)}
+                    placeholder="Семья Соколовых"
+                    className="input-light pl-10"
                   />
                 </div>
               </div>
@@ -207,22 +193,22 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogin }) =>
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Код приглашения</label>
                 <div className="relative">
                   <Link className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input 
-                    type="text" 
-                    value={householdId} 
-                    onChange={e => setHouseholdId(e.target.value)} 
+                  <input
+                    type="text"
+                    value={householdId}
+                    onChange={e => setHouseholdId(e.target.value)}
                     placeholder="Вставьте код из профиля партнера"
-                    className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white/80 backdrop-blur-xl border border-white/90 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-950/10 transition-all shadow-sm" 
+                    className="input-light pl-10"
                   />
                 </div>
               </div>
             )}
           </div>
 
-          <button 
-            type="submit" 
-            disabled={loading} 
-            className="w-full py-4 mt-2 rounded-full bg-slate-950 hover:bg-slate-900 active:scale-[0.98] text-white font-black text-xs shadow-xl shadow-slate-950/25 transition-all disabled:opacity-50"
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-4 mt-2 rounded-2xl bg-slate-950 hover:bg-slate-900 active:scale-[0.98] text-white font-black text-xs shadow-xl shadow-slate-950/25 transition-all disabled:opacity-50"
           >
             {loading ? 'Регистрация...' : 'Зарегистрироваться'}
           </button>

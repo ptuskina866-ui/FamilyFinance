@@ -84,7 +84,7 @@ export function PriorImportPanel() {
   const control = 'w-full min-w-0 rounded-2xl bg-white/80 border border-white p-3 text-xs text-slate-800';
   return <div className="flex flex-col gap-4 max-w-lg mx-auto w-full">
     <div className="card p-5 space-y-3">
-      <h2 className="font-black text-slate-900">Приорбанк · прямое подключение</h2>
+      <h2 className="section-title">Приорбанк</h2>
       <PriorBankConnection key={`${user?.id}:${profile?.household_id}`} disabled={busy} onBusy={setConnecting} onStart={() => {resetReview(); setSnapshot(null);}} onConnected={(value, savedAccountId) => {resetReview(); setSnapshot(value); setShowImported(false); setAccountId(savedAccountId ?? '');}} />
       <details className="text-xs text-slate-500"><summary className="cursor-pointer py-2">Уже есть файл из помощника?</summary><label className="flex items-center justify-center gap-2 bg-white/80 text-slate-800 rounded-2xl p-3 font-bold cursor-pointer"><UploadCloud size={18} /> Выбрать файл Приорбанка<input aria-label="Файл Приорбанка" type="file" accept=".json,application/json" className="sr-only" disabled={controlsDisabled} onChange={e => { void load(e.target.files?.[0]); e.target.value = ''; }} /></label></details>
       <p className="text-[11px] text-slate-500">Одна карта BYN связана с одним банковским счётом FinApp. Уже добавленные записи пропускаются. Если банк изменит ранее полученную историю, проверка остановит импорт. Валюта покупки может отличаться — сохраняется сумма по счёту BYN.</p>

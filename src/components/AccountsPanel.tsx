@@ -97,10 +97,10 @@ export const AccountsPanel: React.FC<{ hideBalances?: boolean }> = ({ hideBalanc
   return (
     <section className="flex flex-col gap-3" aria-labelledby="accounts-heading">
       <div className="flex items-center justify-between gap-2 px-1">
-        <h2 id="accounts-heading" className="text-xs font-black text-slate-800">Счета семьи</h2>
+        <h2 id="accounts-heading" className="section-title">Счета</h2>
         {accountsReady && <div className="flex gap-2">
-          <button type="button" onClick={() => open('transfer')} disabled={financeLoading || !schemaReady || activeAccounts.length < 2} aria-label="Записать перевод между счетами" className="w-9 h-9 rounded-full bg-white border border-white/80 text-slate-700 flex items-center justify-center disabled:opacity-30"><ArrowRightLeft className="w-4 h-4" /></button>
-          <button type="button" onClick={() => open('create')} disabled={financeLoading || !schemaReady} aria-label="Добавить счет" className="w-9 h-9 rounded-full bg-slate-950 text-white flex items-center justify-center disabled:opacity-30"><Plus className="w-4 h-4" /></button>
+          <button type="button" onClick={() => open('transfer')} disabled={financeLoading || !schemaReady || activeAccounts.length < 2} aria-label="Записать перевод между счетами" className="icon-button disabled:opacity-30"><ArrowRightLeft className="w-4 h-4" /></button>
+          <button type="button" onClick={() => open('create')} disabled={financeLoading || !schemaReady} aria-label="Добавить счет" className="icon-button disabled:opacity-30"><Plus className="w-4 h-4" /></button>
         </div>}
       </div>
       {financeError && <p role="alert" className="rounded-2xl bg-rose-50 border border-rose-100 p-3 text-xs text-rose-700 break-words">{financeError}</p>}
@@ -111,7 +111,7 @@ export const AccountsPanel: React.FC<{ hideBalances?: boolean }> = ({ hideBalanc
       </div> : <div className="flex gap-3 overflow-x-auto no-scrollbar -mx-5 px-5 pb-1">
         {activeAccounts.map(account => {
           const Icon = account.kind === 'cash' ? Wallet : account.kind === 'savings' ? PiggyBank : CreditCard;
-          return <div key={account.id} className="card p-4 min-w-[165px] max-w-[210px] flex flex-col gap-3 shrink-0">
+          return <div key={account.id} className="card p-4 min-w-[176px] max-w-[230px] flex flex-col gap-4 shrink-0">
             <div className="flex items-center gap-2"><Icon className="w-4 h-4 text-slate-500 shrink-0" /><span className="text-[11px] font-bold text-slate-700 truncate" title={account.name}>{account.name}</span></div>
             <div><p className="text-base font-black text-slate-900">{hideBalances ? '••••••' : fmt(accountBalances[account.id] ?? 0)}</p><p className="text-[10px] text-slate-400">{kinds[account.kind]}</p></div>
           </div>;

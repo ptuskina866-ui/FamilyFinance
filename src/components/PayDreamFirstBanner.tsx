@@ -9,11 +9,12 @@ interface PayDreamFirstBannerProps {
   goals: SavingsGoal[];
   availableBalance: number;
   onOpenPlans?: () => void;
+  hideAmounts?: boolean;
 }
 
 const fmt = (n: number) => n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' Br';
 
-export const PayDreamFirstBanner: React.FC<PayDreamFirstBannerProps> = ({ transactions, goals, availableBalance, onOpenPlans }) => {
+export const PayDreamFirstBanner: React.FC<PayDreamFirstBannerProps> = ({ transactions, goals, availableBalance, onOpenPlans, hideAmounts = false }) => {
   const [dismissedIncomeId, setDismissedIncomeId] = useState<string | null>(null);
   const goal = goals.find(g => !g.is_archived && !g.is_completed && g.current_amount < g.target_amount);
   const recentIncome = useMemo(() => {
@@ -36,7 +37,7 @@ export const PayDreamFirstBanner: React.FC<PayDreamFirstBannerProps> = ({ transa
         <PiggyBank className="w-5 h-5 text-emerald-200 shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
           <p className="text-xs font-bold">Сначала — ваша цель</p>
-          <p className="text-[11px] text-slate-300 leading-relaxed mt-1">Недавно поступило {fmt(recentIncome.amount)}. Можно запланировать до {fmt(recommendedAmount)} в «{goal.name}».</p>
+          <p className="text-[11px] text-[#d1decb] leading-relaxed mt-1">Недавно поступило {hideAmounts ? '••••' : fmt(recentIncome.amount)}. Можно запланировать до {hideAmounts ? '••••' : fmt(recommendedAmount)} в «{goal.name}».</p>
         </div>
         <button type="button" onClick={() => setDismissedIncomeId(recentIncome.id)} aria-label="Скрыть предложение накопления" className="w-8 h-8 rounded-full flex items-center justify-center text-slate-300 shrink-0"><X className="w-4 h-4" /></button>
       </div>

@@ -1,5 +1,11 @@
 # TASKS.md
 
+## Current premium design release · 2026-10-19
+
+- Implemented requested redesign from the six supplied galleries: calm light/forest/lime system, Inter, softened glass, labelled navigation, shared headers and a reordered daily overview. All eight screens updated; categories are readable report rows, journal preserves actions/search, home money hiding is consistent, Priorbank opens first. No new dependencies or domain/backend changes.
+- Passing: 63 app tests, 26 bank/server tests, TypeScript/Vite/PWA build. Real-screen demo browser scenarios at 320/390/1024 px cover navigation, privacy, search/dialogs/charts/planning, exact 1.23 BYN demo save, bank fallback and login/registration. Existing remembered-bank synthetic UI passes at 320/390 px. No real bank/Supabase requests or working-data writes in demo tests.
+- Visual review completed; physical Safari/installed PWA and keyboard remain owner verification. Publication is being prepared. References, changed-file inventory and limits: `docs/premium-design-release.md`.
+
 ## Current Priorbank convenience release · 2026-10-19
 
 - Owner confirms the previous server connector works. Implemented explicit Vault-encrypted bank sessions without password retention; automatic ten completed Minsk days on opening, remembered card/account and automatic receipt preflight. Linked-account save needs selection plus one Add action; unknown account keeps first-use confirmation. Expired session requests a new login; no automatic password retry.

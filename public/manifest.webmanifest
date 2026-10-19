@@ -1,9 +1,9 @@
 {
-  "name": "Семейный Бюджет",
-  "short_name": "СемБюджет",
+  "name": "FinApp",
+  "short_name": "FinApp",
   "description": "Удобное мобильное приложение для учета семейных финансов",
-  "theme_color": "#0f172a",
-  "background_color": "#020617",
+  "theme_color": "#F3F5F1",
+  "background_color": "#F3F5F1",
   "display": "standalone",
   "orientation": "portrait",
   "start_url": "/",

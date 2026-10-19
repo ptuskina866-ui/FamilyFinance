@@ -1,3 +1,4 @@
+import { ScreenHeader } from '../components/ScreenHeader';
 import React, { useState } from 'react';
 import { useApp } from '../AppContext';
 import { useAuth } from '../AuthContext';
@@ -48,22 +49,9 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onOpenStatement }) => {
   return (
     <div className="flex flex-col overflow-y-auto no-scrollbar h-full select-none">
       {/* Header */}
-      <div 
-        className="px-5 pb-3 safe-header bg-[#E5F3E8]/95 backdrop-blur-md sticky top-0 z-30 flex justify-between items-center"
-        style={{ paddingTop: 'max(28px, calc(env(safe-area-inset-top, 0px) + 16px))' }}
-      >
-        <div className="w-9 h-9" /> {/* Spacer */}
-        <h1 className="text-sm font-black text-slate-900 tracking-tight">Профиль</h1>
-        <button
-          onClick={signOut}
-          className="w-9 h-9 rounded-full bg-rose-50 hover:bg-rose-100 border border-rose-100/50 flex items-center justify-center text-rose-500 active:scale-90 transition-all"
-          title="Выйти"
-        >
-          <LogOut className="w-4 h-4" />
-        </button>
-      </div>
+      <ScreenHeader title="Профиль" eyebrow="Ваше пространство" actions={<button type="button" onClick={signOut} className="icon-button text-rose-700" aria-label="Выйти" title="Выйти"><LogOut size={18}/></button>}/>
 
-      <div className="px-5 pt-3 pb-36 flex flex-col gap-5">
+      <div className="screen-body flex flex-col gap-5">
         {/* Profile card */}
         <div className="card px-4 py-4 flex flex-col gap-4">
           <div className="flex items-center gap-4">
@@ -125,7 +113,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onOpenStatement }) => {
                       {m.name} {m.id === profile?.id ? <span className="text-[10px] text-emerald-600 font-black ml-1">(Вы)</span> : ''}
                     </p>
                   </div>
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/20" title="Онлайн" />
+                  <span className="text-[10px] text-slate-500">Участник</span>
                 </div>
               ))
             )}
@@ -153,7 +141,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onOpenStatement }) => {
                   />
                   <button
                     onClick={handleSaveLimit}
-                    className="px-3 py-1 bg-[#0F172A] hover:bg-[#1E293B] text-white font-extrabold text-xs rounded-xl active:scale-95"
+                    className="px-3 py-1 bg-slate-950 hover:bg-[#1E293B] text-white font-extrabold text-xs rounded-xl active:scale-95"
                   >
                     ОК
                   </button>

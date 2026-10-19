@@ -21,11 +21,11 @@ export default defineConfig(({ command, mode }) => {
         skipWaiting: true
       },
       manifest: {
-        name: 'FamilyFinance',
+        name: 'FinApp',
         short_name: 'FinApp',
         description: 'Удобное мобильное приложение для учета семейных финансов',
-        theme_color: '#E5F3E8',
-        background_color: '#E5F3E8',
+        theme_color: '#F3F5F1',
+        background_color: '#F3F5F1',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',

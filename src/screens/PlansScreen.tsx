@@ -1,3 +1,4 @@
+import { ScreenHeader } from '../components/ScreenHeader';
 import React, { useEffect, useRef, useState } from 'react';
 import { useApp } from '../AppContext';
 import { useAuth } from '../AuthContext';
@@ -214,31 +215,17 @@ const PlansScreen: React.FC = () => {
   return (
     <div className="flex flex-col h-full select-none">
       {/* Header */}
-      <div 
-        className="px-5 pb-3 safe-header bg-[#E5F3E8]/95 backdrop-blur-md sticky top-0 z-30 flex justify-between items-center shrink-0"
-        style={{ paddingTop: 'max(28px, calc(env(safe-area-inset-top, 0px) + 16px))' }}
-      >
-        <div className="w-9 h-9" /> {/* Spacer */}
-        <h1 className="text-sm font-black text-slate-900 tracking-tight">Планы</h1>
-        {(activeSubTab === 'goals' || activeSubTab === 'recurring') ? <button
-          onClick={() => { if (activeSubTab === 'goals') { setGoalError(''); setShowGoalForm(true); } else { setRecError(''); setShowRecForm(true); } }}
-          aria-label={activeSubTab === 'goals' ? 'Создать цель накопления' : 'Создать регулярный платеж'}
-          disabled={financeLoading || !!actionLoadingId}
-          className="w-9 h-9 rounded-full bg-slate-950 text-white flex items-center justify-center shadow-sm active:scale-90 transition-all"
-        >
-          <Plus className="w-5 h-5" strokeWidth={2.5} />
-        </button> : <div className="w-9 h-9" />}
-      </div>
+      <ScreenHeader title="Планы" eyebrow="Спокойное будущее" actions={(activeSubTab==='goals'||activeSubTab==='recurring') ? <button type="button" onClick={()=>{if(activeSubTab==='goals'){setGoalError('');setShowGoalForm(true);}else{setRecError('');setShowRecForm(true);}}} aria-label={activeSubTab==='goals'?'Создать цель накопления':'Создать регулярный платеж'} disabled={financeLoading||!!actionLoadingId} className="icon-button bg-slate-950 text-white disabled:opacity-40"><Plus size={21}/></button> : undefined}/>
 
       {/* Pill Toggle subtabs */}
-      <div className="px-5 pt-5 shrink-0">
+      <div className="px-5 pt-1 pb-3 shrink-0">
         <div className="toggle-pill p-1 bg-slate-50 border border-slate-100 rounded-2xl flex gap-1">
-          {([{id:'goals',name:'Цели'},{id:'recurring',name:'Платежи'},{id:'budget',name:'Бюджет'},{id:'funds',name:'Фонды'}] as const).map(tab=><button key={tab.id} type="button" onClick={()=>setActiveSubTab(tab.id)} className={`flex-1 min-w-0 py-2.5 text-[11px] font-bold rounded-xl transition-all ${activeSubTab===tab.id?'bg-[#0F172A] text-white shadow-sm':'text-slate-400'}`}>{tab.name}</button>)}
+          {([{id:'goals',name:'Цели'},{id:'recurring',name:'Платежи'},{id:'budget',name:'Бюджет'},{id:'funds',name:'Фонды'}] as const).map(tab=><button key={tab.id} type="button" onClick={()=>setActiveSubTab(tab.id)} className={`flex-1 min-w-0 py-2.5 text-[11px] font-bold rounded-xl transition-all ${activeSubTab===tab.id?'bg-slate-950 text-white shadow-sm':'text-slate-400'}`}>{tab.name}</button>)}
         </div>
       </div>
 
       {/* Content wrapper */}
-      <div className="flex-1 overflow-y-auto no-scrollbar px-5 pt-3 pb-36">
+      <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar screen-body">
         {actionError && !archivingGoalId && <p role="alert" className="rounded-2xl bg-rose-50 p-3 mb-3 text-xs text-rose-700 break-words">{actionError}</p>}
         {activeSubTab === 'funds' ? <FundsPlanner /> : activeSubTab === 'budget' ? <BudgetPlanner /> : activeSubTab === 'goals' ? (
           /* ========================================================================= */
@@ -529,7 +516,7 @@ const PlansScreen: React.FC = () => {
               <button
                 type="submit"
                 disabled={goalLoading}
-                className="w-full mt-2 py-3.5 rounded-2xl bg-[#0F172A] hover:bg-[#1E293B] text-white font-bold text-xs active:scale-95 transition-all shadow-sm disabled:opacity-50"
+                className="w-full mt-2 py-3.5 rounded-2xl bg-slate-950 hover:bg-[#1E293B] text-white font-bold text-xs active:scale-95 transition-all shadow-sm disabled:opacity-50"
               >
                 {goalLoading ? 'Создание...' : 'Создать цель'}
               </button>
@@ -564,7 +551,7 @@ const PlansScreen: React.FC = () => {
                   type="button"
                   onClick={() => { setRecType('expense'); setRecCategoryId('food-hippo'); }}
                   className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all duration-200 ${
-                    recType === 'expense' ? 'bg-[#0F172A] text-white shadow-sm' : 'text-slate-400'
+                    recType === 'expense' ? 'bg-slate-950 text-white shadow-sm' : 'text-slate-400'
                   }`}
                 >
                   💸 Расход
@@ -573,7 +560,7 @@ const PlansScreen: React.FC = () => {
                   type="button"
                   onClick={() => { setRecType('income'); setRecCategoryId('salary'); }}
                   className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all duration-200 ${
-                    recType === 'income' ? 'bg-[#0F172A] text-white shadow-sm' : 'text-slate-400'
+                    recType === 'income' ? 'bg-slate-950 text-white shadow-sm' : 'text-slate-400'
                   }`}
                 >
                   💰 Доход
@@ -669,7 +656,7 @@ const PlansScreen: React.FC = () => {
               <button
                 type="submit"
                 disabled={recLoading}
-                className="w-full mt-2 py-3.5 rounded-2xl bg-[#0F172A] hover:bg-[#1E293B] text-white font-bold text-xs active:scale-95 transition-all shadow-sm disabled:opacity-50"
+                className="w-full mt-2 py-3.5 rounded-2xl bg-slate-950 hover:bg-[#1E293B] text-white font-bold text-xs active:scale-95 transition-all shadow-sm disabled:opacity-50"
               >
                 {recLoading ? 'Сохранение...' : 'Создать регулярный платеж'}
               </button>
@@ -730,7 +717,7 @@ const PlansScreen: React.FC = () => {
               <button
                 type="submit"
                 disabled={fundsLoading || !accountsReady || financeLoading}
-                className="w-full mt-2 py-3.5 rounded-2xl bg-[#0F172A] hover:bg-[#1E293B] text-white font-bold text-xs active:scale-95 transition-all shadow-sm disabled:opacity-40"
+                className="w-full mt-2 py-3.5 rounded-2xl bg-slate-950 hover:bg-[#1E293B] text-white font-bold text-xs active:scale-95 transition-all shadow-sm disabled:opacity-40"
               >
                 {fundsLoading ? 'Сохранение…' : fundMode === 'deposit' ? 'Зарезервировать сумму' : 'Вернуть в свободный остаток'}
               </button>
