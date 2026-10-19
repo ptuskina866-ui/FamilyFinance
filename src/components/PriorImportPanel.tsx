@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, CheckCircle2, UploadCloud } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Landmark, UploadCloud } from 'lucide-react';
 import { useApp } from '../AppContext';
 import { useAuth } from '../AuthContext';
 import type { PriorImportCheck, PriorImportResult, PriorImportSelection, PriorImportSnapshot } from '../types';
 import { parsePriorImportFile, PRIOR_FILE_LIMIT, priorBlockedReason, priorPossibleDuplicates } from '../lib/priorImport';
 import { toMinorUnits } from '../lib/money';
 import { AlfaBankService } from '../services/alfaBankService';
+import { connectPriorLocal } from '../services/priorLocalService';
 
 export function PriorImportPanel() {
   const { accounts, transactions, categories, accountBalances, financeLoading, financeError, previewPriorImport, importPriorOperations } = useApp();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [snapshot, setSnapshot] = useState<PriorImportSnapshot | null>(null);
   const [accountId, setAccountId] = useState('');
   const [checked, setChecked] = useState<PriorImportCheck | null>(null);
@@ -19,11 +20,16 @@ export function PriorImportPanel() {
   const [confirmed, setConfirmed] = useState(false);
   const [result, setResult] = useState<PriorImportResult | null>(null);
   const [page, setPage] = useState(0);
+  const [connectionStatus, setConnectionStatus] = useState('');
+  const [connecting, setConnecting] = useState(false);
+  const connection = useRef<ReturnType<typeof connectPriorLocal>>(null);
   const version = useRef(0), pending = useRef(false);
-  useEffect(() => () => { ++version.current; }, []);
+  useEffect(() => () => { ++version.current; connection.current?.cancel(); }, []);
   useEffect(() => {
+    connection.current?.cancel(); connection.current = null; setConnecting(false); setConnectionStatus(''); setError('');
     ++version.current; setSnapshot(null); setAccountId(''); setChecked(null); setItems({}); setConfirmed(false); setResult(null);
-  }, [user?.id]);
+  }, [user?.id, profile?.household_id]);
+  const controlsDisabled = busy || connecting;
   const bankAccounts = accounts.filter(a => !a.is_archived && a.kind === 'bank' && a.currency === 'BYN');
   const possible = useMemo(() => snapshot ? priorPossibleDuplicates(snapshot, transactions, accountId) : new Set<number>(), [snapshot, transactions, accountId]);
   const imported = new Set(checked?.importedIndexes || []);
@@ -33,8 +39,22 @@ export function PriorImportPanel() {
   const displayCents = (value: bigint) => `${value < 0n ? '−' : ''}${(value < 0n ? -value : value) / 100n}.${String((value < 0n ? -value : value) % 100n).padStart(2, '0')}`;
   const valid = selected.length > 0 && selected.every(item => item.categoryId && (!possible.has(item.index) || item.confirmExisting));
   const resetReview = () => { ++version.current; setChecked(null); setItems({}); setConfirmed(false); setResult(null); setError(''); setPage(0); };
+  const connect = () => {
+    if (pending.current || connection.current) return;
+    ++version.current;
+    setError(''); setConnecting(true); setConnectionStatus('Открываем локальную форму подключения…');
+    connection.current = connectPriorLocal({
+      onReady: () => setConnectionStatus('Форма открыта. Войдите в Prior Online и выберите карту в окне подключения.'),
+      onSnapshot: value => {
+        resetReview(); setSnapshot(value); setConnecting(false); connection.current = null;
+        setConnectionStatus('Операции получены напрямую из помощника. Выберите счёт и проверьте их перед добавлением.');
+      },
+      onError: message => { setError(message); setConnecting(false); setConnectionStatus(''); connection.current = null; },
+    });
+  };
   const load = async (file?: File) => {
-    if (!file || pending.current) return;
+    if (!file || pending.current || connection.current) return;
+    setConnectionStatus('');
     resetReview(); setSnapshot(null);
     const current = version.current;
     try {
@@ -45,14 +65,14 @@ export function PriorImportPanel() {
     } catch { if (current === version.current) setError('Не удалось прочитать файл Приорбанка. Подготовьте новый файл в локальном помощнике.'); }
   };
   const check = async () => {
-    if (!snapshot || !accountId || pending.current) return;
+    if (!snapshot || !accountId || pending.current || connection.current) return;
     resetReview(); const current = version.current; pending.current = true; setBusy(true);
     try { const value = await previewPriorImport(accountId, snapshot); if (current === version.current) setChecked(value); }
     catch (e) { if (current === version.current) setError(e instanceof Error ? e.message : 'Не удалось проверить импорт.'); }
     finally { pending.current = false; setBusy(false); }
   };
   const save = async () => {
-    if (!snapshot || !checked || !confirmed || !valid || pending.current || financeLoading || financeError) return;
+    if (!snapshot || !checked || !confirmed || !valid || pending.current || connection.current || financeLoading || financeError) return;
     pending.current = true; setBusy(true); setError(''); const current = version.current;
     try {
       const value = await importPriorOperations(accountId, snapshot, selected);
@@ -72,13 +92,14 @@ export function PriorImportPanel() {
   const control = 'w-full min-w-0 rounded-2xl bg-white/80 border border-white p-3 text-xs text-slate-800';
   return <div className="flex flex-col gap-4 max-w-lg mx-auto w-full">
     <div className="card p-5 space-y-3">
-      <h2 className="font-black text-slate-900">Приорбанк · импорт после проверки</h2>
-      <p className="text-xs text-slate-600 leading-relaxed">В локальном помощнике получите историю и нажмите «Подготовить файл для FinApp». Выберите этот файл здесь. Банковский пароль вводится только в помощнике на компьютере.</p>
-      <label className="flex items-center justify-center gap-2 bg-slate-950 text-white rounded-2xl p-4 text-xs font-bold cursor-pointer">
-        <UploadCloud size={18} /> Выбрать файл Приорбанка
-        <input aria-label="Файл Приорбанка" type="file" accept=".json,application/json" className="sr-only" disabled={busy} onChange={e => { void load(e.target.files?.[0]); e.target.value = ''; }} />
-      </label>
-      <p className="text-[11px] text-slate-500">Пилот: одна карта BYN на один банковский счёт FinApp, одно окно до 31 дня. При повторной загрузке включайте все ранее загруженные дни этой карты. Импортируется завершённая история до дня получения файла. Валюта покупки может отличаться — сохраняется сумма по счёту BYN.</p>
+      <h2 className="font-black text-slate-900">Приорбанк · прямое подключение</h2>
+      <p className="text-xs text-slate-600 leading-relaxed">Войдите в Prior Online в отдельном локальном окне. Карта и операции появятся здесь для проверки — без скачивания файлов. Банковский пароль остаётся в помощнике на компьютере.</p>
+      <button type="button" disabled={controlsDisabled} onClick={connect} className="w-full flex items-center justify-center gap-2 bg-slate-950 text-white rounded-2xl p-4 text-xs font-bold disabled:opacity-40"><Landmark size={18} />{connecting ? 'Подключаемся…' : 'Подключить Приорбанк'}</button>
+      {connectionStatus && <p role="status" className="text-xs text-emerald-800 leading-relaxed">{connectionStatus}</p>}
+      {connecting && <button type="button" className="w-full rounded-2xl bg-white/80 p-3 text-xs font-bold" onClick={() => { connection.current?.cancel(); connection.current = null; setConnecting(false); setConnectionStatus('Подключение отменено.'); }}>Отменить подключение</button>}
+      <p className="text-[11px] text-slate-500">Пока работает на компьютере с запущенным Start-Prior-Preview.cmd. Фонового обновления и подключения с телефона ещё нет.</p>
+      <details className="text-xs text-slate-500"><summary className="cursor-pointer py-2">Уже есть файл из помощника?</summary><label className="flex items-center justify-center gap-2 bg-white/80 text-slate-800 rounded-2xl p-3 font-bold cursor-pointer"><UploadCloud size={18} /> Выбрать файл Приорбанка<input aria-label="Файл Приорбанка" type="file" accept=".json,application/json" className="sr-only" disabled={controlsDisabled} onChange={e => { void load(e.target.files?.[0]); e.target.value = ''; }} /></label></details>
+      <p className="text-[11px] text-slate-500">Пилот: одна карта BYN на один банковский счёт FinApp, одно окно до 31 дня. При повторном получении включайте все ранее загруженные дни этой карты. Импортируется завершённая история до дня получения данных. Валюта покупки может отличаться — сохраняется сумма по счёту BYN.</p>
     </div>
     {error && <div role="alert" className="card p-4 text-xs text-rose-700 flex gap-2"><AlertCircle className="shrink-0" size={18} /><span>{error}</span></div>}
     {result && <div role="status" className="card p-4 text-sm font-bold text-emerald-800 flex gap-2"><CheckCircle2 className="shrink-0" size={18} />Сохранено: {result.imported}. Уже загружено, пропущено: {result.skipped}.</div>}
@@ -87,16 +108,16 @@ export function PriorImportPanel() {
         <p className="text-sm font-black break-words">{snapshot.card.title} · {snapshot.card.maskedNumber} · {snapshot.card.currency}</p>
         <p className="text-xs text-slate-500">{snapshot.from} — {snapshot.to} · записей: {snapshot.card.records.length}</p>
         <label className="block text-xs font-bold">Счёт для операций
-          <select aria-label="Счёт для операций Приорбанка" className={`${control} mt-2`} value={accountId} disabled={busy} onChange={e => { resetReview(); setAccountId(e.target.value); }}>
+          <select aria-label="Счёт для операций Приорбанка" className={`${control} mt-2`} value={accountId} disabled={controlsDisabled} onChange={e => { resetReview(); setAccountId(e.target.value); }}>
             <option value="">Выберите банковский счёт BYN</option>{bankAccounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
         </label>
         {!bankAccounts.length && <p className="text-xs text-amber-800">Сначала создайте банковский счёт BYN на главной странице.</p>}
         <p className="text-xs text-slate-600">Загрузка изменит баланс выбранного счёта. Исключите свои переводы и уже учтённые операции. Начальный остаток должен относиться к дате до импортируемой истории; доступная сумма банка не заменяет его автоматически.</p>
-        <button type="button" onClick={() => void check()} disabled={busy || !accountId || snapshot.card.currency !== 'BYN' || financeLoading || !!financeError} className="w-full rounded-2xl p-3 bg-slate-950 text-white text-xs font-bold disabled:opacity-40">{busy ? 'Проверяем…' : 'Проверить выбранный счёт'}</button>
+        <button type="button" onClick={() => void check()} disabled={controlsDisabled || !accountId || snapshot.card.currency !== 'BYN' || financeLoading || !!financeError} className="w-full rounded-2xl p-3 bg-slate-950 text-white text-xs font-bold disabled:opacity-40">{busy ? 'Проверяем…' : 'Проверить выбранный счёт'}</button>
       </div>
       {checked && <div className="card p-5 text-xs text-emerald-800 space-y-3"><p>Проверка пройдена. Уже загружено строк: {imported.size}. Категории предлагаются по описанию — проверьте и при необходимости измените их. {checked.linked ? 'Используется ранее выбранная связь со счётом.' : 'Связь карты со счётом закрепится при первом сохранении.'}</p>
-        <button type="button" disabled={busy} className="w-full rounded-2xl bg-white/80 p-3 text-slate-900 font-bold" onClick={() => {
+        <button type="button" disabled={controlsDisabled} className="w-full rounded-2xl bg-white/80 p-3 text-slate-900 font-bold" onClick={() => {
           const next: Record<number, PriorImportSelection> = {};
           snapshot.card.records.forEach((row, index) => { if (!priorBlockedReason(snapshot, row) && !imported.has(index) && !possible.has(index)) next[index] = items[index] || newSelection(index); });
           setItems(next); setConfirmed(false);
@@ -107,7 +128,7 @@ export function PriorImportPanel() {
           const index = page * 40 + offset, blocked = priorBlockedReason(snapshot, row), chosen = items[index];
           return <article key={index} className="card p-4 space-y-2 text-xs">
             <label className="flex items-start gap-3">
-              <input type="checkbox" aria-label={`Выбрать операцию ${index + 1}`} className="mt-1 w-5 h-5 shrink-0 accent-slate-950" checked={!!chosen} disabled={busy || !checked || !!blocked || imported.has(index)} onChange={e => {
+              <input type="checkbox" aria-label={`Выбрать операцию ${index + 1}`} className="mt-1 w-5 h-5 shrink-0 accent-slate-950" checked={!!chosen} disabled={controlsDisabled || !checked || !!blocked || imported.has(index)} onChange={e => {
                 if (e.target.checked) update(index, {}); else { setItems(previous => { const next = { ...previous }; delete next[index]; return next; }); setConfirmed(false); }
               }} />
               <span className="min-w-0 flex-1"><span className="block font-bold break-words">{row.description}</span><span className="block text-slate-500 mt-1 break-words">{row.date}</span></span>
@@ -119,10 +140,10 @@ export function PriorImportPanel() {
             {possible.has(index) && !imported.has(index) && !blocked && <p className="text-amber-800">Есть операция с такой же датой и суммой в файле или журнале. Сверьте, что это отдельная покупка.</p>}
             {chosen && <>
               <p className="text-slate-500">Предложенная категория — можно изменить</p>
-              <select className={control} aria-label={`Категория операции ${index + 1}`} value={chosen.categoryId} disabled={busy} onChange={e => update(index, { categoryId: e.target.value })}>
+              <select className={control} aria-label={`Категория операции ${index + 1}`} value={chosen.categoryId} disabled={controlsDisabled} onChange={e => update(index, { categoryId: e.target.value })}>
                 <option value="">Выберите категорию</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
-              {possible.has(index) && <label className="flex gap-2 items-start text-amber-900"><input type="checkbox" checked={chosen.confirmExisting} disabled={busy} className="w-5 h-5 shrink-0" onChange={e => update(index, { confirmExisting: e.target.checked })} />Проверил: это отдельная операция, её нужно добавить</label>}
+              {possible.has(index) && <label className="flex gap-2 items-start text-amber-900"><input type="checkbox" checked={chosen.confirmExisting} disabled={controlsDisabled} className="w-5 h-5 shrink-0" onChange={e => update(index, { confirmExisting: e.target.checked })} />Проверил: это отдельная операция, её нужно добавить</label>}
             </>}
           </article>;
         })}
@@ -131,8 +152,8 @@ export function PriorImportPanel() {
       {checked && <div className="card p-5 space-y-3">
         <p className="text-sm font-black">Выбрано: {selected.length} · изменение баланса: {displayCents(net)} BYN</p>
         {accountId && <p className="text-xs text-slate-500">Баланс FinApp сейчас: {accountBalances[accountId]?.toFixed(2) ?? '—'} BYN. Просмотр сам по себе его не меняет.</p>}
-        <label className="flex gap-3 text-xs leading-relaxed"><input type="checkbox" className="w-5 h-5 shrink-0" checked={confirmed} disabled={busy} onChange={e => setConfirmed(e.target.checked)} />Проверил счёт, начальный остаток, категории и выбранные операции. Свои переводы и уже учтённые записи исключены.</label>
-        <button type="button" onClick={() => void save()} disabled={busy || !valid || !confirmed || financeLoading || !!financeError} className="w-full rounded-2xl p-4 bg-slate-950 text-white text-xs font-black disabled:opacity-40">{busy ? 'Сохраняем…' : `Добавить выбранные операции (${selected.length})`}</button>
+        <label className="flex gap-3 text-xs leading-relaxed"><input type="checkbox" className="w-5 h-5 shrink-0" checked={confirmed} disabled={controlsDisabled} onChange={e => setConfirmed(e.target.checked)} />Проверил счёт, начальный остаток, категории и выбранные операции. Свои переводы и уже учтённые записи исключены.</label>
+        <button type="button" onClick={() => void save()} disabled={controlsDisabled || !valid || !confirmed || financeLoading || !!financeError} className="w-full rounded-2xl p-4 bg-slate-950 text-white text-xs font-black disabled:opacity-40">{busy ? 'Сохраняем…' : `Добавить выбранные операции (${selected.length})`}</button>
       </div>}
     </>}
   </div>;

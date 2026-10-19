@@ -151,6 +151,26 @@ test('foreign origins, missing capability, wrong media types and DNS rebinding c
   } finally { await local.close(); }
 });
 
+test('only the dedicated bridge page keeps its opener; it adds no remote API or CORS access', async () => {
+  let calls=0;
+  const local=await setup({preview:async()=>{calls++;throw Error('Unexpected bank request');}});
+  try {
+    assert.equal(local.page.headers.get('cross-origin-opener-policy'),'same-origin');
+    const connection=await fetch(`${local.origin}/connect`), html=await connection.text();
+    assert.equal(connection.status,200);
+    assert.equal(connection.headers.get('cross-origin-opener-policy'),'unsafe-none');
+    assert.equal(connection.headers.get('cache-control'),'no-store');
+    assert.equal(connection.headers.get('x-frame-options'),'DENY');
+    assert.match(connection.headers.get('content-security-policy'),/connect-src 'self'/);
+    assert.equal(connection.headers.get('access-control-allow-origin'),null);
+    assert.doesNotMatch(html,/__FINAPP_ORIGINS__|localStorage|sessionStorage/);
+    assert.match(html,/history.replaceState/);
+    for(const path of ['/connect?origin=https://evil.example','/connect/','/api/connect']) assert.equal((await fetch(local.origin+path)).status,404);
+    assert.equal((await local.post(input(),{Origin:'https://familyfinance.ptuskina866.workers.dev'})).status,403);
+    assert.equal(calls,0);
+  } finally {await local.close();}
+});
+
 test('invalid input and oversized local body never start bank login', async () => {
   let calls = 0;
   const local = await setup({ preview: async () => { calls++; throw Error('must not be called'); } });

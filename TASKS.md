@@ -2,7 +2,7 @@
 
 # Current work
 
-The owner confirmed real Priorbank cards/history and matching available sums plus sampled amounts/currencies on 2026-10-19. The reviewed import pilot is published through PR #9 / merge `1e866ed`: explicit whitelist file from the loopback helper, existing import screen, BYN account choice, editable category suggestions and atomic receipt-backed import. Cloudflare version `e3375acf-34c2-4350-af4f-9b37810d5f62` serves verified `index-DsnWq51w.js`; live migration/read-only authenticated probe passed without changing previous financial data. Limited to one window up to 31 days; background synchronization is not implemented. First real confirmed import/balance reconciliation awaits the owner. Details: `docs/prior-import-release.md`. Helper: `Start-Prior-Preview.cmd` / `npm run prior:local` at `http://127.0.0.1:5188/`; refresh and log in again after the restart for the new export button. Bank credentials remain local. Alfa personal Open API remains unavailable per its 2026-10-05 reply.
+Direct local Priorbank connection replaces the mandatory file step after owner feedback: FinApp → Banks → Priorbank → Connect → local login/card choice → direct reviewed operations in FinApp. Origin/window/nonce-bound messages carry only the strict financial whitelist; credentials stay local, receipt-backed import is unchanged. Implementation and synthetic browser checks are complete; publication and helper restart are in progress. No schema/RPC changes. The existing 31-day pilot and lack of background/mobile sync remain; first real selected import/balance reconciliation awaits the owner. Details: `docs/prior-direct-connection.md`. Alfa personal Open API remains unavailable per its 2026-10-05 reply.
 
 ## Project maintenance backlog
 
@@ -21,6 +21,8 @@ The owner confirmed real Priorbank cards/history and matching available sums plu
 - Review Supabase schema and RLS consistency (including full execution of `supabase_schema.sql` and trigger testing in an isolated test PostgreSQL/Supabase instance; audit household isolation).
 
 ## Recently completed
+
+- Direct Priorbank handoff (2026-10-19): primary Connect action and optional collapsed file fallback, origin/window/256-bit token/version checks, exact financial whitelist, acknowledgment, cancellation/timeouts/popup errors, cleanup on user/household changes. Existing account/category review and duplicate receipts are reused. Synthetic browser flow works from HTTPS to loopback, 320/390 px without overflow, password cleared, no session/full bank ID/available balance in the message, no remote POSTs or financial writes. See `docs/prior-direct-connection.md` for final checks/publication.
 
 - Reviewed Priorbank import pilot (2026-10-19): explicit single-card JSON download, strict financial whitelist without credentials/session/full bank IDs/balances, BYN bank-account selection, original account/foreign amounts, editable existing category suggestions and pre-save net balance change. No automatic transaction selection/save; bulk selection leaves ambiguities for individual verification.
   - Additive source/day receipts with household + owner RLS and SELECT-only client grants; guarded RPCs serialize and atomically commit ledger/receipts. Stable re-uploads are skipped, including after deliberate ledger deletion/editing. Reordered rows and identical real purchases preserve occurrence counts; changed or disappeared history and non-covering periods stop the pilot rather than guessing bank IDs.

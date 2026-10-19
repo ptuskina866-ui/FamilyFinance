@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { fetchPreview } from './bank.ts';
 import { minskToday, object, validateInput, PreviewError } from './model.ts';
 import type { BankPreview, PreviewInput } from './model.ts';
+import { PRIOR_APP_ORIGINS } from '../../src/lib/priorBridge.ts';
 
 interface LocalOptions {
   port?: number; preview?: (input: PreviewInput, signal: AbortSignal) => Promise<BankPreview>;
@@ -22,7 +23,7 @@ async function requestBody(req: IncomingMessage): Promise<unknown> {
   catch { throw new PreviewError('INPUT_INVALID', 'Не удалось прочитать запрос.'); }
 }
 
-/** Loopback only. No proxy, remote origins, persistence, telemetry, account writes or export. */
+/** Loopback only. No remote API clients, persistence, telemetry or account writes. */
 export async function startLocalPreview(options: LocalOptions = {}) {
   const nonce = randomBytes(32).toString('base64url'), page = await readFile(new URL('./page.html', import.meta.url), 'utf8');
   const preview = options.preview || fetchPreview, now = options.now || Date.now;
@@ -49,9 +50,13 @@ export async function startLocalPreview(options: LocalOptions = {}) {
       if (req.headers.host !== expectedHost || hosts.length !== 1) {
         reply(res, 403, { error: 'Доступ разрешён только локальной форме.', code: 'LOCAL_ONLY' }); return;
       }
-      if (req.method === 'GET' && req.url === '/') {
-        res.writeHead(200, { ...securityHeaders, 'Content-Type': 'text/html; charset=utf-8' });
-        res.end(page.replaceAll('__LOCAL_NONCE__', nonce).replaceAll('__TODAY__', minskToday())); return;
+      if (req.method === 'GET' && (req.url === '/' || req.url === '/connect')) {
+        res.writeHead(200, { ...securityHeaders,
+          // Only the dedicated connection page keeps its verified FinApp opener.
+          ...(req.url === '/connect' ? { 'Cross-Origin-Opener-Policy': 'unsafe-none' } : {}),
+          'Content-Type': 'text/html; charset=utf-8' });
+        res.end(page.replaceAll('__LOCAL_NONCE__', nonce).replaceAll('__TODAY__', minskToday())
+          .replaceAll('__FINAPP_ORIGINS__', JSON.stringify(PRIOR_APP_ORIGINS))); return;
       }
       if (req.method !== 'POST' || req.url !== '/api/preview') { reply(res, 404, { error: 'Страница не найдена.', code: 'NOT_FOUND' }); return; }
       const token = req.headers['x-finapp-local'];
@@ -99,7 +104,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     try {
       const local = await startLocalPreview();
       console.log(`Проверка Приорбанка: ${local.origin}/`);
-      console.log('Пароли не сохраняются. Файл истории создаётся только по кнопке в локальной форме.');
+      console.log('В FinApp выберите «Приорбанк» → «Подключить Приорбанк». Пароль остаётся в локальной форме.');
       for (const event of ['SIGINT', 'SIGTERM'] as const) process.once(event, () => { void local.close(); });
     } catch { console.error('Не удалось запустить локальную проверку. Возможно, порт 5188 уже занят.'); process.exitCode = 1; }
   }
