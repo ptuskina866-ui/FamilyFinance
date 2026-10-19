@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createPriorConnectHandler, connectionResult } from '../supabase/functions/prior-connect/handler.ts';
+import { recentPriorRange } from '../supabase/functions/prior-connect/remembered.ts';
+import { PreviewError } from '../supabase/functions/_shared/prior/model.ts';
+import { readPriorSession, validatePriorSession } from '../supabase/functions/_shared/prior/bank.ts';
 const uid='11111111-1111-4111-8111-111111111111',origin='https://familyfinance.ptuskina866.workers.dev';
 const config={url:'https://project.example',anonKey:'PUBLIC_TEST_KEY',serviceKey:'PRIVATE_TEST_KEY'};
 const input=()=>({login:'synthetic-user',password:'Synthetic123!',from:'2026-10-13',to:'2026-10-19'});
@@ -53,4 +56,68 @@ test('failed/cancelled bank requests release lease without retry or leaking upst
 test('release failure leaves the expiring lease and never discards valid data or echoes errors',async()=>{
   const h=harness({releaseFails:true});assert.equal((await h.handler(req())).status,200);assert.equal(h.bankCalls,1);
   assert.throws(()=>connectionResult({...fixture(),cards:Array(21).fill(fixture().cards[0])}));
+});
+
+function rememberedHarness({connected=true,readError,cache=false}={}) {
+  let opens=0,reads=0; const calls=[];
+  const session={token:'PRIVATE_TOKEN',client:'PRIVATE_CLIENT',userSession:'PRIVATE_SESSION'};
+  const connection={connected,reauthRequired:false,lastSyncedAt:null,selectedSourceKey:null,accountId:null};
+  const fetcher=async(url,options)=>{
+    if(url.endsWith('/auth/v1/user'))return response({id:uid});
+    const body=JSON.parse(options.body);calls.push({url,body});
+    if(url.endsWith('/prior_connection_state')) {
+      if(body.p_action==='load')return response({...connection,revision:'revision',loginKey:'a'.repeat(64),session,cacheFresh:cache,preview:cache?JSON.parse(connectionResult({...fixture(),...recentPriorRange(),cards:fixture().cards})):null});
+      if(body.p_action==='expire'||body.p_action==='disconnect')connection.connected=false;
+      if(body.p_action==='save')connection.connected=true;
+      return response({...connection,revision:'private-generation'});
+    }
+    return response(null);
+  };
+  const handler=createPriorConnectHandler(config,{fetcher,
+    openSession:async value=>{opens++;assert.equal(value.password,'Synthetic123!');return session;},
+    readSession:async(s,range)=>{reads++;assert.deepEqual(s,session);assert.equal(range.password,'');if(readError)throw readError;return {...fixture(),from:range.from,to:range.to};},
+  });
+  return {handler,calls,get opens(){return opens;},get reads(){return reads;}};
+}
+test('remembered login saves only opaque session and returns whitelisted financial DTO/status',async()=>{
+  const h=rememberedHarness({connected:false}),r=await h.handler(req({action:'connect',...input()}));
+  assert.equal(r.status,200);const value=await r.json();assert.equal(value.connection.connected,true);
+  assert.equal(h.opens,1);assert.equal(h.reads,1);
+  const saved=h.calls.find(c=>c.body.p_action==='save').body.p_data;
+  assert.deepEqual(Object.keys(saved).sort(),['loginKey','preview','revision','session']);
+  assert.doesNotMatch(JSON.stringify(saved),/Synthetic123|synthetic-user/);
+  assert.doesNotMatch(JSON.stringify(value),/PRIVATE_|generation|session|available|loginKey/);
+});
+test('remembered sync uses no password or login calls; recent range is ten completed Minsk days',async()=>{
+  assert.deepEqual(recentPriorRange('2026-10-19'),{from:'2026-10-09',to:'2026-10-18'});
+  assert.deepEqual(recentPriorRange('2026-03-01'),{from:'2026-02-19',to:'2026-02-28'});
+  const h=rememberedHarness(),r=await h.handler(req({action:'sync'}));assert.equal(r.status,200);
+  assert.equal(h.opens,0);assert.equal(h.reads,1);assert.equal(h.calls.filter(c=>c.body.p_action==='touch').length,1);
+  assert.doesNotMatch(JSON.stringify(await r.json()),/PRIVATE_|revision|password/);
+});
+test('fresh cached financial data avoids bank requests and rate-limit claims on immediate reopen',async()=>{
+  const h=rememberedHarness({cache:true}),r=await h.handler(req({action:'sync'}));assert.equal(r.status,200);
+  assert.equal(h.reads,0);assert.equal(h.opens,0);assert.equal(h.calls.length,1);
+});
+test('session expiry clears access once, transient failure retains it, neither relogs or retries',async()=>{
+  const expired=rememberedHarness({readError:new PreviewError('SESSION_EXPIRED','Expired')});
+  const r=await expired.handler(req({action:'sync'}));assert.equal((await r.json()).code,'SESSION_EXPIRED');
+  assert.equal(expired.reads,1);assert.equal(expired.opens,0);assert.equal(expired.calls.filter(c=>c.body.p_action==='expire').length,1);
+  const network=rememberedHarness({readError:Error('PRIVATE_TOKEN')});const failed=await network.handler(req({action:'sync'}));
+  assert.equal(failed.status,503);assert.doesNotMatch(await failed.text(),/PRIVATE_TOKEN/);
+  assert.equal(network.calls.filter(c=>c.body.p_action==='expire'||c.body.p_action==='touch').length,0);
+});
+test('status/disconnect never read bank and strict action shapes cannot carry a foreign owner/session',async()=>{
+  const h=rememberedHarness();
+  for(const action of ['status','disconnect']) {
+    const r=await h.handler(req({action}));assert.equal(r.status,200);assert.doesNotMatch(await r.text(),/PRIVATE_|revision|session/);
+  }
+  for(const body of [{action:'sync',owner:'foreign'},{action:'status',session:'private'},{action:'connect',...input(),rememberPassword:true}])assert.equal((await h.handler(req(body))).status,400);
+  assert.equal(h.opens,0);assert.equal(h.reads,0);assert.ok(h.calls.every(c=>c.body.p_owner===uid));
+});
+test('reusable protocol only calls card read endpoints; expired session does not start authorization',async()=>{
+  const paths=[]; const session={token:'PRIVATE_TOKEN',client:'PRIVATE_CLIENT',userSession:'PRIVATE_SESSION'};
+  await assert.rejects(()=>readPriorSession(session,{from:'2026-10-09',to:'2026-10-18'},new AbortController().signal,async url=>{paths.push(new URL(url).pathname);return response({success:false,errorMessage:'Необходимо авторизоваться'});}),error=>error.code==='SESSION_EXPIRED');
+  assert.deepEqual(paths,['/api3/api/Cards']);
+  assert.throws(()=>validatePriorSession({...session,password:'DoNotStore'}),error=>error.code==='SESSION_EXPIRED');
 });

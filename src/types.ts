@@ -27,10 +27,11 @@ export interface PriorImportSnapshot {
   };
 }
 export interface PriorImportSelection { index: number; categoryId: string; confirmExisting: boolean; }
-export interface PriorImportCheck { importedIndexes: number[]; linked: boolean; }
+export interface PriorImportCheck { importedIndexes: number[]; linked: boolean; possibleIndexes?: number[]; }
 export interface PriorImportResult { imported: number; skipped: number; }
 export interface PriorConnectionInput { login: string; password: string; from: string; to: string; }
-export interface PriorConnectionResult { cards: PriorImportSnapshot[]; externalCards: number; }
+export interface PriorBankConnectionStatus { connected: boolean; reauthRequired: boolean; lastSyncedAt: string | null; selectedSourceKey: string | null; accountId: string | null; }
+export interface PriorConnectionResult { cards: PriorImportSnapshot[]; externalCards: number; connection?: PriorBankConnectionStatus; }
 
 export interface Account {
   id: string;

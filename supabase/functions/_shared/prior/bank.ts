@@ -9,6 +9,7 @@ export type BankFetch = typeof fetch;
 
 function bankFailure(status: number, body?: Record<string, unknown>): never {
   const message = typeof body?.errorMessage === 'string' ? body.errorMessage : '';
+  if (/^Необходимо авторизоваться$|session.*(?:expired|invalid)|сесси.*(?:истек|заверш|недейств)/i.test(message)) throw new PreviewError('SESSION_EXPIRED', 'Банк завершил сессию. Войдите в Prior Online заново.');
   if (/неверн.*(?:логин|парол)/i.test(message)) throw new PreviewError('LOGIN_REJECTED', 'Банк отклонил вход. Проверьте данные в Prior Online. Повтор автоматически не выполняется.');
   if (/блокир/i.test(message)) throw new PreviewError('BANK_BLOCKED', 'Банк сообщает об ограничении доступа. Проверку остановили.');
   if (status === 401 || status === 403) throw new PreviewError('ACCESS_DENIED', 'Банк не разрешил этот запрос. Повтор автоматически не выполняется.');
@@ -45,8 +46,9 @@ async function bankJson(path: BankPath, body: Record<string, unknown> | null, au
   }
 }
 
-/** Independent protocol implementation; no payment endpoints, refresh, retries or persistent sessions. */
-export async function fetchPreview(rawInput: PreviewInput, signal: AbortSignal, fetcher: BankFetch = fetch): Promise<BankPreview> {
+export interface PriorBankSession { token: string; client: string; userSession: string; }
+/** Opens a session once. Passwords never become part of the returned session. */
+export async function openPriorSession(rawInput: PreviewInput, signal: AbortSignal, fetcher: BankFetch = fetch): Promise<PriorBankSession> {
   const input = validateInput(rawInput);
   const handshake = await bankJson('/Authorization/MobileToken', null, null, signal, fetcher);
   if (typeof handshake.token_type !== 'string' || handshake.token_type.toLowerCase() !== 'bearer') throw new PreviewError('FORMAT_CHANGED', 'Не удалось проверить начало банковской сессии.');
@@ -64,8 +66,27 @@ export async function fetchPreview(rawInput: PreviewInput, signal: AbortSignal, 
   const loginResponse = await bankJson('/Authorization/Login', { login: input.login, password: challengeHash, password2: secondHash, deviceInfo: { precognitiveSessionId: '' }, lang: 'RUS' }, { token: firstToken, client }, signal, fetcher);
   const session = object(loginResponse.result);
   if (typeof session.access_token !== 'string' || typeof session.userSession !== 'string') throw new PreviewError('ADDITIONAL_CONFIRMATION', 'Банк не выдал сессию. Возможно, требуется дополнительное подтверждение. Этот этап прототип пока не поддерживает.');
-  const auth = { token: requiredText(session.access_token, 16_000), client }, userSession = requiredText(session.userSession, 16_000);
-  const cards = await bankJson('/Cards', { usersession: userSession }, auth, signal, fetcher);
-  const details = await bankJson('/Cards/CardDesc', { usersession: userSession, ids: [], dateFromSpecified: true, dateToSpecified: true, dateFrom: input.from, dateTo: input.to }, auth, signal, fetcher);
-  return makePreview(cards.result, details.result, input);
+  return { token: requiredText(session.access_token, 16_000), client, userSession: requiredText(session.userSession, 16_000) };
+}
+
+export function validatePriorSession(value: unknown): PriorBankSession {
+  try {
+    const session = object(value);
+    if (Object.keys(session).length !== 3 || !Object.keys(session).every(key => ['token','client','userSession'].includes(key))) throw new Error('Invalid session');
+    return {token: requiredText(session.token,16_000), client: requiredText(session.client,16_000), userSession: requiredText(session.userSession,16_000)};
+  } catch { throw new PreviewError('SESSION_EXPIRED', 'Подключите банк заново.'); }
+}
+
+/** A remembered session reads history directly, without challenge/login or automatic retries. */
+export async function readPriorSession(session: PriorBankSession, range: Pick<PreviewInput,'from'|'to'>, signal: AbortSignal, fetcher: BankFetch = fetch): Promise<BankPreview> {
+  const checked = validatePriorSession(session);
+  const cards = await bankJson('/Cards', { usersession: checked.userSession }, checked, signal, fetcher);
+  const details = await bankJson('/Cards/CardDesc', { usersession: checked.userSession, ids: [], dateFromSpecified: true, dateToSpecified: true, dateFrom: range.from, dateTo: range.to }, checked, signal, fetcher);
+  return makePreview(cards.result, details.result, range);
+}
+
+/** Compatibility path for the one-time preview and diagnostic helper. */
+export async function fetchPreview(input: PreviewInput, signal: AbortSignal, fetcher: BankFetch = fetch): Promise<BankPreview> {
+  const session = await openPriorSession(input,signal,fetcher);
+  return readPriorSession(session,input,signal,fetcher);
 }

@@ -52,6 +52,8 @@ Deployment:
 
 ## Main project structure
 
+Current Priorbank flow (2026-10-19): owner-confirmed server login now gains explicit encrypted bank-session retention in Supabase Vault (no password storage), automatic last-ten-completed-day history on opening, remembered card/account, automatic receipt preflight and one-button reviewed saving for linked accounts. Backend-only owner/household metadata, expiry/disconnect cleanup and stale-response CAS; 60-second private financial cache. Per-request windows up to 31 days roll forward with immutable receipts, strict overlapping-day signatures and individually confirmed cross-date warnings. No stable transaction ID/indefinite refresh/background scheduler is assumed. Details and remaining owner verification: `docs/prior-remembered-session.md` (supersedes fixed-total-window and one-time-session pilot descriptions below).
+
 src/App.tsx
 Application root and screen composition.
 
