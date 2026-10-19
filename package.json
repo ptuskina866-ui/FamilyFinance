@@ -10,7 +10,7 @@
     "prior:local": "node tools/prior-local/server.ts",
     "test:prior": "tsc -p tools/prior-local/tsconfig.json && node --test tests/prior-local.test.mjs tests/prior-server.test.mjs",
     "test": "node scripts/test-finance.mjs",
-    "test:database": "node --test tests/database.test.mjs tests/planning-database.test.mjs tests/flexible-planning-database.test.mjs tests/prior-import-database.test.mjs tests/prior-server-database.test.mjs"
+    "test:database": "node --test tests/database.test.mjs tests/planning-database.test.mjs tests/flexible-planning-database.test.mjs tests/prior-import-database.test.mjs tests/prior-server-database.test.mjs tests/prior-remembered-database.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.2",

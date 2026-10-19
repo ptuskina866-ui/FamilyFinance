@@ -10,7 +10,7 @@ test('server bank leases are service-only, atomic across owner/login and expire 
   await db.exec(`CREATE ROLE anon;CREATE ROLE authenticated;CREATE ROLE service_role;CREATE SCHEMA auth;CREATE TABLE auth.users(id uuid PRIMARY KEY);CREATE TABLE public.households(id uuid PRIMARY KEY);CREATE TABLE public.profiles(id uuid PRIMARY KEY REFERENCES auth.users(id),household_id uuid REFERENCES households(id));CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS $$SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;CREATE FUNCTION public.get_my_household_id() RETURNS uuid LANGUAGE sql AS $$SELECT household_id FROM profiles WHERE id=auth.uid()$$;`);
   const migration=await fs.readFile(new URL('../supabase/migrations/20261019105902_prior_server_connection.sql',import.meta.url),'utf8');
   const schema=await fs.readFile(new URL('../supabase_schema.sql',import.meta.url),'utf8');
-  assert.equal(schema.split('-- 16. Server Priorbank connection (2026-10-19)')[1].trim(),migration.trim());checks++;
+  assert.equal(schema.split('-- 16. Server Priorbank connection (2026-10-19)')[1].split('-- 17. Remembered Priorbank session (2026-10-19)')[0].trim(),migration.trim());checks++;
   await db.exec(migration);await db.exec(migration);checks++;
   const a='11111111-1111-4111-8111-111111111111',b='22222222-2222-4222-8222-222222222222',h='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',j='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',first='33333333-3333-4333-8333-333333333333',second='44444444-4444-4444-8444-444444444444',key='a'.repeat(64),other='b'.repeat(64);
   await q('INSERT INTO auth.users VALUES($1),($2)',[a,b]);await q('INSERT INTO households VALUES($1),($2)',[h,j]);await q('INSERT INTO profiles VALUES($1,$2),($3,$4)',[a,h,b,j]);

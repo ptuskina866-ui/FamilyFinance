@@ -5,7 +5,7 @@ import test from 'node:test';
 const require=createRequire(import.meta.url);
 const {priorConnectionUrl,readPriorBridgeMessage,PRIOR_LOCAL_ORIGIN}=require(join(process.env.FINAPP_TEST_OUTPUT,'lib/priorBridge.js'));
 const {connectPriorLocal}=require(join(process.env.FINAPP_TEST_OUTPUT,'services/priorLocalService.js'));
-const {parsePriorConnection,priorConnectionError}=require(join(process.env.FINAPP_TEST_OUTPUT,'lib/priorBankConnection.js'));
+const {parsePriorConnection,parsePriorStatus,priorConnectionError}=require(join(process.env.FINAPP_TEST_OUTPUT,'lib/priorBankConnection.js'));
 const origin='https://familyfinance.ptuskina866.workers.dev',token='a'.repeat(64);
 const ready={type:'finapp-prior-ready',version:1,token};
 const packet=()=>({format:'finapp-prior',version:1,from:'2026-10-13',to:'2026-10-18',fetchedAt:'2026-10-19T10:00:00Z',card:{sourceKey:'b'.repeat(64),title:'Card',maskedNumber:'•••• 1234',currency:'BYN',records:[{date:'2026-10-18',description:'Shop',accountAmount:'-12.34',operationAmount:'-4.99',operationCurrency:'EUR',fee:'0.10',source:'history'}]}});
@@ -84,4 +84,12 @@ test('server result strictly preserves original money and rejects extra secret f
   assert.match(priorConnectionError('ADDITIONAL_CONFIRMATION'),/подтверждение/);
   assert.doesNotMatch(priorConnectionError('PRIVATE_SECRET'),/PRIVATE_SECRET/);
   assert.match(priorConnectionError(undefined,401),/Войдите/);
+});
+
+test('remembered status accepts only public metadata and rejects embedded tokens/owner data',()=>{
+  const connection={connected:true,reauthRequired:false,lastSyncedAt:'2026-10-19T12:00:00Z',selectedSourceKey:'b'.repeat(64),accountId:'11111111-1111-4111-8111-111111111111'};
+  assert.deepEqual(parsePriorStatus(connection),connection);
+  assert.deepEqual(parsePriorConnection({format:'finapp-prior-connection',version:1,cards:[packet()],externalCards:0,connection}).connection,connection);
+  for(const change of [v=>{v.token='secret';},v=>{delete v.connected;},v=>{v.lastSyncedAt='bad';},v=>{v.selectedSourceKey='rawBankId';},v=>{v.accountId='bad';},v=>{v.connected='true';}]){const value=structuredClone(connection);change(value);assert.throws(()=>parsePriorStatus(value));}
+  assert.match(priorConnectionError('SESSION_EXPIRED'),/Войдите заново/);
 });

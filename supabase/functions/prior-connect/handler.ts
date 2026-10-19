@@ -1,26 +1,15 @@
-import { createHash, createHmac, randomUUID } from 'node:crypto';
+import { connectionResult } from './result.ts';
+import { rememberedPrior, type RememberedDependencies } from './remembered.ts';
+import { createHmac, randomUUID } from 'node:crypto';
 import { fetchPreview } from '../_shared/prior/bank.ts';
-import { object, validateInput, PreviewError, type BankPreview, type PreviewInput } from '../_shared/prior/model.ts';
+import { object, validateInput, PreviewError, type PreviewInput } from '../_shared/prior/model.ts';
 
 interface Config { url: string; anonKey: string; serviceKey: string; }
-interface Dependencies { fetcher?: typeof fetch; preview?: typeof fetchPreview; }
+interface Dependencies extends RememberedDependencies { fetcher?: typeof fetch; preview?: typeof fetchPreview; }
 const origins = new Set(['https://familyfinance.ptuskina866.workers.dev', 'http://127.0.0.1:5173', 'http://localhost:5173', 'http://127.0.0.1:5190', 'http://localhost:5190']);
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 
-/** No bank IDs, balances, sessions or unknown upstream fields cross the public API. */
-export function connectionResult(preview: BankPreview) {
-  if (preview.cards.length > 20) throw new PreviewError('TOO_MANY_ROWS', 'Слишком много карт в ответе банка. Проверка остановлена.');
-  const cards = preview.cards.map(card => ({
-    format: 'finapp-prior', version: 1, from: preview.from, to: preview.to, fetchedAt: preview.fetchedAt,
-    card: { sourceKey: createHash('sha256').update(JSON.stringify(['prior-card-v1', card.id, card.currency])).digest('hex'),
-      title: card.title, maskedNumber: card.maskedNumber, currency: card.currency,
-      records: card.records.map(row => ({date: row.date, description: row.description, accountAmount: row.accountAmount,
-        operationAmount: row.operationAmount, operationCurrency: row.operationCurrency, fee: row.fee, source: row.source})) },
-  }));
-  const encoded = JSON.stringify({format: 'finapp-prior-connection', version: 1, cards, externalCards: preview.externalCards});
-  if (new TextEncoder().encode(encoded).length > 8_000_000) throw new PreviewError('RESPONSE_TOO_LARGE', 'История слишком большая. Выберите меньший период.');
-  return encoded;
-}
+export { connectionResult } from './result.ts';
 
 async function readBody(req: Request): Promise<unknown> {
   if (!req.body) throw new PreviewError('INPUT_INVALID', 'Введите данные для входа.');
@@ -41,7 +30,7 @@ async function readBody(req: Request): Promise<unknown> {
   } finally { raw = ''; await reader.cancel().catch(() => {}); }
 }
 
-/** Authenticated one-attempt proxy. No logging, retained bank sessions, retries or ledger writes. */
+/** Authenticated proxy: encrypted session retention is explicit, no password storage or ledger writes. */
 export function createPriorConnectHandler(config: Config, deps: Dependencies = {}) {
   const fetcher = deps.fetcher ?? fetch, preview = deps.preview ?? fetchPreview;
   return async (req: Request): Promise<Response> => {
@@ -70,6 +59,10 @@ export function createPriorConnectHandler(config: Config, deps: Dependencies = {
       if (typeof user.id !== 'string' || !uuid.test(user.id) || user.is_anonymous === true) return reply(401, 'AUTH_REQUIRED', 'Нужна учётная запись FinApp.');
       owner = user.id;
       raw = object(await readBody(req));
+      if (raw.action !== undefined) {
+        const body = await rememberedPrior(req,raw,owner,{rpc,serviceKey:config.serviceKey,openSession:deps.openSession,readSession:deps.readSession});
+        return new Response(body,{status:200,headers});
+      }
       if (Object.keys(raw).some(key => !['login', 'password', 'from', 'to'].includes(key))) throw new PreviewError('INPUT_INVALID', 'Получен неподдерживаемый запрос.');
       input = validateInput(raw); raw.password = ''; raw.login = '';
       const loginKey = createHmac('sha256', config.serviceKey).update('prior-login-v1:' + input.login.normalize('NFKC').toLowerCase()).digest('hex');
@@ -85,7 +78,7 @@ export function createPriorConnectHandler(config: Config, deps: Dependencies = {
       if (req.signal.aborted) throw new PreviewError('CANCELLED', 'Получение данных отменено.');
       return new Response(connectionResult(result), {status: 200, headers});
     } catch (error) {
-      if (error instanceof PreviewError) return reply(error.code === 'BODY_TOO_LARGE' ? 413 : 400, error.code, error.message);
+      if (error instanceof PreviewError) return reply(error.code === 'BODY_TOO_LARGE' ? 413 : error.code === 'COOLDOWN' ? 429 : 400, error.code, error.message);
       return reply(503, 'CONNECTION_FAILED', 'Не удалось завершить подключение. Автоматического повторного входа нет. Попробуйте позже.');
     } finally {
       if (raw) {raw.password = ''; raw.login = '';}
