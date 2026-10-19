@@ -3,7 +3,7 @@ import { toMinorUnits } from './money';
 import { planningDateISO } from './planning';
 
 export const PRIOR_FILE_LIMIT = 8_000_000;
-const invalid = () => new Error('Файл Приорбанка повреждён или имеет неподдерживаемый формат. Получите его заново в локальном помощнике.');
+const invalid = () => new Error('Данные Приорбанка повреждены или имеют неподдерживаемый формат. Получите историю заново в локальном помощнике.');
 function object(value: unknown, keys: string[]): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(key => !keys.includes(key))) throw invalid();
   return value as Record<string, unknown>;
@@ -52,7 +52,7 @@ export function priorBlockedReason(snapshot: PriorImportSnapshot, row: PriorImpo
   if (row.source !== 'history') return 'Дополнительный список банка: статус не определён';
   if (day < snapshot.from || day > snapshot.to) return 'Вне выбранного периода';
   if (day >= today) return 'Сегодняшняя история ещё может меняться';
-  if (day >= planningDateISO(new Date(snapshot.fetchedAt))) return 'День получения файла ещё не был завершён — получите новую историю';
+  if (day >= planningDateISO(new Date(snapshot.fetchedAt))) return 'День получения истории ещё не был завершён — получите новые данные';
   if (row.accountAmount === null || toMinorUnits(row.accountAmount) === 0) return 'Нет ненулевой суммы по счёту';
   return null;
 }
@@ -72,12 +72,12 @@ export function priorPossibleDuplicates(snapshot: PriorImportSnapshot, transacti
 }
 
 export function priorImportError(message: string): string {
-  if (/PGRST202|Could not find the function|does not exist/.test(message)) return 'Для импорта Приорбанка требуется обновление базы приложения. Файл можно проверить после обновления.';
+  if (/PGRST202|Could not find the function|does not exist/.test(message)) return 'Для импорта Приорбанка требуется обновление базы приложения. Историю можно проверить после обновления.';
   if (message.includes('PRIOR_DAY_CHANGED')) return 'История уже загруженного дня изменилась. Импорт остановлен: сначала нужна сверка этого дня, чтобы не создать повторы.';
   if (message.includes('PRIOR_RANGE_COVERAGE')) return 'Для повторного импорта выберите период, включающий все ранее загруженные дни этой карты. В пилоте поддерживается одно окно до 31 дня; для перехода к следующему окну потребуется отдельная сверка.';
   if (message.includes('PRIOR_SOURCE_BOUND')) return 'Эта карта уже связана с другим счётом или владельцем. Используйте первоначальный счёт и учётную запись.';
   if (message.includes('PRIOR_ACCOUNT_BOUND')) return 'Этот счёт уже связан с другой картой. В первом подключении используйте одну карту на один счёт.';
   if (message.includes('PRIOR_CONFIRM_EXISTING')) return 'Появилась похожая операция. Повторите проверку и подтвердите спорные строки перед сохранением.';
-  if (message.includes('PRIOR_')) return 'Проверка импорта не пройдена. Проверьте файл, доступный счёт и выбранные операции. Ничего из этой попытки не сохранено.';
+  if (message.includes('PRIOR_')) return 'Проверка импорта не пройдена. Проверьте историю, доступный счёт и выбранные операции. Ничего из этой попытки не сохранено.';
   return 'Не удалось завершить импорт. Повторите проверку: уже сохранённые строки будут пропущены.';
 }

@@ -142,7 +142,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
             type="button"
             onClick={onOpenStatement || (() => setBankSyncOpen(true))}
             className="w-10 h-10 rounded-full bg-white border border-white/80 shadow-sm flex items-center justify-center text-slate-700 active:scale-90 transition-transform"
-            title="Выписка из банка"
+            title="Банки и операции"
+            aria-label="Банки и операции"
           >
             <Landmark className="w-4 h-4" />
           </button>
@@ -209,7 +210,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
             <div className="w-12 h-12 rounded-full bg-white/80 backdrop-blur-xl border border-white/90 shadow-[0_4px_16px_rgba(0,30,10,0.04)] group-hover:shadow-md flex items-center justify-center text-slate-800 transition-all">
               <Landmark className="w-5 h-5" />
             </div>
-            <span className="text-[11px] font-bold text-slate-700">Выписка</span>
+            <span className="text-[11px] font-bold text-slate-700">Банки</span>
           </button>
 
           {/* 2. Goal / Savings */}
