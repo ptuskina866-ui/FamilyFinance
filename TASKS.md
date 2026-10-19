@@ -2,7 +2,7 @@
 
 # Current work
 
-Direct local Priorbank connection replaces the mandatory file step after owner feedback: FinApp → Banks → Priorbank → Connect → local login/card choice → direct reviewed operations in FinApp. Origin/window/nonce-bound messages carry only the strict financial whitelist; credentials stay local, receipt-backed import is unchanged. Implementation and synthetic browser checks are complete; publication and helper restart are in progress. No schema/RPC changes. The existing 31-day pilot and lack of background/mobile sync remain; first real selected import/balance reconciliation awaits the owner. Details: `docs/prior-direct-connection.md`. Alfa personal Open API remains unavailable per its 2026-10-05 reply.
+Direct local Priorbank connection is published in PR #10 / merge `c0751ac`: FinApp → Banks → Priorbank → Connect → local login/card choice → direct reviewed operations in FinApp, without a mandatory file. Cloudflare build `99a65936-7795-40b3-a2b8-a579c4b456e0` passed, version `12835064-5252-459e-b8cb-1ce59be91024`; fresh production browser received `index-oimeZuL9.js` / HTTP 200, login without runtime errors or overflow. Updated helper is running on 127.0.0.1:5188 and its HTTPS handshake was verified without entering credentials. 61 app/protocol and 14 local tests plus build passed. No schema/RPC changes or real financial writes. Origin/window/nonce-bound messages carry only the strict financial whitelist; credentials stay local. Existing 31-day pilot and lack of background/mobile sync remain; first real bridge receipt/selected import/balance reconciliation awaits the owner. Details: `docs/prior-direct-connection.md`. Alfa personal Open API remains unavailable per its 2026-10-05 reply.
 
 ## Project maintenance backlog
 
