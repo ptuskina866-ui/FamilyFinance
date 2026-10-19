@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, CheckCircle2, Landmark, UploadCloud } from 'lucide-react';
+import { AlertCircle, CheckCircle2, UploadCloud } from 'lucide-react';
 import { useApp } from '../AppContext';
 import { useAuth } from '../AuthContext';
 import type { PriorImportCheck, PriorImportResult, PriorImportSelection, PriorImportSnapshot } from '../types';
 import { parsePriorImportFile, PRIOR_FILE_LIMIT, priorBlockedReason, priorPossibleDuplicates } from '../lib/priorImport';
 import { toMinorUnits } from '../lib/money';
 import { AlfaBankService } from '../services/alfaBankService';
-import { connectPriorLocal } from '../services/priorLocalService';
+import { PriorBankConnection } from './PriorBankConnection';
 
 export function PriorImportPanel() {
   const { accounts, transactions, categories, accountBalances, financeLoading, financeError, previewPriorImport, importPriorOperations } = useApp();
@@ -20,13 +20,11 @@ export function PriorImportPanel() {
   const [confirmed, setConfirmed] = useState(false);
   const [result, setResult] = useState<PriorImportResult | null>(null);
   const [page, setPage] = useState(0);
-  const [connectionStatus, setConnectionStatus] = useState('');
   const [connecting, setConnecting] = useState(false);
-  const connection = useRef<ReturnType<typeof connectPriorLocal>>(null);
   const version = useRef(0), pending = useRef(false);
-  useEffect(() => () => { ++version.current; connection.current?.cancel(); }, []);
+  useEffect(() => () => { ++version.current; }, []);
   useEffect(() => {
-    connection.current?.cancel(); connection.current = null; setConnecting(false); setConnectionStatus(''); setError('');
+    setConnecting(false); setError('');
     ++version.current; setSnapshot(null); setAccountId(''); setChecked(null); setItems({}); setConfirmed(false); setResult(null);
   }, [user?.id, profile?.household_id]);
   const controlsDisabled = busy || connecting;
@@ -39,22 +37,8 @@ export function PriorImportPanel() {
   const displayCents = (value: bigint) => `${value < 0n ? '−' : ''}${(value < 0n ? -value : value) / 100n}.${String((value < 0n ? -value : value) % 100n).padStart(2, '0')}`;
   const valid = selected.length > 0 && selected.every(item => item.categoryId && (!possible.has(item.index) || item.confirmExisting));
   const resetReview = () => { ++version.current; setChecked(null); setItems({}); setConfirmed(false); setResult(null); setError(''); setPage(0); };
-  const connect = () => {
-    if (pending.current || connection.current) return;
-    ++version.current;
-    setError(''); setConnecting(true); setConnectionStatus('Открываем локальную форму подключения…');
-    connection.current = connectPriorLocal({
-      onReady: () => setConnectionStatus('Форма открыта. Войдите в Prior Online и выберите карту в окне подключения.'),
-      onSnapshot: value => {
-        resetReview(); setSnapshot(value); setConnecting(false); connection.current = null;
-        setConnectionStatus('Операции получены напрямую из помощника. Выберите счёт и проверьте их перед добавлением.');
-      },
-      onError: message => { setError(message); setConnecting(false); setConnectionStatus(''); connection.current = null; },
-    });
-  };
   const load = async (file?: File) => {
-    if (!file || pending.current || connection.current) return;
-    setConnectionStatus('');
+    if (!file || pending.current || connecting) return;
     resetReview(); setSnapshot(null);
     const current = version.current;
     try {
@@ -65,14 +49,14 @@ export function PriorImportPanel() {
     } catch { if (current === version.current) setError('Не удалось прочитать файл Приорбанка. Подготовьте новый файл в локальном помощнике.'); }
   };
   const check = async () => {
-    if (!snapshot || !accountId || pending.current || connection.current) return;
+    if (!snapshot || !accountId || pending.current || connecting) return;
     resetReview(); const current = version.current; pending.current = true; setBusy(true);
     try { const value = await previewPriorImport(accountId, snapshot); if (current === version.current) setChecked(value); }
     catch (e) { if (current === version.current) setError(e instanceof Error ? e.message : 'Не удалось проверить импорт.'); }
     finally { pending.current = false; setBusy(false); }
   };
   const save = async () => {
-    if (!snapshot || !checked || !confirmed || !valid || pending.current || connection.current || financeLoading || financeError) return;
+    if (!snapshot || !checked || !confirmed || !valid || pending.current || connecting || financeLoading || financeError) return;
     pending.current = true; setBusy(true); setError(''); const current = version.current;
     try {
       const value = await importPriorOperations(accountId, snapshot, selected);
@@ -93,11 +77,7 @@ export function PriorImportPanel() {
   return <div className="flex flex-col gap-4 max-w-lg mx-auto w-full">
     <div className="card p-5 space-y-3">
       <h2 className="font-black text-slate-900">Приорбанк · прямое подключение</h2>
-      <p className="text-xs text-slate-600 leading-relaxed">Войдите в Prior Online в отдельном локальном окне. Карта и операции появятся здесь для проверки — без скачивания файлов. Банковский пароль остаётся в помощнике на компьютере.</p>
-      <button type="button" disabled={controlsDisabled} onClick={connect} className="w-full flex items-center justify-center gap-2 bg-slate-950 text-white rounded-2xl p-4 text-xs font-bold disabled:opacity-40"><Landmark size={18} />{connecting ? 'Подключаемся…' : 'Подключить Приорбанк'}</button>
-      {connectionStatus && <p role="status" className="text-xs text-emerald-800 leading-relaxed">{connectionStatus}</p>}
-      {connecting && <button type="button" className="w-full rounded-2xl bg-white/80 p-3 text-xs font-bold" onClick={() => { connection.current?.cancel(); connection.current = null; setConnecting(false); setConnectionStatus('Подключение отменено.'); }}>Отменить подключение</button>}
-      <p className="text-[11px] text-slate-500">Пока работает на компьютере с запущенным Start-Prior-Preview.cmd. Фонового обновления и подключения с телефона ещё нет.</p>
+      <PriorBankConnection key={`${user?.id}:${profile?.household_id}`} disabled={busy} onBusy={setConnecting} onStart={() => {resetReview(); setSnapshot(null);}} onConnected={value => {resetReview(); setSnapshot(value);}} />
       <details className="text-xs text-slate-500"><summary className="cursor-pointer py-2">Уже есть файл из помощника?</summary><label className="flex items-center justify-center gap-2 bg-white/80 text-slate-800 rounded-2xl p-3 font-bold cursor-pointer"><UploadCloud size={18} /> Выбрать файл Приорбанка<input aria-label="Файл Приорбанка" type="file" accept=".json,application/json" className="sr-only" disabled={controlsDisabled} onChange={e => { void load(e.target.files?.[0]); e.target.value = ''; }} /></label></details>
       <p className="text-[11px] text-slate-500">Пилот: одна карта BYN на один банковский счёт FinApp, одно окно до 31 дня. При повторном получении включайте все ранее загруженные дни этой карты. Импортируется завершённая история до дня получения данных. Валюта покупки может отличаться — сохраняется сумма по счёту BYN.</p>
     </div>

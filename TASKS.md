@@ -2,7 +2,7 @@
 
 # Current work
 
-Direct local Priorbank connection is published in PR #10 / merge `c0751ac`: FinApp → Banks → Priorbank → Connect → local login/card choice → direct reviewed operations in FinApp, without a mandatory file. Cloudflare build `99a65936-7795-40b3-a2b8-a579c4b456e0` passed, version `12835064-5252-459e-b8cb-1ce59be91024`; fresh production browser received `index-oimeZuL9.js` / HTTP 200, login without runtime errors or overflow. Updated helper is running on 127.0.0.1:5188 and its HTTPS handshake was verified without entering credentials. 61 app/protocol and 14 local tests plus build passed. No schema/RPC changes or real financial writes. Origin/window/nonce-bound messages carry only the strict financial whitelist; credentials stay local. Existing 31-day pilot and lack of background/mobile sync remain; first real bridge receipt/selected import/balance reconciliation awaits the owner. Details: `docs/prior-direct-connection.md`. Alfa personal Open API remains unavailable per its 2026-10-05 reply.
+Owner's phone test exposed that the PC-only loopback flow from PR #10 cannot work on mobile. Replaced the primary button with inline one-time server login via authenticated Supabase `prior-connect`; no PC, loopback or popup is used by that flow. Backend/migration are installed and verified; frontend publication is in progress. Explicit server-handling consent, no saved bank password/session, service-only rate/lease metadata and existing reviewed import are implemented. 62 app checks, 20 bank/server tests and 254 isolated SQL assertions pass; mobile-emulated synthetic success/error/cancel paths and demo blocking pass. Existing financial row hashes remain unchanged. First real server-IP bank login/receipt/import, real Safari and additional bank confirmation remain owner verification. Existing 31-day pilot and no background refresh remain. Details: `docs/prior-server-connection.md`.
 
 ## Project maintenance backlog
 
@@ -21,6 +21,8 @@ Direct local Priorbank connection is published in PR #10 / merge `c0751ac`: FinA
 - Review Supabase schema and RLS consistency (including full execution of `supabase_schema.sql` and trigger testing in an isolated test PostgreSQL/Supabase instance; audit household isolation).
 
 ## Recently completed
+
+- Server Priorbank connector (2026-10-19): authenticated Edge Function and inline phone form replace loopback navigation. Shared protocol/parser reuse preserves local-preview tests; one-time password handling is explicit, financial whitelist and reviewed import are unchanged. Private owner/login leases, exact-origin CORS, input/response bounds, no automatic retry and hard demo blocking. Hosted backend/migration checks and frontend release are recorded in `docs/prior-server-connection.md`.
 
 - Direct Priorbank handoff (2026-10-19): primary Connect action and optional collapsed file fallback, origin/window/256-bit token/version checks, exact financial whitelist, acknowledgment, cancellation/timeouts/popup errors, cleanup on user/household changes. Existing account/category review and duplicate receipts are reused. Synthetic browser flow works from HTTPS to loopback, 320/390 px without overflow, password cleared, no session/full bank ID/available balance in the message, no remote POSTs or financial writes. See `docs/prior-direct-connection.md` for final checks/publication.
 

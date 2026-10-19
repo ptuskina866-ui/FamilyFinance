@@ -1,0 +1,33 @@
+import type { PriorConnectionResult } from '../types';
+import { parsePriorImportFile } from './priorImport';
+
+export function parsePriorConnection(value: unknown): PriorConnectionResult {
+  const invalid = () => new Error('Банк вернул неподдерживаемые данные. Ничего не сохранено.');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw invalid();
+  const data = value as Record<string, unknown>;
+  if (Object.keys(data).length !== 4 || data.format !== 'finapp-prior-connection' || data.version !== 1 || !Array.isArray(data.cards) || data.cards.length > 20 || !Number.isInteger(data.externalCards) || Number(data.externalCards) < 0) throw invalid();
+  if (JSON.stringify(data).length > 8_000_000) throw invalid();
+  return {cards: data.cards.map(card => parsePriorImportFile(JSON.stringify(card))), externalCards: Number(data.externalCards)};
+}
+
+export function priorConnectionError(code: unknown, status?: number): string {
+  if (status === 401 || code === 'AUTH_REQUIRED') return 'Войдите в FinApp заново и повторите подключение.';
+  const messages: Record<string, string> = {
+    LOGIN_REJECTED: 'Банк отклонил вход. Проверьте логин и пароль в Prior Online. Повтор автоматически не выполняется.',
+    ADDITIONAL_CONFIRMATION: 'Банк запросил дополнительное подтверждение. Этот способ входа пока не поддерживается; ничего не сохранено.',
+    COOLDOWN: 'Вход уже выполняется или был недавно. Подождите две минуты перед новой попыткой.',
+    PASSWORD_UNSUPPORTED: 'Пароли длиннее 16 символов пока не поддерживаются этим подключением. Не меняйте банковский пароль ради проверки.',
+    DATE_INVALID: 'Выберите период до 31 дня, без будущих дат.',
+    INPUT_INVALID: 'Проверьте данные для входа и выбранный период.',
+    BANK_BLOCKED: 'Банк сообщил об ограничении доступа. Подключение остановлено.',
+    ACCESS_DENIED: 'Банк не разрешил серверное подключение. Автоматического повтора нет.',
+    BANK_LIMIT: 'Банк ограничил частоту запросов. Попробуйте позже.',
+    FORMAT_CHANGED: 'Банк изменил формат данных. Подключение остановлено без сохранения операций.',
+    AMOUNT_INVALID: 'Не удалось проверить суммы банка. Подключение остановлено без округления и сохранения.',
+    RESPONSE_TOO_LARGE: 'Слишком много данных. Выберите меньший период.',
+    TOO_MANY_ROWS: 'Слишком много операций. Выберите меньший период.',
+    MEMBER_REQUIRED: 'Дождитесь загрузки семьи в FinApp и повторите подключение.',
+    NOT_CONFIGURED: 'Сервер подключения пока недоступен. Попробуйте позже.',
+  };
+  return typeof code === 'string' && Object.prototype.hasOwnProperty.call(messages, code) ? messages[code] : 'Не удалось получить данные банка. Автоматического повтора входа нет. Попробуйте позже.';
+}

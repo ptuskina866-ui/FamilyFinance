@@ -17,7 +17,7 @@ test('Prior import is atomic, household/owner scoped, retry safe and conservativ
   const name='20261019095215_prior_reviewed_import.sql';
   for(const file of ['20261012_accounts_and_savings.sql','20261012_shared_budgets.sql','20261013085847_flexible_planning.sql',name]) await db.exec(await fs.readFile(new URL(`../supabase/migrations/${file}`,import.meta.url),'utf8'));
   const migration=await fs.readFile(new URL(`../supabase/migrations/${name}`,import.meta.url),'utf8');
-  assert.equal(schema.split('-- 15. Reviewed Priorbank import (2026-10-19)')[1].trim(),migration.trim());checks++;
+  assert.equal(schema.split('-- 15. Reviewed Priorbank import (2026-10-19)')[1].split('-- 16. Server Priorbank connection (2026-10-19)')[0].trim(),migration.trim());checks++;
   await db.exec(migration);checks++;
   const a='11111111-1111-4111-8111-111111111111',b='22222222-2222-4222-8222-222222222222',mate='33333333-3333-4333-8333-333333333333';
   await q(`INSERT INTO auth.users VALUES('${a}','{"household_action":"create","household_name":"A"}'),('${b}','{"household_action":"create","household_name":"B"}')`);
