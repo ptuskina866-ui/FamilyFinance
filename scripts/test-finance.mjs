@@ -18,10 +18,11 @@ try {
     resolve(root, 'src/lib/flexiblePlanning.ts'),
     resolve(root, 'src/lib/recurringInsights.ts'),
     resolve(root, 'src/lib/bankConnection.ts'),
+    resolve(root, 'src/lib/priorImport.ts'),
   ], { cwd: root, stdio: 'inherit' });
   if (compile.error) throw compile.error;
   if (compile.status === 0) {
-    const run = spawnSync(process.execPath, ['--test', resolve(root, 'tests/finance.test.mjs'), resolve(root, 'tests/auth.test.mjs'), resolve(root, 'tests/planning.test.mjs'), resolve(root, 'tests/flexible-planning.test.mjs'), resolve(root, 'tests/recurring-insights.test.mjs'), resolve(root, 'tests/bank-connection.test.mjs')], {
+    const run = spawnSync(process.execPath, ['--test', resolve(root, 'tests/finance.test.mjs'), resolve(root, 'tests/auth.test.mjs'), resolve(root, 'tests/planning.test.mjs'), resolve(root, 'tests/flexible-planning.test.mjs'), resolve(root, 'tests/recurring-insights.test.mjs'), resolve(root, 'tests/bank-connection.test.mjs'), resolve(root, 'tests/prior-import.test.mjs')], {
       cwd: root, stdio: 'inherit', env: { ...process.env, FINAPP_TEST_OUTPUT: output, TZ: 'Europe/Minsk' },
     });
     if (run.error) throw run.error;

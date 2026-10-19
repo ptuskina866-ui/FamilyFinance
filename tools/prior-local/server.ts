@@ -99,7 +99,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     try {
       const local = await startLocalPreview();
       console.log(`Проверка Приорбанка: ${local.origin}/`);
-      console.log('Только просмотр. Пароли и банковские ответы не записываются в файлы.');
+      console.log('Пароли не сохраняются. Файл истории создаётся только по кнопке в локальной форме.');
       for (const event of ['SIGINT', 'SIGTERM'] as const) process.once(event, () => { void local.close(); });
     } catch { console.error('Не удалось запустить локальную проверку. Возможно, порт 5188 уже занят.'); process.exitCode = 1; }
   }

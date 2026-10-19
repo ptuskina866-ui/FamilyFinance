@@ -7,6 +7,8 @@ import { accountBalances as calculateAccountBalances, cashflowTotals, reservedGo
 import { fromMinorUnits, localDateISO, toMinorUnits } from './lib/money';
 import { allocationTotal, budgetReserved, planningDateISO, planningErrorMessage } from './lib/planning';
 import { previousPlanningMonth, resolveIncomeTemplate } from './lib/flexiblePlanning';
+import type { PriorImportSnapshot, PriorImportSelection, PriorImportCheck, PriorImportResult } from './types';
+import { priorImportError } from './lib/priorImport';
 
 export interface AppContextType {
   transactions: Transaction[]; categories: Category[]; members: FamilyMember[];
@@ -28,6 +30,8 @@ export interface AppContextType {
   addTransaction: (tx: Omit<Transaction, 'id'>) => Promise<void>;
   updateTransaction: (id: string, tx: Omit<Transaction, 'id'>) => Promise<void>;
   addTransactionsBatch: (txs: Omit<Transaction, 'id'>[]) => Promise<void>;
+  previewPriorImport: (accountId: string, snapshot: PriorImportSnapshot) => Promise<PriorImportCheck>;
+  importPriorOperations: (accountId: string, snapshot: PriorImportSnapshot, items: PriorImportSelection[]) => Promise<PriorImportResult>;
   deleteTransaction: (id: string) => Promise<void>;
   initializeFinance: (legacyIds: string[]) => Promise<void>;
   createAccount: (data: { name: string; kind: AccountKind; openingBalance: number }) => Promise<void>;
@@ -229,6 +233,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (error) throw new Error(error.message);
     await refresh();
   };
+  const previewPriorImport = async (accountId: string, snapshot: PriorImportSnapshot): Promise<PriorImportCheck> => {
+    requireAccounts();
+    const { data, error } = await supabase.rpc('preview_prior_import', { p_account_id: accountId, p_snapshot: snapshot });
+    if (error) throw new Error(priorImportError(`${error.code} ${error.message}`));
+    return data as PriorImportCheck;
+  };
+  const importPriorOperations = async (accountId: string, snapshot: PriorImportSnapshot, items: PriorImportSelection[]): Promise<PriorImportResult> => {
+    requireAccounts();
+    const { data, error } = await supabase.rpc('import_prior_operations', { p_account_id: accountId, p_snapshot: snapshot, p_items: items });
+    if (error) throw new Error(priorImportError(`${error.code} ${error.message}`));
+    // Keep the result even if a subsequent ledger refresh fails: retry is idempotent.
+    await refresh();
+    return data as PriorImportResult;
+  };
   const deleteTransaction = async (id: string) => {
     if (schemaReady && accountsReady) return runRpc('delete_finance_transaction', { p_id: id });
     const tx = transactions.find(t => t.id === id);
@@ -322,7 +340,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     monthlyIncome: monthly.income, monthlyExpense: monthly.expense, budgetLimit, recurringTransactions, savingsGoals,
     categoryBudgets, incomeDistributions, planningReady, budgetReservedBalance, setCategoryBudget, distributeIncome,
     flexiblePlanningReady,incomeTemplates,budgetRollovers,distributionRevisions,transferCategoryBudget,changeIncomeDistribution,saveIncomeTemplate,archiveIncomeTemplate,reviewBudgetMonth,saveFund,
-    addTransaction, updateTransaction, addTransactionsBatch, deleteTransaction, initializeFinance, createAccount, transferBetweenAccounts,
+    addTransaction, updateTransaction, addTransactionsBatch, previewPriorImport, importPriorOperations, deleteTransaction, initializeFinance, createAccount, transferBetweenAccounts,
     setBudgetLimit, getCategoryById: id => CATEGORIES.find(c => c.id === id), getMemberById: id => members.find(m => m.id === id),
     addRecurring, deleteRecurring, addGoal, deleteGoal, updateGoalAmount, withdrawGoalAmount }}>{children}</AppContext.Provider>;
 };

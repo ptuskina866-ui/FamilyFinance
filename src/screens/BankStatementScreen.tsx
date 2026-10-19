@@ -5,6 +5,7 @@ import { useAuth } from '../AuthContext';
 import { AlfaBankService, AlfaTransaction, StatementMetadata } from '../services/alfaBankService';
 import { BANK_CONNECTION_UNAVAILABLE } from '../lib/bankConnection';
 import { DynamicIcon } from '../components/CategoryGrid';
+import { PriorImportPanel } from '../components/PriorImportPanel';
 import { 
   ArrowLeft, 
   UploadCloud, 
@@ -37,6 +38,7 @@ export const BankStatementScreen: React.FC<BankStatementScreenProps> = ({ onBack
   const { profile } = useAuth();
 
   const [step, setStep] = useState<StepType>('upload');
+  const [bank, setBank] = useState<'alfa' | 'prior'>('alfa');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [fileName, setFileName] = useState('');
@@ -265,7 +267,7 @@ export const BankStatementScreen: React.FC<BankStatementScreenProps> = ({ onBack
           </button>
           <div className="flex flex-col">
             <h1 className="text-base font-black text-slate-900 tracking-tight leading-tight">
-              Выгрузить выписку
+              Импорт операций
             </h1>
             <p className="text-[11px] text-slate-500 font-bold">Импорт банковских операций</p>
           </div>
@@ -278,6 +280,10 @@ export const BankStatementScreen: React.FC<BankStatementScreenProps> = ({ onBack
 
       {/* ── Scrollable Body Container ── */}
       <div className="flex-1 overflow-y-auto no-scrollbar p-4 sm:p-5 flex flex-col gap-4">
+        {step === 'upload' && <div className="flex gap-2 max-w-lg mx-auto w-full p-1 rounded-2xl bg-white/60 border border-white">
+          {(['alfa', 'prior'] as const).map(id => <button key={id} type="button" onClick={() => setBank(id)} className={`flex-1 p-3 rounded-xl text-xs font-bold ${bank === id ? 'bg-slate-950 text-white' : 'text-slate-600'}`}>{id === 'prior' ? 'Приорбанк' : 'Выписка Альфы'}</button>)}
+        </div>}
+        {step === 'upload' && bank === 'prior' && <PriorImportPanel />}
         
         {errorMsg && (
           <div className="p-3.5 rounded-2xl bg-rose-50/90 border border-rose-100 text-rose-700 text-xs font-bold flex items-center gap-2.5">
@@ -285,12 +291,12 @@ export const BankStatementScreen: React.FC<BankStatementScreenProps> = ({ onBack
             <span>{errorMsg}</span>
           </div>
         )}
-        {step === 'upload' && <p className="card p-3 text-xs text-slate-500 leading-relaxed">{BANK_CONNECTION_UNAVAILABLE}</p>}
+        {step === 'upload' && bank === 'alfa' && <p className="card p-3 text-xs text-slate-500 leading-relaxed">{BANK_CONNECTION_UNAVAILABLE}</p>}
 
         {/* ══════════════════════════════════════════════════
             STEP 1: UPLOAD SCREEN
         ══════════════════════════════════════════════════ */}
-        {step === 'upload' && (
+        {step === 'upload' && bank === 'alfa' && (
           <div className="flex flex-col gap-4 max-w-lg mx-auto w-full">
             <input 
               type="file" 

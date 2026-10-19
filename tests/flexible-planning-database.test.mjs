@@ -17,7 +17,7 @@ test('flexible budgets, reversible allocations, templates and funds',async(t)=>{
  await db.exec('GRANT USAGE ON SCHEMA public TO anon,authenticated;GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA public TO anon,authenticated;');
  for(const name of ['20261012_accounts_and_savings.sql','20261012_shared_budgets.sql','20261013085847_flexible_planning.sql']) await db.exec(await fs.readFile(new URL(`../supabase/migrations/${name}`,import.meta.url),'utf8'));
  const migration=await fs.readFile(new URL('../supabase/migrations/20261013085847_flexible_planning.sql',import.meta.url),'utf8');
- assert.equal(schema.split('-- 14. Flexible planning (2026-10-13)')[1].trim(),migration.trim());checks++;
+ assert.equal(schema.split('-- 14. Flexible planning (2026-10-13)')[1].split('-- 15. Reviewed Priorbank import')[0].trim(),migration.trim());checks++;
  await db.exec(migration);checks++;
  await q(`INSERT INTO auth.users VALUES('${a}','{"household_action":"create","household_name":"A"}'),('${b}','{"household_action":"create","household_name":"B"}')`);
  const [{h}]=await q(`SELECT household_id AS h FROM profiles WHERE id='${a}'`);

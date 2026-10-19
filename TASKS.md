@@ -2,7 +2,7 @@
 
 # Current work
 
-Local Priorbank preview prototype implemented on 2026-10-19; the owner confirmed that real cards and operations appeared after login in the local form. This confirms that login and data retrieval worked for that attempt, not monetary reconciliation or import readiness. It does not write to FinApp, persist bank credentials or change the deployed PWA/database. Start with `Start-Prior-Preview.cmd` or `npm run prior:local`; local form: `http://127.0.0.1:5188/`. Documentation: `docs/prior-local-preview.md`. Alfa-Bank's actual 2026-10-05 reply confirms no current Open API for individuals; do not request registration again as a presumed solution. Existing recurring-insights/flexible-planning releases remain published.
+The owner confirmed real Priorbank cards/history and then matched available sums plus sampled operation amounts/currencies with Prior Online on 2026-10-19. A reviewed import pilot is implemented locally: explicit whitelist file from the loopback helper, existing FinApp import screen, BYN account choice, editable category suggestions and atomic receipt-backed import. It is limited to one window up to 31 days and is not background synchronization. Validation and publication are being finalized; live migration/publication status is recorded in `docs/prior-import-release.md`. Start the helper with `Start-Prior-Preview.cmd` or `npm run prior:local` (`http://127.0.0.1:5188/`). Bank credentials remain local. Alfa personal Open API remains unavailable per its 2026-10-05 reply.
 
 ## Project maintenance backlog
 
@@ -11,7 +11,7 @@ Local Priorbank preview prototype implemented on 2026-10-19; the owner confirmed
 - Verify frontend deployment, signup/invitation delivery, Realtime and concurrent money RPC calls in hosted Supabase. Server-side accounts migration is installed; local PostgreSQL tests are not proof of the entire hosted lifecycle.
 - Ensure deployment environments provide `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
 - Keep the private pre-release backup until rollout and accounting reconciliation are accepted; do not remove it without explicit authorization.
-- Priorbank: real login/cards/history confirmed by the owner on 2026-10-19. Next reconcile displayed balances, amounts/currencies and account identity with Prior Online; verify history completeness, duplicate identity and pending/settled transitions before implementing import. Additional bank confirmation and session expiry remain untested. Do not request bank passwords/codes in chat. Alfa personal Open API is unavailable per reviewed bank reply; any future reconsideration needs new bank evidence (see `docs/alfa-bank-integration-research.md`).
+- Priorbank: database pilot installed and read-only probe verified; finish frontend publication, then owner-driven first selected import/balance reconciliation. Before continuous automation verify stable operation/account IDs, history completeness, shared cards/accounts, pending/settled changes and movement beyond the 31-day window. Additional bank confirmation and session expiry remain untested. Never request bank passwords/codes in chat or save them on the FinApp server. Alfa personal Open API is unavailable per reviewed bank reply; reconsideration needs new bank evidence (see `docs/alfa-bank-integration-research.md`).
 - Add automated tests for bank statement parsing.
 
 ### Medium priority
@@ -22,10 +22,14 @@ Local Priorbank preview prototype implemented on 2026-10-19; the owner confirmed
 
 ## Recently completed
 
+- Reviewed Priorbank import pilot (2026-10-19): explicit single-card JSON download, strict financial whitelist without credentials/session/full bank IDs/balances, BYN bank-account selection, original account/foreign amounts, editable existing category suggestions and pre-save net balance change. No automatic transaction selection/save; bulk selection leaves ambiguities for individual verification.
+  - Additive source/day receipts with household + owner RLS and SELECT-only client grants; guarded RPCs serialize and atomically commit ledger/receipts. Stable re-uploads are skipped, including after deliberate ledger deletion/editing. Reordered rows and identical real purchases preserve occurrence counts; changed or disappeared history and non-covering periods stop the pilot rather than guessing bank IDs.
+  - One window up to 31 days; excludes fetch-day/today/additional/outside/zero/foreign-account rows. No continuous synchronization or bank credential storage. Tests, UI review and publication status: `docs/prior-import-release.md`.
+
 - Local Priorbank preview (2026-10-19), isolated from production: strict TypeScript Node helper, loopback-only form and five auth/read request paths. One login attempt, no automatic retry/refresh/scheduling; unsupported extra confirmation stops explicitly. Passwords longer than 16 characters are rejected locally without truncation or a request to weaken them.
   - Preview preserves separate account/operation/fee amounts and currencies, credit-limit distinction, additional bank lists, possible duplicates and outside-period rows. No import, recalculation or classification of existing financial data.
   - 13 dedicated protocol/local-server tests and 50 existing app tests pass. App build/PWA passes with the same production asset `index-Ca_feLNw.js`; Node types are development-only. Mobile UI checked at 320/390 px on intercepted synthetic data: cleared password, source amounts, duplicate warning, reset, error handling, no HTML injection/storage/runtime errors.
-  - Real Node initial handshake returned HTTP 200 without user credentials. The owner subsequently confirmed that real cards and operations appeared after local login on 2026-10-19; amounts, completeness and import identities are not yet reconciled. No database changes, bank messages or production deployment performed in this task.
+  - Real Node initial handshake returned HTTP 200 without user credentials. The owner subsequently confirmed real cards/operations and matching available sums plus sampled amounts/currencies on 2026-10-19. Completeness and stable import identities remain unverified; no financial import was performed as part of the preview.
 
 - Automatic monthly expense discovery (2026-10-16): shared main/Payments card, preliminary two-month versus longer three-to-six-month rhythms, source evidence, estimated dates and exact amount-change explanations. Journal filtering opens the original records; browsing does not change balances or financial data.
   - Account isolation, conservative merchant grouping, ambiguous/repeated/future/malformed row handling and exclusion of auto-posted/transfer/savings rows. No new schema or runtime dependencies.
