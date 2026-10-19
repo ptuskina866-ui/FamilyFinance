@@ -2,6 +2,34 @@ export type TransactionType = 'income' | 'expense';
 export type TransactionKind = 'cashflow' | 'transfer' | 'goal_deposit' | 'goal_release';
 export type AccountKind = 'bank' | 'cash' | 'savings';
 
+// A local, explicit handoff contains financial fields only; never bank credentials.
+export interface PriorImportRecord {
+  date: string;
+  description: string;
+  accountAmount: string | null;
+  operationAmount: string;
+  operationCurrency: string;
+  fee: string | null;
+  source: 'history' | 'additional';
+}
+export interface PriorImportSnapshot {
+  format: 'finapp-prior';
+  version: 1;
+  from: string;
+  to: string;
+  fetchedAt: string;
+  card: {
+    sourceKey: string;
+    title: string;
+    maskedNumber: string;
+    currency: string;
+    records: PriorImportRecord[];
+  };
+}
+export interface PriorImportSelection { index: number; categoryId: string; confirmExisting: boolean; }
+export interface PriorImportCheck { importedIndexes: number[]; linked: boolean; }
+export interface PriorImportResult { imported: number; skipped: number; }
+
 export interface Account {
   id: string;
   household_id: string;

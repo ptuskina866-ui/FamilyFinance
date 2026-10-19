@@ -382,6 +382,8 @@ export default function DemoApp() {
       commit({ ...state, goals, transactions: state.transactions.filter(item => item.id !== id) });
     },
     initializeFinance: async () => {},
+    previewPriorImport: async () => { throw new Error('Проверка импорта Приорбанка доступна в вашем аккаунте после обновления базы. Демо не отправляет банковские данные.'); },
+    importPriorOperations: async () => { throw new Error('Демо не импортирует банковские данные.'); },
     createAccount: async input => {
       const state = current.current;
       const opening = normalizeMoney(input.openingBalance);
