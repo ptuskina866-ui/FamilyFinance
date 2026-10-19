@@ -38,4 +38,13 @@
 
 Advisors проверен до и после установки. Две новые намеренно доступные authenticated `SECURITY DEFINER` RPC отмечены [линтером 0029](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable): они нужны для атомарной записи при запрете прямой мутации отметок; проверяют auth/семью/владельца, фиксируют search_path и закрыты для PUBLIC/anon. Прежние private backup-таблицы без политик остаются недоступны клиенту ([0008](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy)); настройка [проверки скомпрометированных паролей Auth](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection) не менялась. Доступа к банковским секретам эти RPC не имеют.
 
-**Frontend:** публикация подготавливается; после её проверки здесь будут записаны итоговые commit/version. Через новый импорт реальные финансовые операции пока не создавались.
+**Frontend:** опубликован в [PR #9](https://github.com/ptuskina866-ui/FamilyFinance/pull/9), feature `e969e33`, merge `1e866edd8ea86667358eddd120b1e394f92b6cf7`. Cloudflare build `baf3915a-67a2-4083-8021-ff6d1bf29520` успешен; version `e3375acf-34c2-4350-af4f-9b37810d5f62`. Свежий browser context без service worker получил с рабочего адреса `index-DsnWq51w.js`, содержащий обе новые RPC и формат; вход отображается, 390 px без переполнения и ошибок исполнения. Проверка выполнена без входа в учётную запись владельца; первый реальный подтверждённый импорт остаётся его проверкой. Предыдущие PWA-вкладки нужно обновить. Локальный помощник перезапущен с новым экспортом; его страницу нужно обновить и войти в банк заново. Через новый импорт реальные финансовые операции не создавались.
+
+## Изменённые файлы этапа импорта
+
+- `src/components/PriorImportPanel.tsx`, `src/screens/BankStatementScreen.tsx` — выбор банка, проверка файла/счёта, операции/категории/итог и подтверждение.
+- `src/lib/priorImport.ts`, `src/types.ts`, `src/AppContext.tsx`, `src/demo/DemoApp.tsx` — строгий формат, предупреждения, типы, RPC и изоляция демо.
+- `tools/prior-local/page.html`, `tools/prior-local/server.ts` — явная подготовка финансового файла и актуальное сообщение помощника.
+- `supabase/migrations/20261019095215_prior_reviewed_import.sql`, `supabase_schema.sql` — аддитивная схема, RLS и атомарная запись.
+- `tests/prior-import.test.mjs`, `tests/prior-import-database.test.mjs`, `tests/flexible-planning-database.test.mjs`, `scripts/test-finance.mjs`, `package.json` — новые проверки и подключение к существующим наборам.
+- `PROJECT.md`, `TASKS.md`, `docs/prior-local-preview.md`, `docs/alfa-bank-integration-research.md`, этот отчёт — текущий статус и границы.
