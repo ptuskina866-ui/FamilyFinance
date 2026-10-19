@@ -30,6 +30,9 @@ async (page) => {
     if(/\d[\s\S]*Br/.test(await p.locator('.monthly-strip').innerText()))throw Error('Monthly totals leak');
     await p.getByLabel('Показать суммы',{exact:true}).click();
     await p.getByRole('button',{name:'Операции',exact:true}).click();await p.getByLabel('Поиск операций').fill('Продукты на неделю');
+    const rowBox=await p.locator('.transaction-row').first().boundingBox(),journalNav=await nav.boundingBox();
+    if(journalNav.y+journalNav.height>(width===1024?768:844)||journalNav.y<0)throw Error('Journal moved the navigation out of view');
+    if(rowBox.y+rowBox.height>journalNav.y)throw Error('Search result is below navigation');
     if(await p.locator('.transaction-row').count()!==1)throw Error('Journal search regression');
     await p.screenshot({path:'C:/Users/Honor/AppData/Local/Temp/finapp-premium-journal-'+width+'.png'});
     await p.getByLabel('Редактировать операцию',{exact:true}).click();await p.getByRole('dialog',{name:'Редактировать операцию'}).waitFor();

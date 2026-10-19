@@ -57,6 +57,13 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
   const [operationError, setOperationError] = useState<string | null>(null);
   const [insightTransactionIds, setInsightTransactionIds] = useState<string[] | null>(null);
   const journalRef = useRef<HTMLDivElement>(null);
+  const screenRef = useRef<HTMLDivElement>(null);
+  const scrollToJournal = () => {
+    const screen=screenRef.current,journal=journalRef.current;
+    if (!screen || !journal) return;
+    const header=screen.querySelector('header')?.getBoundingClientRect().height ?? 0;
+    screen.scrollTo({top:screen.scrollTop+journal.getBoundingClientRect().top-screen.getBoundingClientRect().top-header-12,behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
+  };
 
   // Daily budget calculation
   const safeDaily = useMemo(() => {
@@ -105,13 +112,13 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
   };
 
   return (
-    <div className="flex flex-col overflow-y-auto no-scrollbar h-full">
+    <div ref={screenRef} className="flex flex-col overflow-y-auto no-scrollbar h-full">
       <header className="screen-header">
         <div className="flex items-center gap-3 min-w-0"><BrandMark/><div className="min-w-0"><h1 className="brand-name">FinApp</h1><p className="text-[11px] text-slate-500 mt-0.5 truncate">{profile?.name ? 'Привет, '+profile.name : 'Финансы вашей семьи'}</p></div></div>
         <button type="button" aria-label="Открыть профиль" onClick={() => onNavigateTab?.('profile')} className="icon-button text-lg">{profile?.avatar||'👤'}</button>
       </header>
       <div className="screen-body flex flex-col gap-5">
-        <OverviewCards hideAmounts={hideBalance} onToggleAmounts={() => setHideBalance(value=>!value)} daily={safeDaily} goal={carGoal} onBank={onOpenStatement||(()=>setBankSyncOpen(true))} onPlans={()=>onNavigateTab?.('plans')} onJournal={()=>journalRef.current?.scrollIntoView({behavior:'smooth',block:'start'})} onReview={ids=>{setInsightTransactionIds(ids);setSearch('');setFilterType('all');setAccountFilter('');journalRef.current?.scrollIntoView({behavior:'smooth',block:'start'});}}/>
+        <OverviewCards hideAmounts={hideBalance} onToggleAmounts={() => setHideBalance(value=>!value)} daily={safeDaily} goal={carGoal} onBank={onOpenStatement||(()=>setBankSyncOpen(true))} onPlans={()=>onNavigateTab?.('plans')} onJournal={scrollToJournal} onReview={ids=>{setInsightTransactionIds(ids);setSearch('');setFilterType('all');setAccountFilter('');scrollToJournal();}}/>
 
         {/* ── Latest Transactions Section ── */}
         <section ref={journalRef} className="journal flex flex-col gap-3 pt-1" aria-labelledby="journal-heading">
