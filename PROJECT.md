@@ -226,6 +226,14 @@ Direct API synchronization (`alfa-sync`) remains unavailable pending approved ba
 
 Bank import logic is considered sensitive because incorrect parsing can corrupt financial analytics.
 
+### Local Priorbank preview prototype
+
+`tools/prior-local/` is an isolated Node.js 24 helper, started with `npm run prior:local` or `Start-Prior-Preview.cmd`. It serves a local form on `127.0.0.1:5188`; it is not imported by the PWA, deployed to Cloudflare or connected to Supabase. It receives bank credentials only from that local form, performs one observed challenge/login flow and fetches card/history data for a selected period. No credentials, bank sessions or responses are persisted or logged. No payment, import, scheduler or money-writing endpoints exist. Separate read-only bank authorization is not confirmed; the helper uses the ordinary internet-bank login and deliberately stops for unsupported confirmation flows or password lengths instead of truncating/retrying.
+
+The response is a whitelist preview with masked cards, exact signed amounts and original currencies. Available balances and credit limits are shown separately; card/account overlap, possible duplicate rows, outside-period records and the bank's additional transaction list are not silently converted, deduplicated or counted as expenses. Existing exact-money helpers are reused. Loopback binding, Host/Origin checks, a per-run request capability, CSP/no-store headers, body/response limits, cancellation and single-attempt cooldown protect the local interface. One pinned development type package (`@types/node`) supports strict checks; no runtime library was added to the mobile app. Details and limits: `docs/prior-local-preview.md`.
+
+Alfa-Bank's actual 2026-10-05 reply was reviewed on 2026-10-19: Open API for individuals is currently unavailable following the InSync 3.0 transition, with return planned but no date supplied. Registration is not a confirmed route to personal-account access; Priorbank research proceeds separately. Private correspondence and bank credentials are not included in the repository.
+
 ## PWA
 
 FinApp is configured as an installable PWA.
