@@ -1,6 +1,6 @@
+import { ScreenHeader } from '../components/ScreenHeader';
 import React, { useState } from 'react';
 import { useApp } from '../AppContext';
-import { useAuth } from '../AuthContext';
 import { DynamicIcon } from '../components/CategoryGrid';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Calendar, ChevronLeft, ChevronRight, ArrowUpRight, ArrowDownRight } from 'lucide-react';
@@ -12,7 +12,6 @@ const fmt = (n: number) => n.toLocaleString('ru-RU', { minimumFractionDigits: 2,
 
 const AnalyticsScreen: React.FC = () => {
   const { transactions, categories } = useApp();
-  const { profile } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'expense' | 'income'>('expense');
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -111,19 +110,10 @@ const AnalyticsScreen: React.FC = () => {
   return (
     <div className="flex flex-col overflow-y-auto no-scrollbar h-full select-none">
       {/* ── Header ── */}
-      <div 
-        className="px-5 pb-3 safe-header flex justify-between items-center bg-[#E5F3E8]/95 backdrop-blur-md sticky top-0 z-30"
-        style={{ paddingTop: 'max(28px, calc(env(safe-area-inset-top, 0px) + 16px))' }}
-      >
-        <div className="w-9 h-9" /> {/* Spacer */}
-        <h1 className="text-sm font-black text-slate-900 tracking-tight">Аналитика</h1>
-        <div className="w-9 h-9 rounded-full bg-white border border-white/80 shadow-sm flex items-center justify-center text-base active:scale-95 transition-transform">
-          {profile?.avatar || '👤'}
-        </div>
-      </div>
+      <ScreenHeader title="Аналитика" eyebrow="Движение денег"/>
 
       {/* ── Scrollable Body ── */}
-      <div className="px-5 pt-3 pb-36 flex flex-col gap-5">
+      <div className="screen-body flex flex-col gap-5">
 
         {/* ── Tab Switcher ── */}
         <div className="p-1 bg-white/80 border border-white/80 rounded-2xl flex shadow-sm">
@@ -156,13 +146,15 @@ const AnalyticsScreen: React.FC = () => {
             <div className="flex gap-1">
               <button
                 onClick={handlePrevMonth}
-                className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-700 active:scale-90 transition-transform"
+                aria-label="Предыдущий месяц"
+                className="icon-button"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <button
                 onClick={handleNextMonth}
-                className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-700 active:scale-90 transition-transform"
+                aria-label="Следующий месяц"
+                className="icon-button"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -174,7 +166,7 @@ const AnalyticsScreen: React.FC = () => {
             <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
               {activeTab === 'expense' ? 'Всего расходов' : 'Всего доходов'}
             </span>
-            <p className="text-[34px] font-black tracking-tight text-slate-950 leading-none">
+            <p className="money text-[32px] font-bold tracking-tight text-slate-950 leading-tight">
               {fmt(totalAmountForTab)}
             </p>
           </div>
@@ -191,27 +183,28 @@ const AnalyticsScreen: React.FC = () => {
                 <AreaChart data={getChartDataPoints()} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
                   <defs>
                     <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={activeTab === 'expense' ? '#0F172A' : '#059669'} stopOpacity={0.15} />
-                      <stop offset="95%" stopColor={activeTab === 'expense' ? '#0F172A' : '#059669'} stopOpacity={0.0} />
+                      <stop offset="5%" stopColor={activeTab === 'expense' ? '#18372b' : '#059669'} stopOpacity={0.18} />
+                      <stop offset="95%" stopColor={activeTab === 'expense' ? '#18372b' : '#059669'} stopOpacity={0.0} />
                     </linearGradient>
                   </defs>
                   <XAxis
                     dataKey="day"
                     tickLine={false}
                     axisLine={false}
-                    tick={{ fontSize: 9, fontWeight: 700, fill: '#94A3B8' }}
+                    tick={{ fontSize: 9, fontWeight: 500, fill: '#64796c' }}
                     dy={8}
                   />
                   <YAxis
                     tickLine={false}
                     axisLine={false}
-                    tick={{ fontSize: 9, fontWeight: 700, fill: '#94A3B8' }}
+                    tick={{ fontSize: 9, fontWeight: 500, fill: '#64796c' }}
                   />
                   <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#F1F5F9', strokeWidth: 1 }} />
                   <Area
                     type="monotone"
+                    isAnimationActive={false}
                     dataKey="amount"
-                    stroke={activeTab === 'expense' ? '#0F172A' : '#059669'}
+                    stroke={activeTab === 'expense' ? '#18372b' : '#059669'}
                     strokeWidth={2.5}
                     fillOpacity={1}
                     fill="url(#chartGradient)"
@@ -241,23 +234,15 @@ const AnalyticsScreen: React.FC = () => {
               <p className="text-slate-400 text-xs font-semibold">Операций пока нет</p>
             </div>
           ) : (
-            <div className="grid grid-cols-4 gap-y-4 gap-x-2">
+            <div className="flex flex-col gap-4">
               {breakdownData.map(item => {
                 const cat = item.category;
                 if (!cat) return null;
                 return (
-                  <div key={cat.id} className="flex flex-col items-center gap-1.5 text-center group active:scale-95 transition-transform">
-                    {/* Circle icon - Solid Neo-Fintech Dark Circle */}
-                    <div className="w-12 h-12 rounded-full bg-slate-950 text-white flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
-                      <DynamicIcon
-                        name={cat.icon}
-                        className="w-5 h-5 text-white"
-                      />
-                    </div>
-                    {/* Details */}
-                    <div className="flex flex-col min-w-0 w-full">
-                      <span className="text-[10px] font-bold text-slate-700 truncate px-0.5">{cat.name}</span>
-                      <span className="text-[11px] font-black text-slate-950 mt-0.5">{fmt(item.value)}</span>
+                  <div key={cat.id} className="flex items-center gap-3">
+                    <span className="transaction-icon"><DynamicIcon name={cat.icon} className="w-[18px] h-[18px]"/></span>
+                    <div className="flex-1 min-w-0"><div className="flex justify-between gap-3 text-xs mb-2"><span className="font-medium text-slate-700 break-words">{cat.name}</span><span className="money font-bold text-slate-950 text-right">{fmt(item.value)}</span></div>
+                      <div className="h-1 rounded-full bg-slate-100 overflow-hidden" aria-hidden="true"><div className="h-full rounded-full bg-[#7b9566]" style={{width:`${totalAmountForTab>0?Math.min(100,item.value/totalAmountForTab*100):0}%`}}/></div>
                     </div>
                   </div>
                 );

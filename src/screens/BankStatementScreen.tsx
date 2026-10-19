@@ -1,3 +1,4 @@
+import { ScreenHeader } from '../components/ScreenHeader';
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { isCashflow } from '../lib/finance';
 import { useApp } from '../AppContext';
@@ -22,8 +23,7 @@ import {
   Filter,
   CheckSquare,
   Square,
-  X,
-  Landmark
+  X
 } from 'lucide-react';
 
 interface BankStatementScreenProps {
@@ -38,7 +38,7 @@ export const BankStatementScreen: React.FC<BankStatementScreenProps> = ({ onBack
   const { profile } = useAuth();
 
   const [step, setStep] = useState<StepType>('upload');
-  const [bank, setBank] = useState<'alfa' | 'prior'>('alfa');
+  const [bank, setBank] = useState<'alfa' | 'prior'>('prior');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [fileName, setFileName] = useState('');
@@ -253,35 +253,12 @@ export const BankStatementScreen: React.FC<BankStatementScreenProps> = ({ onBack
     <div className="h-full flex flex-col overflow-hidden select-none">
       
       {/* ── Native Safe-Area Header ── */}
-      <div 
-        className="safe-header px-5 pb-3 bg-[#E5F3E8]/95 backdrop-blur-md sticky top-0 z-30 flex items-center justify-between shrink-0"
-        style={{ paddingTop: 'max(28px, calc(env(safe-area-inset-top, 0px) + 16px))' }}
-      >
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={onBack}
-            className="w-10 h-10 rounded-full bg-white border border-white/80 shadow-sm text-slate-800 flex items-center justify-center transition-all active:scale-90"
-          >
-            <ArrowLeft size={18} />
-          </button>
-          <div className="flex flex-col">
-            <h1 className="text-base font-black text-slate-900 tracking-tight leading-tight">
-              Импорт операций
-            </h1>
-            <p className="text-[11px] text-slate-500 font-bold">Импорт банковских операций</p>
-          </div>
-        </div>
-
-        <div className="w-10 h-10 rounded-full bg-slate-950 text-white flex items-center justify-center shadow-sm">
-          <Landmark size={18} />
-        </div>
-      </div>
+      <ScreenHeader title="Банки" eyebrow="Ваши операции" actions={<button type="button" onClick={onBack} className="icon-button" aria-label="Вернуться к обзору"><ArrowLeft size={19}/></button>}/>
 
       {/* ── Scrollable Body Container ── */}
       <div className="flex-1 overflow-y-auto no-scrollbar p-4 sm:p-5 flex flex-col gap-4">
         {step === 'upload' && <div className="flex gap-2 max-w-lg mx-auto w-full p-1 rounded-2xl bg-white/60 border border-white">
-          {(['alfa', 'prior'] as const).map(id => <button key={id} type="button" onClick={() => setBank(id)} className={`flex-1 p-3 rounded-xl text-xs font-bold ${bank === id ? 'bg-slate-950 text-white' : 'text-slate-600'}`}>{id === 'prior' ? 'Приорбанк' : 'Выписка Альфы'}</button>)}
+          {(['prior', 'alfa'] as const).map(id => <button key={id} type="button" onClick={() => setBank(id)} className={`flex-1 p-3 rounded-xl text-xs font-bold ${bank === id ? 'bg-slate-950 text-white' : 'text-slate-600'}`}>{id === 'prior' ? 'Приорбанк' : 'Выписка Альфы'}</button>)}
         </div>}
         {step === 'upload' && bank === 'prior' && <PriorImportPanel />}
         

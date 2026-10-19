@@ -7,6 +7,10 @@ export default {
   theme: {
     extend: {
       colors: {
+        slate: {
+          50:'#f2f5f3',100:'#e7ede9',200:'#d5dfd8',300:'#b0c0b6',400:'#64796c',
+          500:'#536b5d',600:'#425b4d',700:'#314c3d',800:'#233e30',900:'#18372b',950:'#102d23',
+        },
         brand: {
           primary: '#3b82f6', // blue
           accent: '#10b981', // emerald
@@ -15,8 +19,9 @@ export default {
         }
       },
       fontFamily: {
-        sans: ['Outfit', 'Inter', 'system-ui', 'sans-serif'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
       },
+      fontWeight: {black:'700',extrabold:'700',bold:'600'},
       boxShadow: {
         'glow-green': '0 0 15px rgba(16, 185, 129, 0.25)',
         'glow-red': '0 0 15px rgba(239, 68, 68, 0.25)',
