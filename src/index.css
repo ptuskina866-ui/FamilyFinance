@@ -15,7 +15,7 @@
     overflow: hidden;
     overflow-x: hidden !important;
     overscroll-behavior-x: none !important;
-    touch-action: pan-y pinch-zoom;
+    touch-action: auto;
     color: #18372b;
     -webkit-font-smoothing: antialiased;
   }

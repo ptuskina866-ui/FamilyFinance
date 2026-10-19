@@ -16,6 +16,15 @@ async (page) => {
     const daily=await p.locator('.daily-card').boundingBox();const navBox=await nav.boundingBox();
     if(daily.y+daily.height>navBox.y)throw Error('Daily decision hidden below navigation');
     for(const button of await nav.getByRole('button').all()){const b=await button.boundingBox();if(b.width<44||b.height<44)throw Error('Small navigation target');}
+    if(width<640){
+      const carousel=p.locator('section[aria-labelledby="accounts-heading"] .overflow-x-auto');await carousel.scrollIntoViewIfNeeded();
+      const box=await carousel.boundingBox(),touch=await context.newCDPSession(p);
+      await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:box.x+box.width*.8,y:box.y+box.height*.5}]});
+      for(let step=1;step<=6;step++)await touch.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:box.x+box.width*(.8-step*.09),y:box.y+box.height*.5}]});
+      await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+      await p.waitForFunction(()=>document.querySelector('section[aria-labelledby="accounts-heading"] .overflow-x-auto').scrollLeft>10);
+      await touch.detach();
+    }
     await p.getByLabel('Скрыть суммы',{exact:true}).click();
     for(const target of ['.balance-value','.daily-amount','.transaction-amount'])for(const value of await p.locator(target).allTextContents())if(!value.includes('••••'))throw Error('Visible money in privacy mode');
     if(/\d[\s\S]*Br/.test(await p.locator('.monthly-strip').innerText()))throw Error('Monthly totals leak');
