@@ -2,7 +2,7 @@
 
 # Current work
 
-Local Priorbank preview prototype implemented on 2026-10-19; it awaits the owner's login in the local form to verify actual cards/history. It does not write to FinApp, persist bank credentials or change the deployed PWA/database. Start with `Start-Prior-Preview.cmd` or `npm run prior:local`; local form: `http://127.0.0.1:5188/`. Documentation: `docs/prior-local-preview.md`. Alfa-Bank's actual 2026-10-05 reply confirms no current Open API for individuals; do not request registration again as a presumed solution. Existing recurring-insights/flexible-planning releases remain published.
+Local Priorbank preview prototype implemented on 2026-10-19; the owner confirmed that real cards and operations appeared after login in the local form. This confirms that login and data retrieval worked for that attempt, not monetary reconciliation or import readiness. It does not write to FinApp, persist bank credentials or change the deployed PWA/database. Start with `Start-Prior-Preview.cmd` or `npm run prior:local`; local form: `http://127.0.0.1:5188/`. Documentation: `docs/prior-local-preview.md`. Alfa-Bank's actual 2026-10-05 reply confirms no current Open API for individuals; do not request registration again as a presumed solution. Existing recurring-insights/flexible-planning releases remain published.
 
 ## Project maintenance backlog
 
@@ -11,7 +11,7 @@ Local Priorbank preview prototype implemented on 2026-10-19; it awaits the owner
 - Verify frontend deployment, signup/invitation delivery, Realtime and concurrent money RPC calls in hosted Supabase. Server-side accounts migration is installed; local PostgreSQL tests are not proof of the entire hosted lifecycle.
 - Ensure deployment environments provide `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
 - Keep the private pre-release backup until rollout and accounting reconciliation are accepted; do not remove it without explicit authorization.
-- Priorbank: await owner-driven local login, verify real response shape/amounts/currencies, bank confirmation requirements and identity before designing any import. Do not request bank passwords/codes in chat. Alfa personal Open API is unavailable per reviewed bank reply; any future reconsideration needs new bank evidence (see `docs/alfa-bank-integration-research.md`).
+- Priorbank: real login/cards/history confirmed by the owner on 2026-10-19. Next reconcile displayed balances, amounts/currencies and account identity with Prior Online; verify history completeness, duplicate identity and pending/settled transitions before implementing import. Additional bank confirmation and session expiry remain untested. Do not request bank passwords/codes in chat. Alfa personal Open API is unavailable per reviewed bank reply; any future reconsideration needs new bank evidence (see `docs/alfa-bank-integration-research.md`).
 - Add automated tests for bank statement parsing.
 
 ### Medium priority
@@ -25,7 +25,7 @@ Local Priorbank preview prototype implemented on 2026-10-19; it awaits the owner
 - Local Priorbank preview (2026-10-19), isolated from production: strict TypeScript Node helper, loopback-only form and five auth/read request paths. One login attempt, no automatic retry/refresh/scheduling; unsupported extra confirmation stops explicitly. Passwords longer than 16 characters are rejected locally without truncation or a request to weaken them.
   - Preview preserves separate account/operation/fee amounts and currencies, credit-limit distinction, additional bank lists, possible duplicates and outside-period rows. No import, recalculation or classification of existing financial data.
   - 13 dedicated protocol/local-server tests and 50 existing app tests pass. App build/PWA passes with the same production asset `index-Ca_feLNw.js`; Node types are development-only. Mobile UI checked at 320/390 px on intercepted synthetic data: cleared password, source amounts, duplicate warning, reset, error handling, no HTML injection/storage/runtime errors.
-  - Real Node initial handshake returned HTTP 200 without user credentials. Real login/history not yet tested. No database changes, bank messages or production deployment performed in this task.
+  - Real Node initial handshake returned HTTP 200 without user credentials. The owner subsequently confirmed that real cards and operations appeared after local login on 2026-10-19; amounts, completeness and import identities are not yet reconciled. No database changes, bank messages or production deployment performed in this task.
 
 - Automatic monthly expense discovery (2026-10-16): shared main/Payments card, preliminary two-month versus longer three-to-six-month rhythms, source evidence, estimated dates and exact amount-change explanations. Journal filtering opens the original records; browsing does not change balances or financial data.
   - Account isolation, conservative merchant grouping, ambiguous/repeated/future/malformed row handling and exclusion of auto-posted/transfer/savings rows. No new schema or runtime dependencies.
