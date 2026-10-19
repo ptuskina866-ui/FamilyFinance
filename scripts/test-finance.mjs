@@ -20,6 +20,7 @@ try {
     resolve(root, 'src/lib/bankConnection.ts'),
     resolve(root, 'src/lib/priorImport.ts'),
     resolve(root, 'src/lib/priorBridge.ts'),
+    resolve(root, 'src/lib/priorBankConnection.ts'),
     resolve(root, 'src/services/priorLocalService.ts'),
   ], { cwd: root, stdio: 'inherit' });
   if (compile.error) throw compile.error;

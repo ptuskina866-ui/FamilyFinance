@@ -5,6 +5,7 @@ import test from 'node:test';
 const require=createRequire(import.meta.url);
 const {priorConnectionUrl,readPriorBridgeMessage,PRIOR_LOCAL_ORIGIN}=require(join(process.env.FINAPP_TEST_OUTPUT,'lib/priorBridge.js'));
 const {connectPriorLocal}=require(join(process.env.FINAPP_TEST_OUTPUT,'services/priorLocalService.js'));
+const {parsePriorConnection,priorConnectionError}=require(join(process.env.FINAPP_TEST_OUTPUT,'lib/priorBankConnection.js'));
 const origin='https://familyfinance.ptuskina866.workers.dev',token='a'.repeat(64);
 const ready={type:'finapp-prior-ready',version:1,token};
 const packet=()=>({format:'finapp-prior',version:1,from:'2026-10-13',to:'2026-10-18',fetchedAt:'2026-10-19T10:00:00Z',card:{sourceKey:'b'.repeat(64),title:'Card',maskedNumber:'•••• 1234',currency:'BYN',records:[{date:'2026-10-18',description:'Shop',accountAmount:'-12.34',operationAmount:'-4.99',operationCurrency:'EUR',fee:'0.10',source:'history'}]}});
@@ -71,4 +72,16 @@ test('missing helper, expired login and closed window end the exchange and rejec
   assert.equal(expired.snapshots.length,0);assert.match(expired.errors[0],/Время подключения истекло/);
   const closed=harness(t);closed.popup.close();closed.intervals[0]();
   assert.match(closed.errors[0],/Окно подключения закрыто/);assert.equal(closed.listeners.size,0);
+});
+
+test('server result strictly preserves original money and rejects extra secret fields',()=>{
+  const result={format:'finapp-prior-connection',version:1,cards:[packet()],externalCards:0};
+  assert.deepEqual(parsePriorConnection(result),{cards:[packet()],externalCards:0});
+  for(const change of [v=>{v.session='secret';},v=>{v.cards[0].card.password='secret';},v=>{v.cards[0].card.records[0].accountAmount='1.001';},v=>{v.version=2;},v=>{v.externalCards=-1;},v=>{v.cards=Array(21).fill(packet());}]){
+    const copy=structuredClone(result);change(copy);assert.throws(()=>parsePriorConnection(copy));
+  }
+  assert.match(priorConnectionError('COOLDOWN'),/две минуты/);
+  assert.match(priorConnectionError('ADDITIONAL_CONFIRMATION'),/подтверждение/);
+  assert.doesNotMatch(priorConnectionError('PRIVATE_SECRET'),/PRIVATE_SECRET/);
+  assert.match(priorConnectionError(undefined,401),/Войдите/);
 });

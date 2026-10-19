@@ -179,7 +179,7 @@ test('accounts, savings and household security migration', async (t) => {
   await expectError(`INSERT INTO auth.users VALUES (gen_random_uuid(), '{"household_action":"create","household_name":"Must roll back"}')`, /null value.*role/);
   await scalar(`SELECT count(*)::int FROM households`, beforeRoleFailure.count);
   const fresh = new PGlite();
-  await fresh.exec(`CREATE ROLE anon; CREATE ROLE authenticated; CREATE SCHEMA auth; CREATE TABLE auth.users(id uuid PRIMARY KEY,raw_user_meta_data jsonb); CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$; CREATE PUBLICATION supabase_realtime;`);
+  await fresh.exec(`CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role; CREATE SCHEMA auth; CREATE TABLE auth.users(id uuid PRIMARY KEY,raw_user_meta_data jsonb); CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$; CREATE PUBLICATION supabase_realtime;`);
   await fresh.exec(baseline);
   await fresh.exec(migration); checks++;
   await fresh.close();

@@ -1,0 +1,42 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import {PGlite} from '@electric-sql/pglite';
+test('server bank leases are service-only, atomic across owner/login and expire without financial data',async t=>{
+  const db=new PGlite();t.after(()=>db.close());let checks=0;
+  const q=async(sql,params=[])=>(await db.query(sql,params)).rows;
+  const assertFail=async(fn,re)=>{await assert.rejects(fn,re);checks++;};
+  const scalar=async(sql,expected)=>{assert.equal(Object.values((await q(sql))[0])[0],expected);checks++;};
+  await db.exec(`CREATE ROLE anon;CREATE ROLE authenticated;CREATE ROLE service_role;CREATE SCHEMA auth;CREATE TABLE auth.users(id uuid PRIMARY KEY);CREATE TABLE public.households(id uuid PRIMARY KEY);CREATE TABLE public.profiles(id uuid PRIMARY KEY REFERENCES auth.users(id),household_id uuid REFERENCES households(id));CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS $$SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;CREATE FUNCTION public.get_my_household_id() RETURNS uuid LANGUAGE sql AS $$SELECT household_id FROM profiles WHERE id=auth.uid()$$;`);
+  const migration=await fs.readFile(new URL('../supabase/migrations/20261019105902_prior_server_connection.sql',import.meta.url),'utf8');
+  const schema=await fs.readFile(new URL('../supabase_schema.sql',import.meta.url),'utf8');
+  assert.equal(schema.split('-- 16. Server Priorbank connection (2026-10-19)')[1].trim(),migration.trim());checks++;
+  await db.exec(migration);await db.exec(migration);checks++;
+  const a='11111111-1111-4111-8111-111111111111',b='22222222-2222-4222-8222-222222222222',h='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',j='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',first='33333333-3333-4333-8333-333333333333',second='44444444-4444-4444-8444-444444444444',key='a'.repeat(64),other='b'.repeat(64);
+  await q('INSERT INTO auth.users VALUES($1),($2)',[a,b]);await q('INSERT INTO households VALUES($1),($2)',[h,j]);await q('INSERT INTO profiles VALUES($1,$2),($3,$4)',[a,h,b,j]);
+  for(const role of ['anon','authenticated']){
+    await db.exec(`SET ROLE ${role}`);
+    await assertFail(()=>q('SELECT claim_prior_connection($1,$2,$3)',[a,key,first]),/permission denied/);
+    await assertFail(()=>q('SELECT release_prior_connection($1,$2)',[a,first]),/permission denied/);
+    await assertFail(()=>q('SELECT * FROM finance_private.prior_connection_attempts'),/permission denied/);
+    await db.exec('RESET ROLE');
+  }
+  await db.exec('SET ROLE service_role');
+  const claim=(who,hash,id)=>q('SELECT claim_prior_connection($1,$2,$3)',[who,hash,id]);
+  const release=(who,id)=>q('SELECT release_prior_connection($1,$2)',[who,id]);
+  await claim(a,key,first);await assertFail(()=>claim(a,other,second),/PRIOR_CONNECTION_LIMIT/);
+  await assertFail(()=>claim(b,key,second),/PRIOR_CONNECTION_LIMIT/);
+  await release(b,first);await assertFail(()=>claim(a,other,second),/PRIOR_CONNECTION_LIMIT/);
+  await release(a,second);await assertFail(()=>claim(a,other,second),/PRIOR_CONNECTION_LIMIT/);
+  await release(a,first);await assertFail(()=>claim(a,other,second),/PRIOR_CONNECTION_LIMIT/);
+  await db.exec('RESET ROLE');await scalar('SELECT count(*)::int FROM finance_private.prior_connection_attempts',2);
+  await q("UPDATE finance_private.prior_connection_attempts SET last_started_at=now()-interval '61 seconds',lease_until=now()-interval '1 second'");
+  await db.exec('SET ROLE service_role');await claim(b,key,second);
+  await assertFail(()=>claim('99999999-9999-4999-8999-999999999999',other,first),/PRIOR_CONNECTION_MEMBER/);
+  await assertFail(()=>claim(a,'bad',first),/PRIOR_CONNECTION_FORMAT/);
+  await db.exec('RESET ROLE');await scalar(`SELECT owner_id::text FROM finance_private.prior_connection_attempts WHERE scope='login:${key}'`,b);
+  await scalar(`SELECT count(*)::int FROM finance_private.prior_connection_attempts WHERE scope='owner:${a}'`,1);
+  await scalar("SELECT count(*)::int FROM pg_policies WHERE schemaname='finance_private' AND tablename='prior_connection_attempts'",4);
+  await scalar("SELECT relrowsecurity FROM pg_class WHERE relname='prior_connection_attempts'",true);
+  t.diagnostic(`${checks} server lease SQL assertions passed`);
+});
