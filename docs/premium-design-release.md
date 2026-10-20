@@ -43,4 +43,4 @@
 - `index.html`, `public/manifest.webmanifest`, `vite.config.ts`: Inter, масштабирование, согласованное имя/цвет PWA. Политика service worker не менялась; для проверки публикации используется свежий context.
 - `tests/premium-design-ui.js`, `PROJECT.md`, `TASKS.md`, этот отчёт: воспроизводимые браузерные сценарии и текущий статус.
 
-Публикация готовится в ветке `codex/premium-finapp-design`.
+Опубликовано: [PR #13](https://github.com/ptuskina866-ui/FamilyFinance/pull/13), merge `3399fe6ee6fce5a114bc549e6e1c492ab4fc7740`. Cloudflare build `f729c4bb-2f58-4612-af79-7f91f0a88fa1` — SUCCESS, version `c47b4fc8-28bd-4016-9561-c4b7a117e671`. Production `index-BY1Jtcdy.js`, CSS `index-DSsRR1qj.css`, manifest/HTML — HTTP 200. Проверен новый экран входа в свежем Chromium 390×844, без ошибок и горизонтального переполнения. Для локальной сети с недоступным IPv6 использована проверенная IPv4 A-запись при том же HTTPS-хосте; TLS не отключался.

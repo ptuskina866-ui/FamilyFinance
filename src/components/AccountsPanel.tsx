@@ -118,7 +118,6 @@ export const AccountsPanel: React.FC<{ hideBalances?: boolean }> = ({ hideBalanc
         })}
         {activeAccounts.length === 0 && <p className="card p-4 text-xs text-slate-500">Нет активных счетов. Добавьте новый счет.</p>}
       </div>}
-      {accountsReady && <p className="text-[10px] text-slate-500 px-1 leading-relaxed">Это учет денег. Запись перевода здесь не выполняет банковскую операцию.</p>}
 
       {modal && <div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-900/60 backdrop-blur-sm px-3 pt-4" onClick={close}>
         <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="account-dialog-heading" className="w-full max-w-[440px] max-h-[85dvh] overflow-y-auto bg-white rounded-t-[28px] p-5 pb-[max(24px,env(safe-area-inset-bottom))] shadow-2xl" onClick={event => event.stopPropagation()}>
@@ -150,6 +149,7 @@ export const AccountsPanel: React.FC<{ hideBalances?: boolean }> = ({ hideBalanc
               <p className="text-[11px] text-slate-500 leading-relaxed">Остаток до операций, которые вы внесёте на этот счет. Он не считается доходом.</p>
             </>}
             {modal === 'transfer' && <>
+              <p className="text-xs text-slate-500 leading-relaxed">Запись для учёта денег. Чтобы перевести их, выполните перевод в банке.</p>
               <label className="flex flex-col gap-1.5 text-[11px] text-slate-500 font-bold">Откуда<select value={fromAccountId} onChange={event => setFromAccountId(event.target.value)} disabled={pending} className="input-light">{activeAccounts.map(account => <option key={account.id} value={account.id}>{account.name}</option>)}</select></label>
               <label className="flex flex-col gap-1.5 text-[11px] text-slate-500 font-bold">Куда<select value={toAccountId} onChange={event => setToAccountId(event.target.value)} disabled={pending} className="input-light">{activeAccounts.map(account => <option key={account.id} value={account.id} disabled={account.id === fromAccountId}>{account.name}</option>)}</select></label>
               <label className="flex flex-col gap-1.5 text-[11px] text-slate-500 font-bold">Сумма (Br)<input value={amount} onChange={event => setAmount(event.target.value)} inputMode="decimal" required disabled={pending} placeholder="0,00" className="input-light" /></label>

@@ -1,10 +1,16 @@
 # TASKS.md
 
+## Current home and bank clarity update · 2026-10-20
+
+- Simplified Priorbank into connection, review and selected-save states. Settings/card selection/account binding are collapsed once known; explicit login consent, bank-session expiry, first-use confirmation, duplicate warnings and category review stay available. Equal account/purchase amounts are no longer repeated; foreign amounts and nonzero fees remain visible. Linked selections have a compact sticky save summary; first-use confirmation stays in the document flow.
+- Home retains the balance/daily/month/accounts hierarchy; detailed daily explanation and extra goal/recurring cards disclose on request. The transfer notice now appears in its dialog. All calculations, persistence, parsers, Auth/RLS and backend are unchanged; no new dependencies.
+- Passing: 63 app checks, 26 bank/server checks; refreshed browser regressions for 320/390/1024 px, short 320×640 bank flow, saved/unknown card choice, bulk selection/reset, first-account and possible-duplicate confirmation. Only synthetic/demo data; physical Safari/keyboard and live signed-in bank response remain unverified. Build/diff and publication record: `docs/clean-home-bank-release.md`.
+
 ## Current premium design release · 2026-10-19
 
 - Implemented requested redesign from the six supplied galleries: calm light/forest/lime system, Inter, softened glass, labelled navigation, shared headers and a reordered daily overview. All eight screens updated; categories are readable report rows, journal preserves actions/search, home money hiding is consistent, Priorbank opens first. No new dependencies or domain/backend changes.
 - Passing: 63 app tests, 26 bank/server tests, TypeScript/Vite/PWA build. Real-screen demo browser scenarios at 320/390/1024 px cover navigation, privacy, search/dialogs/charts/planning, exact 1.23 BYN demo save, bank fallback and login/registration. Existing remembered-bank synthetic UI passes at 320/390 px. No real bank/Supabase requests or working-data writes in demo tests.
-- Visual review completed; physical Safari/installed PWA and keyboard remain owner verification. Publication is being prepared. References, changed-file inventory and limits: `docs/premium-design-release.md`.
+- Visual review completed; physical Safari/installed PWA and keyboard remain owner verification. Published in PR #13 / merge `3399fe6`, Cloudflare build `f729c4bb-2f58-4612-af79-7f91f0a88fa1` succeeded; fresh production login/assets verified. References, changed-file inventory and limits: `docs/premium-design-release.md`.
 
 ## Current Priorbank convenience release · 2026-10-19
 

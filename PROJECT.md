@@ -299,6 +299,8 @@ Neo-Fintech / Liquid Glass.
 
 Premium design update (2026-10-19): warm light surfaces, forest-green financial hero, restrained lime actions and Inter with tabular money. Shared tokens live in `src/index.css`/Tailwind; `ScreenHeader` provides consistent screen headings and `OverviewCards` composes existing context values without changing financial rules. The home order prioritizes balance/actions/daily estimate, with labelled five-item navigation and a readable journal. Reports use category rows, all eight screens share typography/spacing, and Priorbank is the initial bank tab. Mobile safe areas/100dvh, zoom, visible focus and reduced motion are supported. Manifest colors/name match the interface; existing PWA cache policy remains. References, checks and limitations: `docs/premium-design-release.md`.
 
+Clarity update (2026-10-20): Priorbank reveals settings, remembered account/card controls and file help progressively; login consent and financial review remain explicit. Equal bank/purchase amounts are displayed once; foreign amounts/fees and duplicate/first-use confirmation remain visible. Home groups extra goal/recurring cards behind a disclosure and explains the daily estimate on demand; transfer semantics are stated in the transfer dialog. Linked import save summaries stay nearby, while the larger first-use confirmation scrolls normally. No financial/backend changes. See `docs/clean-home-bank-release.md`.
+
 Key characteristics:
 
 - frosted glass surfaces;
