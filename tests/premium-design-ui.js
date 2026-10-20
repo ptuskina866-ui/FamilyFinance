@@ -25,7 +25,14 @@ async (page) => {
       await p.waitForFunction(()=>document.querySelector('section[aria-labelledby="accounts-heading"] .overflow-x-auto').scrollLeft>10);
       await touch.detach();
     }
+    const more=p.locator('.overview-disclosure');
+    if(await more.getAttribute('open')!==null)throw Error('Extra home cards are expanded on arrival');
     await p.getByLabel('Скрыть суммы',{exact:true}).click();
+    await more.locator(':scope > summary').click();
+    await p.locator('.goal-preview').waitFor();
+    if(/\d[\s\S]*Br/.test(await p.locator('.goal-preview').innerText()))throw Error('Goal amounts leak when expanded');
+    await more.locator(':scope > summary').click();
+    if(await p.locator('.goal-preview').isVisible())throw Error('Extra home cards did not collapse');
     for(const target of ['.balance-value','.daily-amount','.transaction-amount'])for(const value of await p.locator(target).allTextContents())if(!value.includes('••••'))throw Error('Visible money in privacy mode');
     if(/\d[\s\S]*Br/.test(await p.locator('.monthly-strip').innerText()))throw Error('Monthly totals leak');
     await p.getByLabel('Показать суммы',{exact:true}).click();
@@ -37,6 +44,9 @@ async (page) => {
     await p.screenshot({path:'C:/Users/Honor/AppData/Local/Temp/finapp-premium-journal-'+width+'.png'});
     await p.getByLabel('Редактировать операцию',{exact:true}).click();await p.getByRole('dialog',{name:'Редактировать операцию'}).waitFor();
     await p.getByLabel('Закрыть редактирование').click();await p.getByLabel('Поиск операций').fill('');
+    await p.getByLabel('Записать перевод между счетами',{exact:true}).click();
+    await p.getByText('Запись для учёта денег. Чтобы перевести их, выполните перевод в банке.',{exact:true}).waitFor();
+    await p.getByLabel('Закрыть окно счетов').click();
     await p.getByLabel('Добавить счет',{exact:true}).click();await p.getByRole('dialog',{name:'Новый счет'}).waitFor();
     await p.getByLabel('Закрыть окно счетов').click();
     await go('Аналитика');await p.getByRole('heading',{name:'Аналитика',exact:true}).waitFor();
@@ -54,6 +64,11 @@ async (page) => {
     await p.locator('.balance-value').waitFor();const after=money(await p.locator('.balance-value').innerText());if(before-after!==123n)throw Error('Exact balance/save regression');
     await p.getByRole('button',{name:'Банки и операции',exact:true}).click();await p.getByRole('heading',{name:'Приорбанк',exact:true}).waitFor();
     if(!(await p.locator('body').innerText()).includes('Демо не подключается к банку'))throw Error('Missing honest demo bank state');
+    await p.getByRole('button',{name:'Подключить Приорбанк',exact:true}).click();
+    await p.getByLabel('Логин Prior Online',{exact:true}).waitFor();
+    if(await p.getByText('Другой период',{exact:true}).isVisible())throw Error('Bank settings expanded by default');
+    await p.getByRole('button',{name:'Отмена',exact:true}).click();
+    await p.getByRole('button',{name:'Подключить Приорбанк',exact:true}).waitFor();
     await p.getByRole('button',{name:'Выписка Альфы',exact:true}).click();await fit();
     await p.getByLabel('Вернуться к обзору').click();await p.getByRole('navigation').waitFor();
     await p.screenshot({path:'C:/Users/Honor/AppData/Local/Temp/finapp-premium-home-'+width+'.png'});

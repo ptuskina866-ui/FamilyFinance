@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Landmark, RefreshCw } from 'lucide-react';
+import { ChevronDown, Landmark, RefreshCw, ShieldCheck } from 'lucide-react';
 import type { PriorBankConnectionStatus, PriorConnectionResult, PriorImportSnapshot } from '../types';
 import { planningDateISO } from '../lib/planning';
 import { connectPriorBank, syncPriorBank, priorBankStatus, PriorBankError } from '../services/priorBankService';
@@ -11,6 +11,7 @@ export function PriorBankConnection({disabled, onStart, onBusy, onConnected}: Pr
   const [connection, setConnection] = useState<PriorBankConnectionStatus | null>(null), [disconnecting, setDisconnecting] = useState(false);
   const [cards, setCards] = useState<PriorImportSnapshot[]>([]), [cardIndex, setCardIndex] = useState('');
   const login = useRef<HTMLInputElement>(null), password = useRef<HTMLInputElement>(null);
+  const cardPicker = useRef<HTMLDetailsElement>(null);
   const controller = useRef<AbortController | null>(null), version = useRef(0);
   // Parent updates must not restart the opening request.
   const callbacks = useRef({onStart, onBusy, onConnected}); callbacks.current = {onStart, onBusy, onConnected};
@@ -41,7 +42,7 @@ export function PriorBankConnection({disabled, onStart, onBusy, onConnected}: Pr
         const card = cards[Number(cardIndex)]; if (!card) return;
         const state = await priorBankStatus('select',request.signal,card.card.sourceKey);
         if (version.current !== current) return;
-        setConnection(state); callbacks.current.onStart(); callbacks.current.onConnected(card,state.accountId ?? undefined);
+        setConnection(state); cardPicker.current?.removeAttribute('open'); callbacks.current.onStart(); callbacks.current.onConnected(card,state.accountId ?? undefined);
       } else {
         if (action === 'open') {
           const state = await priorBankStatus('status',request.signal);
@@ -67,25 +68,50 @@ export function PriorBankConnection({disabled, onStart, onBusy, onConnected}: Pr
     void run('open');
     return () => {++version.current; controller.current?.abort(); controller.current = null; if (password.current) password.current.value = '';};
   }, []);
-  const control = 'mt-2 block w-full min-w-0 rounded-2xl bg-white/80 border border-white p-3 text-base text-slate-800';
-  const button = 'w-full flex items-center justify-center gap-2 bg-slate-950 text-white rounded-2xl p-4 text-xs font-bold disabled:opacity-40';
-  return <div className="space-y-3">
-    <p className="text-xs text-slate-600 leading-relaxed">При открытии загружаем последние 10 завершённых дней. Сегодняшние операции пока не включаем. Добавляйте только выбранные записи.</p>
-    {connection?.connected && <div className="space-y-2 text-xs"><p className="font-bold text-emerald-800">Приорбанк подключён</p>{connection.lastSyncedAt && <p className="text-slate-500">Получено: {new Date(connection.lastSyncedAt).toLocaleString('ru-RU')}</p>}<button type="button" className={button} disabled={disabled || loading} onClick={() => void run('sync')}><RefreshCw size={16} />Обновить операции</button><button type="button" disabled={disabled || loading} onClick={() => setDisconnecting(value => !value)} className="py-2 text-slate-500 underline">Отключить банк</button>{disconnecting && <div className="rounded-2xl bg-white/70 p-3 space-y-3"><p>Удалить сохранённую банковскую сессию? Операции в журнале останутся.</p><button type="button" className={button} disabled={disabled || loading} onClick={() => void run('disconnect')}>Удалить подключение</button></div>}</div>}
-    {!connection?.connected && !open && <button type="button" disabled={disabled || loading} onClick={() => {setOpen(true); setError('');}} className={button}><Landmark size={18} />Подключить Приорбанк</button>}
-    {(open || connection?.connected) && <details className="text-xs text-slate-500" onToggle={e => setCustom(e.currentTarget.open)}><summary className="py-2 cursor-pointer">Другой период</summary><div className="grid gap-2 sm:grid-cols-2"><label className="min-w-0">С даты<input type="date" value={from} max={to} disabled={disabled || loading} className={control} onChange={e => setFrom(e.target.value)} /></label><label className="min-w-0">По дату<input type="date" value={to} min={from} max={defaultTo} disabled={disabled || loading} className={control} onChange={e => setTo(e.target.value)} /></label></div><p className="mt-2">До 31 завершённого дня за одну загрузку.</p></details>}
-    {open && <form onSubmit={event => {event.preventDefault(); if (consent) void run('connect');}} className="space-y-3" autoComplete="off">
-      <p className="text-xs text-slate-600 leading-relaxed">Логин и пароль передаются на сервер FinApp для входа в банк. Сохраняем только зашифрованную банковскую сессию. Пароль не сохраняется. Если банк завершит сессию, понадобится войти снова.</p>
-      <label className="block text-xs font-bold">Логин Prior Online<input ref={login} name="prior-login" autoComplete="off" autoCapitalize="none" spellCheck={false} maxLength={128} required disabled={disabled || loading} className={control} /></label>
-      <label className="block text-xs font-bold">Пароль интернет-банка<input ref={password} name="prior-password" type="password" autoComplete="off" required disabled={disabled || loading} className={control} /></label>
-      <p className="text-[11px] text-slate-500">Нужен пароль Prior Online, не ПИН приложения. Пароли длиннее 16 символов и дополнительное банковское подтверждение пока не поддерживаются. Менять пароль ради подключения не нужно.</p>
-      <label className="flex gap-3 text-xs leading-relaxed"><input type="checkbox" checked={consent} disabled={disabled || loading} className="w-5 h-5 shrink-0" onChange={e => setConsent(e.target.checked)} />Разрешаю вход и сохранение защищённой банковской сессии. Пароль не сохраняется.</label>
-      <button type="submit" disabled={disabled || loading || !consent} className={button}>Подключить и получить операции</button>
+  useEffect(() => {
+    // An unknown card needs a choice; selecting an option must leave its confirm action visible.
+    if (cards.length > 1 && cardIndex === '') cardPicker.current?.setAttribute('open', '');
+  }, [cards, cardIndex]);
+  const control = 'mt-2 input-light w-full min-w-0';
+  const disabledControls = disabled || loading;
+  const cardSelection = cards.length > 1 && <details ref={cardPicker} className="disclosure"><summary>Выбор карты<ChevronDown size={15}/></summary><div className="disclosure-body space-y-3"><label className="block text-xs font-semibold">Карта для проверки<select aria-label="Карта Приорбанка" value={cardIndex} disabled={disabledControls} className={control} onChange={e => setCardIndex(e.target.value)}><option value="">Выберите карту</option>{cards.map((card, index) => <option key={index} value={index}>{card.card.title} · {card.card.maskedNumber} · {card.card.currency}</option>)}</select></label><button type="button" disabled={!cardIndex || disabledControls} onClick={() => void run('select')} className="auth-button">Запомнить карту и показать операции</button></div></details>;
+  return <div className="space-y-3" aria-busy={loading}>
+    <div className="flex items-center gap-3">
+      <span className="bank-mark"><Landmark size={23} strokeWidth={1.6}/></span>
+      <div className="flex-1 min-w-0"><h2 className="section-title">Приорбанк</h2><p className="text-xs text-slate-500 mt-1">{connection?.connected ? (custom?'Подключён · выбранный период':'Подключён · 10 дней') : open ? 'Вход в Prior Online' : 'Операции без ручного ввода'}</p></div>
+      {connection?.connected && <button type="button" className="icon-button" aria-label="Обновить операции" disabled={disabledControls} onClick={()=>void run('sync')}><RefreshCw size={18} className={loading?'animate-spin':''}/></button>}
+    </div>
+    {!connection?.connected && !open && <>
+      <p className="bank-copy">Войдите один раз. При следующем открытии FinApp получит операции, пока действует сессия банка.</p>
+      <button type="button" disabled={disabledControls} onClick={() => {setOpen(true); setError('');}} className="auth-button">Подключить Приорбанк</button>
+      <p className="bank-caption">Вы сами выбираете, что добавить в журнал.</p>
+    </>}
+    {error && <p role="alert" className="bank-notice text-rose-700">{error}</p>}
+    {open && <form onSubmit={event => {event.preventDefault(); if (consent) void run('connect');}} className="space-y-4" autoComplete="off">
+      <label className="block text-xs font-semibold">Логин Prior Online<input ref={login} name="prior-login" autoComplete="off" autoCapitalize="none" spellCheck={false} maxLength={128} required disabled={disabledControls} className={control}/></label>
+      <label className="block text-xs font-semibold">Пароль интернет-банка<input ref={password} name="prior-password" type="password" autoComplete="off" required disabled={disabledControls} className={control}/><span className="block bank-caption mt-2">Пароль от Prior Online, не ПИН приложения.</span></label>
+      <div className="bank-security"><ShieldCheck size={17} className="shrink-0"/><p>Вход выполняется через сервер FinApp. Пароль не сохраняется; банковская сессия хранится зашифрованной.</p></div>
+      <label className="flex items-start gap-3 text-xs leading-relaxed py-1"><input type="checkbox" checked={consent} disabled={disabledControls} className="w-5 h-5 shrink-0 mt-0.5" onChange={e => setConsent(e.target.checked)}/>Разрешаю вход и сохранение защищённой банковской сессии. Пароль не сохраняется.</label>
+      <button type="submit" disabled={disabledControls || !consent} className="auth-button">Подключить и получить операции</button>
+      <button type="button" disabled={loading} className="text-action w-full" onClick={() => {if(password.current) password.current.value='';setOpen(false);setConsent(false);}}>Отмена</button>
     </form>}
-    {loading && <p role="status" className="text-xs text-slate-600">{message || 'Обновляем подключение…'}</p>}
-    {loading && <button type="button" onClick={() => {++version.current; controller.current?.abort(); controller.current = null; setLoading(false); callbacks.current.onBusy(false); setMessage('Ожидание отменено. Откройте раздел заново, чтобы проверить состояние подключения.');}} className="w-full bg-white/80 rounded-2xl p-3 text-xs font-bold">Отменить ожидание</button>}
-    {!loading && message && <p role="status" className="text-xs text-emerald-800 leading-relaxed">{message}</p>}
-    {error && <p role="alert" className="text-xs text-rose-700 leading-relaxed">{error}</p>}
-    {cards.length > 1 && <div className="space-y-3"><label className="block text-xs font-bold">Карта для проверки<select aria-label="Карта Приорбанка" value={cardIndex} disabled={disabled || loading} className={control} onChange={e => setCardIndex(e.target.value)}><option value="">Выберите карту</option>{cards.map((card, index) => <option key={index} value={index}>{card.card.title} · {card.card.maskedNumber} · {card.card.currency}</option>)}</select></label><button type="button" disabled={!cardIndex || disabled || loading} onClick={() => void run('select')} className={button}>Запомнить карту и показать операции</button></div>}
+    {(open || connection?.connected) && <details className="disclosure bank-settings">
+      <summary>{connection?.connected ? 'Настройки подключения' : 'Период и помощь'}<ChevronDown size={15}/></summary>
+      <div className="disclosure-body space-y-3">
+        {connection?.lastSyncedAt && <p className="bank-caption">Обновлено {new Date(connection.lastSyncedAt).toLocaleString('ru-RU')}</p>}
+        {connection?.selectedSourceKey && cardSelection}
+        <details onToggle={e => setCustom(e.currentTarget.open)}>
+          <summary className="text-action cursor-pointer">Другой период</summary>
+          <div className="grid gap-3"><label className="text-xs min-w-0">С даты<input type="date" value={from} max={to} disabled={disabledControls} className={control} onChange={e => setFrom(e.target.value)}/></label><label className="text-xs min-w-0">По дату<input type="date" value={to} min={from} max={defaultTo} disabled={disabledControls} className={control} onChange={e => setTo(e.target.value)}/></label></div>
+        </details>
+        <p className="bank-caption">По умолчанию — 10 завершённых дней, без сегодняшних операций. Можно выбрать до 31 дня за одну загрузку. {connection?.connected && 'После выбора нажмите «Обновить операции».'}</p>
+        <p className="bank-caption">Банк может завершить сессию — тогда понадобится повторный вход. Пароли длиннее 16 символов и дополнительное банковское подтверждение пока не поддерживаются. Менять пароль ради подключения не нужно.</p>
+        {connection?.connected && <><button type="button" disabled={disabledControls} onClick={() => setDisconnecting(value => !value)} className="text-action text-rose-700">Отключить банк</button>{disconnecting && <div className="bank-notice space-y-3"><p>Удалить сохранённую банковскую сессию? Операции в журнале останутся.</p><button type="button" className="auth-button" disabled={disabledControls} onClick={() => void run('disconnect')}>Удалить подключение</button></div>}</>}
+      </div>
+    </details>}
+    {loading && <p role="status" className="bank-caption">{message || 'Обновляем подключение…'}</p>}
+    {loading && <button type="button" onClick={() => {++version.current; controller.current?.abort(); controller.current = null; setLoading(false); callbacks.current.onBusy(false); setMessage('Ожидание отменено. Откройте раздел заново, чтобы проверить состояние подключения.');}} className="text-action w-full">Отменить ожидание</button>}
+    {!loading && message && !cards.length && (connection?.connected || error || message.startsWith('Подключение удалено') || message.startsWith('Ожидание отменено') || connection?.reauthRequired) && <p role="status" className="bank-caption">{message}</p>}
+    {!connection?.selectedSourceKey && cardSelection}
   </div>;
 }
