@@ -38,7 +38,7 @@ export const TransactionEditor: React.FC<{ transaction: Transaction; onClose: ()
     catch (err) { setError(err instanceof Error ? err.message : 'Не удалось сохранить изменения.'); }
     finally { setSaving(false); }
   };
-  const inputClass = 'w-full min-w-0 p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-800';
+  const inputClass = 'input-light mt-1.5';
   return <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-3" onClick={() => { if (!saving) onClose(); }}>
     <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby="transaction-edit-title" className="bg-white rounded-3xl p-5 w-full max-w-sm max-h-[90dvh] overflow-y-auto pb-[max(20px,env(safe-area-inset-bottom))]" onClick={e => e.stopPropagation()}>
       <div className="flex items-center justify-between mb-4"><h2 id="transaction-edit-title" className="font-black text-sm">Редактировать операцию</h2><button type="button" aria-label="Закрыть редактирование" disabled={saving} onClick={onClose} className="p-2"><X className="w-4 h-4" /></button></div>

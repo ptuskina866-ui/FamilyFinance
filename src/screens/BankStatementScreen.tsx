@@ -20,6 +20,7 @@ import {
   CreditCard,
   ArrowDownLeft,
   ArrowUpRight,
+  ChevronRight,
   Filter,
   CheckSquare,
   Square,
@@ -256,11 +257,10 @@ export const BankStatementScreen: React.FC<BankStatementScreenProps> = ({ onBack
       <ScreenHeader title="Банки" eyebrow="Ваши операции" actions={<button type="button" onClick={onBack} className="icon-button" aria-label="Вернуться к обзору"><ArrowLeft size={19}/></button>}/>
 
       {/* ── Scrollable Body Container ── */}
-      <div className="flex-1 overflow-y-auto no-scrollbar p-4 sm:p-5 flex flex-col gap-4">
-        {step === 'upload' && <div className="flex gap-2 max-w-lg mx-auto w-full p-1 rounded-2xl bg-white/60 border border-white">
-          {(['prior', 'alfa'] as const).map(id => <button key={id} type="button" onClick={() => setBank(id)} className={`flex-1 p-3 rounded-xl text-xs font-bold ${bank === id ? 'bg-slate-950 text-white' : 'text-slate-600'}`}>{id === 'prior' ? 'Приорбанк' : 'Выписка Альфы'}</button>)}
-        </div>}
+      <div className="flex-1 overflow-y-auto no-scrollbar screen-body flex flex-col gap-4">
+        {step === 'upload' && bank === 'alfa' && <button type="button" onClick={()=>setBank('prior')} className="bank-secondary max-w-lg mx-auto">Приорбанк</button>}
         {step === 'upload' && bank === 'prior' && <PriorImportPanel />}
+        {step === 'upload' && bank === 'prior' && <button type="button" onClick={()=>setBank('alfa')} className="bank-alternative" aria-label="Выписка Альфы"><span>Альфа-Банк<span className="block bank-caption mt-1">Загрузить выписку</span></span><ChevronRight size={17}/></button>}
         
         {errorMsg && (
           <div className="p-3.5 rounded-2xl bg-rose-50/90 border border-rose-100 text-rose-700 text-xs font-bold flex items-center gap-2.5">
@@ -316,13 +316,13 @@ export const BankStatementScreen: React.FC<BankStatementScreenProps> = ({ onBack
               </button>
 
               <div className="flex flex-wrap items-center justify-center gap-1.5 mt-2">
-                <span className="px-3 py-1 rounded-full bg-white/80 backdrop-blur-md text-emerald-800 text-[10px] font-bold border border-white/90 shadow-sm flex items-center gap-1">
+                <span className="px-3 py-1 rounded-full bg-white/80 backdrop-blur-md text-emerald-800 text-[11px] font-bold border border-white/90 shadow-sm flex items-center gap-1">
                   <CheckCircle2 size={12} /> Авто-категоризация
                 </span>
-                <span className="px-3 py-1 rounded-full bg-white/80 backdrop-blur-md text-blue-800 text-[10px] font-bold border border-white/90 shadow-sm">
+                <span className="px-3 py-1 rounded-full bg-white/80 backdrop-blur-md text-blue-800 text-[11px] font-bold border border-white/90 shadow-sm">
                   Анти-дубликаты
                 </span>
-                <span className="px-3 py-1 rounded-full bg-white/80 backdrop-blur-md text-purple-800 text-[10px] font-bold border border-white/90 shadow-sm">
+                <span className="px-3 py-1 rounded-full bg-white/80 backdrop-blur-md text-purple-800 text-[11px] font-bold border border-white/90 shadow-sm">
                   Чистые названия
                 </span>
               </div>
@@ -364,7 +364,7 @@ export const BankStatementScreen: React.FC<BankStatementScreenProps> = ({ onBack
             
             {/* ── Summary Card (Metadata) - Liquid Dark Glass ── */}
             <div className="card-dark-glass p-5 rounded-[28px] text-white flex flex-col gap-3.5 relative overflow-hidden shrink-0">
-              <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-emerald-500/15 rounded-full blur-2xl pointer-events-none" />
+              <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-white/5 rounded-full blur-2xl pointer-events-none" />
 
               {/* Period & Card Header */}
               <div className="flex justify-between items-center text-xs">
@@ -373,7 +373,7 @@ export const BankStatementScreen: React.FC<BankStatementScreenProps> = ({ onBack
                   <span className="truncate font-bold">{metadata?.period || fileName || 'Период выписки'}</span>
                 </div>
                 {metadata?.card && (
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 text-[10px] text-slate-200 font-bold border border-white/10">
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 text-[11px] text-slate-200 font-bold border border-white/10">
                     <CreditCard size={12} />
                     <span className="truncate max-w-[140px]">{metadata.card.replace(/Classic\(.*/, '')}</span>
                   </div>
@@ -383,7 +383,7 @@ export const BankStatementScreen: React.FC<BankStatementScreenProps> = ({ onBack
               {/* Financial Summary Chips */}
               <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/10">
                 <div className="flex flex-col">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Расход</span>
+                  <span className="text-[11px] text-slate-400 font-bold tracking-normal">Расход</span>
                   <span className="text-base font-black text-rose-400 flex items-center gap-0.5">
                     <ArrowDownLeft size={14} className="shrink-0" />
                     {metadata?.totalExpense ? metadata.totalExpense.toFixed(2) : expenseCount} Br
@@ -391,7 +391,7 @@ export const BankStatementScreen: React.FC<BankStatementScreenProps> = ({ onBack
                 </div>
 
                 <div className="flex flex-col">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Приход</span>
+                  <span className="text-[11px] text-slate-400 font-bold tracking-normal">Приход</span>
                   <span className="text-base font-black text-emerald-400 flex items-center gap-0.5">
                     <ArrowUpRight size={14} className="shrink-0" />
                     {metadata?.totalIncome ? metadata.totalIncome.toFixed(2) : incomeCount} Br
@@ -399,7 +399,7 @@ export const BankStatementScreen: React.FC<BankStatementScreenProps> = ({ onBack
                 </div>
 
                 <div className="flex flex-col text-right">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Операций</span>
+                  <span className="text-[11px] text-slate-400 font-bold tracking-normal">Операций</span>
                   <span className="text-base font-black text-white">
                     {parsedList.length} шт
                   </span>
@@ -554,7 +554,7 @@ export const BankStatementScreen: React.FC<BankStatementScreenProps> = ({ onBack
                         </div>
 
                         <div className="flex items-center justify-between gap-2 mt-1">
-                          <span className="text-[10px] text-slate-400 font-bold">{tx.date}</span>
+                          <span className="text-[11px] text-slate-400 font-bold">{tx.date}</span>
                           
                           {/* Inline Category Switcher */}
                           <select
@@ -573,7 +573,7 @@ export const BankStatementScreen: React.FC<BankStatementScreenProps> = ({ onBack
                         </div>
 
                         {tx.isDuplicate && (
-                          <span className="text-[10px] text-amber-600 font-bold mt-1 flex items-center gap-1">
+                          <span className="text-[11px] text-amber-600 font-bold mt-1 flex items-center gap-1">
                             ⚠️ Операция уже есть в истории
                           </span>
                         )}

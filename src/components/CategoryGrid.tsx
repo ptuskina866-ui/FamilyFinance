@@ -10,7 +10,7 @@ export const DynamicIcon: React.FC<{
 }> = ({
   name,
   className = '',
-  strokeWidth = 2,
+  strokeWidth = 1.6,
   style
 }) => {
   const IconComponent = (Icons as any)[name] || Icons.HelpCircle;

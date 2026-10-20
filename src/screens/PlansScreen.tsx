@@ -235,7 +235,7 @@ const PlansScreen: React.FC = () => {
             {/* Balance Hint */}
             <div className="card px-4 py-3.5 flex flex-col gap-2.5">
               <div className="flex justify-between items-center gap-2">
-                <span className="text-[10px] text-slate-500 font-bold">Свободно после резервов</span>
+                <span className="text-[11px] text-slate-500 font-bold">Свободно после резервов</span>
                 <span className={`font-black text-sm tracking-tight ${availableBalance >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>{fmt(availableBalance)}</span>
               </div>
               <div className="flex justify-between items-center gap-2 text-[11px] text-slate-500"><span>Отложено на цели</span><strong className="text-slate-700">{fmt(reservedBalance)}</strong></div>
@@ -284,13 +284,13 @@ const PlansScreen: React.FC = () => {
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="font-bold text-slate-800 text-sm leading-tight tracking-tight break-words">{goal.name}</p>
                             {isCompleted && (
-                              <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-100 text-emerald-700 flex items-center gap-0.5 uppercase tracking-wider">
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-100 text-emerald-700 flex items-center gap-0.5 tracking-normal">
                                 <Check className="w-2.5 h-2.5" /> Готово
                               </span>
                             )}
                           </div>
                           {days && (
-                            <p className={`text-[10px] mt-0.5 font-bold ${
+                            <p className={`text-[11px] mt-0.5 font-bold ${
                               days === 'Срок истёк' ? 'text-rose-500' : 'text-slate-400'
                             }`}>
                               ⏳ {days}
@@ -319,11 +319,11 @@ const PlansScreen: React.FC = () => {
                           className="h-full rounded-full transition-all duration-500 ease-out"
                           style={{
                             width: `${percent}%`,
-                            background: isCompleted ? '#10B981' : '#0F172A',
+                            background: isCompleted ? '#10B981' : '#202124',
                           }}
                         />
                       </div>
-                      <div className="flex justify-between text-[9px] text-slate-400 font-bold uppercase tracking-wider">
+                      <div className="flex justify-between text-[9px] text-slate-400 font-bold tracking-normal">
                         <span>{percent.toFixed(0)}% выполнено</span>
                         {!isCompleted && (
                           <span>
@@ -373,13 +373,13 @@ const PlansScreen: React.FC = () => {
           /* ========================================================================= */
           <div className="flex flex-col gap-3">
             {/* Info Banner */}
-            <div className="card p-4 flex gap-3 bg-green-50/10 border-green-100">
-              <div className="w-8 h-8 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
-                <RefreshCw className="w-4 h-4 text-green-600 animate-spin-slow" />
+            <div className="card p-4 flex gap-3 bg-white border-slate-100">
+              <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center shrink-0">
+                <RefreshCw className="w-4 h-4 text-slate-600" />
               </div>
               <div>
                 <p className="text-xs font-bold text-slate-700 mb-0.5">Автоматизация финансов</p>
-                <p className="text-[10px] text-slate-500 leading-relaxed font-medium">
+                <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
                   Регулярные платежи создаются автоматически каждый месяц в указанный день при открытии приложения.
                 </p>
               </div>
@@ -400,15 +400,15 @@ const PlansScreen: React.FC = () => {
                 const isExpense = rec.type === 'expense';
                 return (
                   <div key={rec.id} className="card px-4 py-3.5 flex items-center gap-3.5 group active:scale-[0.99] transition-all">
-                    <div className="w-11 h-11 rounded-full bg-[#FAF2EA] flex items-center justify-center shrink-0 shadow-sm">
-                      <DynamicIcon name={cat?.icon || 'RefreshCw'} className="w-5 h-5" style={{ color: '#5C4033' }} />
+                    <div className="w-11 h-11 rounded-full bg-[#f0f0f4] flex items-center justify-center shrink-0 shadow-sm">
+                      <DynamicIcon name={cat?.icon || 'RefreshCw'} className="w-5 h-5" style={{ color: '#555861' }} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-slate-800 text-sm truncate tracking-tight">{cat?.name || 'Другое'}</p>
-                      <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
+                      <p className="text-[11px] text-slate-400 font-semibold mt-0.5">
                         Каждый месяц, {ordinalDay(rec.day_of_month)}
                       </p>
-                      {rec.comment && <p className="text-[10px] text-slate-500 truncate mt-0.5">{rec.comment}</p>}
+                      {rec.comment && <p className="text-[11px] text-slate-500 truncate mt-0.5">{rec.comment}</p>}
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className={`font-extrabold text-sm tracking-tight ${isExpense ? 'text-rose-500' : 'text-emerald-600'}`}>
@@ -452,7 +452,7 @@ const PlansScreen: React.FC = () => {
               <fieldset disabled={goalLoading} className="flex flex-col gap-3.5 min-w-0">
               {/* Emoji Picker */}
               <div className="flex flex-col gap-1.5">
-                <span className="label-xs text-slate-400 font-bold uppercase tracking-wider text-[9px]">Выбрать иконку</span>
+                <span className="label-xs text-slate-500">Выбрать иконку</span>
                 <div className="flex flex-wrap gap-2">
                   {GOAL_EMOJIS.map(em => (
                     <button
@@ -462,7 +462,7 @@ const PlansScreen: React.FC = () => {
                       aria-label={`Иконка цели ${em}`}
                       aria-pressed={goalEmoji === em}
                       className={`w-11 h-11 rounded-full flex items-center justify-center text-xl border transition-all active:scale-90 ${
-                        goalEmoji === em ? 'border-2 border-[#0F172A] bg-[#FAF2EA] scale-105 shadow-sm' : 'border-slate-200/60 bg-white'
+                        goalEmoji === em ? 'border-2 border-[#202124] bg-[#f0f0f4] scale-105 shadow-sm' : 'border-slate-200/60 bg-white'
                       }`}
                     >
                       {em}
@@ -473,7 +473,7 @@ const PlansScreen: React.FC = () => {
 
               {/* Goal Name */}
               <div className="flex flex-col gap-1">
-                <span className="label-xs text-slate-400 font-bold uppercase tracking-wider text-[9px]">Название цели</span>
+                <span className="label-xs text-slate-500">Название цели</span>
                 <input
                   type="text"
                   aria-label="Название цели"
@@ -487,7 +487,7 @@ const PlansScreen: React.FC = () => {
 
               {/* Target amount */}
               <div className="flex flex-col gap-1">
-                <span className="label-xs text-slate-400 font-bold uppercase tracking-wider text-[9px]">Целевая сумма (Br)</span>
+                <span className="label-xs text-slate-500">Целевая сумма (Br)</span>
                 <input
                   inputMode="decimal"
                   aria-label="Целевая сумма в белорусских рублях"
@@ -501,7 +501,7 @@ const PlansScreen: React.FC = () => {
 
               {/* Deadline */}
               <div className="flex flex-col gap-1">
-                <span className="label-xs text-slate-400 font-bold uppercase tracking-wider text-[9px]">Срок (необязательно)</span>
+                <span className="label-xs text-slate-500">Срок (необязательно)</span>
                 <input
                   type="date"
                   aria-label="Срок накопления"
@@ -516,7 +516,7 @@ const PlansScreen: React.FC = () => {
               <button
                 type="submit"
                 disabled={goalLoading}
-                className="w-full mt-2 py-3.5 rounded-2xl bg-slate-950 hover:bg-[#1E293B] text-white font-bold text-xs active:scale-95 transition-all shadow-sm disabled:opacity-50"
+                className="w-full mt-2 py-3.5 rounded-2xl bg-slate-950 hover:bg-[#3d4048] text-white font-bold text-xs active:scale-95 transition-all shadow-sm disabled:opacity-50"
               >
                 {goalLoading ? 'Создание...' : 'Создать цель'}
               </button>
@@ -537,7 +537,7 @@ const PlansScreen: React.FC = () => {
             onClick={e => e.stopPropagation()}
           >
             <div className="flex justify-between items-center">
-              <h2 id="rec-form-heading" className="font-bold text-slate-800 text-base">Новый автоплатеж</h2>
+              <h2 id="rec-form-heading" className="font-bold text-slate-800 text-base">Регулярная операция</h2>
               <button onClick={closeModal} disabled={recLoading} aria-label="Закрыть создание регулярного платежа" className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 shrink-0 active:scale-90">
                 <X className="w-4 h-4" />
               </button>
@@ -569,7 +569,7 @@ const PlansScreen: React.FC = () => {
 
               {/* Amount */}
               <div className="flex flex-col gap-1">
-                <span className="label-xs text-slate-400 font-bold uppercase tracking-wider text-[9px]">Сумма (Br)</span>
+                <span className="label-xs text-slate-500">Сумма (Br)</span>
                 <input
                   inputMode="decimal"
                   aria-label="Сумма регулярного платежа в белорусских рублях"
@@ -583,7 +583,7 @@ const PlansScreen: React.FC = () => {
 
               {/* Day of month */}
               <div className="flex flex-col gap-1">
-                <span className="label-xs text-slate-400 font-bold uppercase tracking-wider text-[9px]">День месяца (1–28)</span>
+                <span className="label-xs text-slate-500">День месяца (1–28)</span>
                 <div className="flex items-center gap-3 bg-slate-50/50 border border-slate-100 rounded-2xl px-4 py-2">
                   <button
                     type="button"
@@ -607,7 +607,7 @@ const PlansScreen: React.FC = () => {
 
               {/* Category Picker horizontal scroll of circular beige buttons */}
               <div className="flex flex-col gap-1.5">
-                <span className="label-xs text-slate-400 font-bold uppercase tracking-wider text-[9px]">Категория</span>
+                <span className="label-xs text-slate-500">Категория</span>
                 <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1 pt-1">
                   {displayCategories.map(c => {
                     const active = recCategoryId === c.id;
@@ -621,10 +621,10 @@ const PlansScreen: React.FC = () => {
                       >
                         <div
                           className={`w-12 h-12 rounded-full flex items-center justify-center shadow-sm transition-all border-2 ${
-                            active ? 'border-[#0F172A] scale-105 shadow-md' : 'border-transparent'
-                          } bg-[#FAF2EA]`}
+                            active ? 'border-[#202124] scale-105 shadow-md' : 'border-transparent'
+                          } bg-[#f0f0f4]`}
                         >
-                          <DynamicIcon name={c.icon} className="w-4 h-4" style={{ color: '#5C4033' }} />
+                          <DynamicIcon name={c.icon} className="w-4 h-4" style={{ color: '#555861' }} />
                         </div>
                         <span
                           className={`text-[9px] font-bold text-center leading-tight truncate w-14 ${
@@ -641,7 +641,7 @@ const PlansScreen: React.FC = () => {
 
               {/* Comment */}
               <div className="flex flex-col gap-1">
-                <span className="label-xs text-slate-400 font-bold uppercase tracking-wider text-[9px]">Комментарий (необязательно)</span>
+                <span className="label-xs text-slate-500">Комментарий (необязательно)</span>
                 <input
                   type="text"
                   aria-label="Комментарий регулярного платежа"
@@ -656,7 +656,7 @@ const PlansScreen: React.FC = () => {
               <button
                 type="submit"
                 disabled={recLoading}
-                className="w-full mt-2 py-3.5 rounded-2xl bg-slate-950 hover:bg-[#1E293B] text-white font-bold text-xs active:scale-95 transition-all shadow-sm disabled:opacity-50"
+                className="w-full mt-2 py-3.5 rounded-2xl bg-slate-950 hover:bg-[#3d4048] text-white font-bold text-xs active:scale-95 transition-all shadow-sm disabled:opacity-50"
               >
                 {recLoading ? 'Сохранение...' : 'Создать регулярный платеж'}
               </button>
@@ -717,7 +717,7 @@ const PlansScreen: React.FC = () => {
               <button
                 type="submit"
                 disabled={fundsLoading || !accountsReady || financeLoading}
-                className="w-full mt-2 py-3.5 rounded-2xl bg-slate-950 hover:bg-[#1E293B] text-white font-bold text-xs active:scale-95 transition-all shadow-sm disabled:opacity-40"
+                className="w-full mt-2 py-3.5 rounded-2xl bg-slate-950 hover:bg-[#3d4048] text-white font-bold text-xs active:scale-95 transition-all shadow-sm disabled:opacity-40"
               >
                 {fundsLoading ? 'Сохранение…' : fundMode === 'deposit' ? 'Зарезервировать сумму' : 'Вернуть в свободный остаток'}
               </button>

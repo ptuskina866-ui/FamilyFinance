@@ -252,7 +252,7 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-black text-slate-800 tracking-tight">Альфа-Банк Выписка</h2>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-100/70 text-rose-700 font-bold">
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-rose-100/70 text-rose-700 font-bold">
                   InSync PDF
                 </span>
               </div>
@@ -317,13 +317,13 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
                 </div>
 
                 <div className="flex flex-wrap items-center justify-center gap-1.5 mt-2">
-                  <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-100 flex items-center gap-1">
+                  <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-bold border border-emerald-100 flex items-center gap-1">
                     <CheckCircle2 size={12} /> Авто-категория «Еда»
                   </span>
-                  <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-[10px] font-bold border border-blue-100">
+                  <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-[11px] font-bold border border-blue-100">
                     Анти-дубликаты
                   </span>
-                  <span className="px-3 py-1 rounded-full bg-purple-50 text-purple-700 text-[10px] font-bold border border-purple-100">
+                  <span className="px-3 py-1 rounded-full bg-purple-50 text-purple-700 text-[11px] font-bold border border-purple-100">
                     Чистые названия
                   </span>
                 </div>
@@ -337,19 +337,19 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] font-medium text-slate-500">
                   <div className="p-2.5 rounded-2xl bg-white border border-slate-100 flex gap-2">
-                    <span className="w-5 h-5 rounded-full bg-slate-100 font-bold text-slate-700 flex items-center justify-center shrink-0 text-[10px]">1</span>
+                    <span className="w-5 h-5 rounded-full bg-slate-100 font-bold text-slate-700 flex items-center justify-center shrink-0 text-[11px]">1</span>
                     <span>Откройте карту или счет в InSync</span>
                   </div>
                   <div className="p-2.5 rounded-2xl bg-white border border-slate-100 flex gap-2">
-                    <span className="w-5 h-5 rounded-full bg-slate-100 font-bold text-slate-700 flex items-center justify-center shrink-0 text-[10px]">2</span>
+                    <span className="w-5 h-5 rounded-full bg-slate-100 font-bold text-slate-700 flex items-center justify-center shrink-0 text-[11px]">2</span>
                     <span>Нажмите кнопку <b>«Выписка»</b></span>
                   </div>
                   <div className="p-2.5 rounded-2xl bg-white border border-slate-100 flex gap-2">
-                    <span className="w-5 h-5 rounded-full bg-slate-100 font-bold text-slate-700 flex items-center justify-center shrink-0 text-[10px]">3</span>
+                    <span className="w-5 h-5 rounded-full bg-slate-100 font-bold text-slate-700 flex items-center justify-center shrink-0 text-[11px]">3</span>
                     <span>Выберите желаемый период</span>
                   </div>
                   <div className="p-2.5 rounded-2xl bg-white border border-slate-100 flex gap-2">
-                    <span className="w-5 h-5 rounded-full bg-slate-100 font-bold text-slate-700 flex items-center justify-center shrink-0 text-[10px]">4</span>
+                    <span className="w-5 h-5 rounded-full bg-slate-100 font-bold text-slate-700 flex items-center justify-center shrink-0 text-[11px]">4</span>
                     <span>Нажмите <b>«Скачать в PDF»</b></span>
                   </div>
                 </div>
@@ -374,7 +374,7 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
                     <span className="truncate">{metadata?.period || fileName || 'Период выписки'}</span>
                   </div>
                   {metadata?.card && (
-                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-[10px] text-slate-300 font-bold">
+                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-[11px] text-slate-300 font-bold">
                       <CreditCard size={11} />
                       <span className="truncate max-w-[140px]">{metadata.card.replace(/Classic\(.*/, '')}</span>
                     </div>
@@ -384,7 +384,7 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
                 {/* Financial Summary Chips */}
                 <div className="grid grid-cols-3 gap-2 pt-1 border-t border-white/10">
                   <div className="flex flex-col">
-                    <span className="text-[10px] text-slate-400 font-medium">Расход</span>
+                    <span className="text-[11px] text-slate-400 font-medium">Расход</span>
                     <span className="text-sm font-black text-rose-400 flex items-center gap-0.5">
                       <ArrowDownLeft size={13} className="shrink-0" />
                       {metadata?.totalExpense ? metadata.totalExpense.toFixed(2) : expenseCount} Br
@@ -392,7 +392,7 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
                   </div>
 
                   <div className="flex flex-col">
-                    <span className="text-[10px] text-slate-400 font-medium">Приход</span>
+                    <span className="text-[11px] text-slate-400 font-medium">Приход</span>
                     <span className="text-sm font-black text-emerald-400 flex items-center gap-0.5">
                       <ArrowUpRight size={13} className="shrink-0" />
                       {metadata?.totalIncome ? metadata.totalIncome.toFixed(2) : incomeCount} Br
@@ -400,7 +400,7 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
                   </div>
 
                   <div className="flex flex-col text-right">
-                    <span className="text-[10px] text-slate-400 font-medium">Операций</span>
+                    <span className="text-[11px] text-slate-400 font-medium">Операций</span>
                     <span className="text-sm font-black text-white">
                       {parsedList.length} шт
                     </span>
@@ -557,13 +557,13 @@ export const BankSyncModal: React.FC<BankSyncModalProps> = ({ isOpen, onClose })
                           </div>
 
                           <div className="flex items-center justify-between gap-2 mt-1">
-                            <span className="text-[10px] text-slate-400 font-medium">{tx.date}</span>
+                            <span className="text-[11px] text-slate-400 font-medium">{tx.date}</span>
                             
                             {/* Inline Category Switcher */}
                             <select
                               value={tx.categoryId}
                               onChange={(e) => handleChangeCategory(tx.id, e.target.value)}
-                              className="text-[10px] font-bold bg-slate-100/90 hover:bg-slate-200/80 border border-slate-200 rounded-xl px-2 py-0.5 text-slate-700 focus:outline-none max-w-[130px] truncate cursor-pointer transition-colors"
+                              className="text-[11px] font-bold bg-slate-100/90 hover:bg-slate-200/80 border border-slate-200 rounded-xl px-2 py-0.5 text-slate-700 focus:outline-none max-w-[130px] truncate cursor-pointer transition-colors"
                             >
                               {(categories || []).map(c => (
                                 <option key={c.id} value={c.id}>{c.name}</option>

@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useApp } from '../AppContext';
 import { useAuth } from '../AuthContext';
-import { BrandMark } from '../components/ScreenHeader';
 import { OverviewCards } from '../components/OverviewCards';
 import { DynamicIcon } from '../components/CategoryGrid';
 import { BankSyncModal } from '../components/BankSyncModal';
@@ -10,7 +9,7 @@ import { calculateSafeDaily, isCashflow } from '../lib/finance';
 import { localDateISO } from '../lib/money';
 import { planningDateISO, unassignedDailyTransactions, uncoveredRecurring } from '../lib/planning';
 import { Transaction } from '../types';
-import { Trash2, Pencil, Search } from 'lucide-react';
+import { Trash2, Pencil, Search, Eye, EyeOff } from 'lucide-react';
 
 const fmt = (n: number) => n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' Br';
 
@@ -113,12 +112,13 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
 
   return (
     <div ref={screenRef} className="flex flex-col overflow-y-auto no-scrollbar h-full">
-      <header className="screen-header">
-        <div className="flex items-center gap-3 min-w-0"><BrandMark/><div className="min-w-0"><h1 className="brand-name">FinApp</h1><p className="text-[11px] text-slate-500 mt-0.5 truncate">{profile?.name ? 'Привет, '+profile.name : 'Финансы вашей семьи'}</p></div></div>
-        <button type="button" aria-label="Открыть профиль" onClick={() => onNavigateTab?.('profile')} className="icon-button text-lg">{profile?.avatar||'👤'}</button>
+      <header className="screen-header home-header">
+        <button type="button" aria-label="Открыть профиль" onClick={() => onNavigateTab?.('profile')} className="icon-button home-avatar">{profile?.avatar||'👤'}</button>
+        <h1 className="brand-name">FinApp</h1>
+        <button type="button" onClick={() => setHideBalance(value=>!value)} aria-label={hideBalance?'Показать суммы':'Скрыть суммы'} aria-pressed={hideBalance} className="icon-button">{hideBalance?<EyeOff size={18} strokeWidth={1.6}/>:<Eye size={18} strokeWidth={1.6}/>}</button>
       </header>
       <div className="screen-body flex flex-col gap-5">
-        <OverviewCards hideAmounts={hideBalance} onToggleAmounts={() => setHideBalance(value=>!value)} daily={safeDaily} goal={carGoal} onBank={onOpenStatement||(()=>setBankSyncOpen(true))} onPlans={()=>onNavigateTab?.('plans')} onJournal={scrollToJournal} onReview={ids=>{setInsightTransactionIds(ids);setSearch('');setFilterType('all');setAccountFilter('');scrollToJournal();}}/>
+        <OverviewCards hideAmounts={hideBalance} daily={safeDaily} goal={carGoal} onBank={onOpenStatement||(()=>setBankSyncOpen(true))} onPlans={()=>onNavigateTab?.('plans')} onReview={ids=>{setInsightTransactionIds(ids);setSearch('');setFilterType('all');setAccountFilter('');scrollToJournal();}}/>
 
         {/* ── Latest Transactions Section ── */}
         <section ref={journalRef} className="journal flex flex-col gap-3 pt-1" aria-labelledby="journal-heading">
@@ -181,7 +181,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
                               {hideBalance ? '••••' : `${cashflow ? (isIncome ? '+' : '−') : '↔ '}${fmt(tx.amount)}`}
                             </span>
                             </div>
-                            <div className="transaction-meta"><span className="text-[10px] text-slate-500 min-w-0">{label}{member ? ` · ${member.name}` : ''}</span><div className="transaction-tools">
+                            <div className="transaction-meta"><span className="text-[11px] text-slate-500 min-w-0">{label}{member ? ` · ${member.name}` : ''}</span><div className="transaction-tools">
                             {cashflow && accountsReady && <button type="button" aria-label="Редактировать операцию" onClick={() => setEditing(tx)}><Pencil className="w-3.5 h-3.5" /></button>}
                             <button
                               type="button"

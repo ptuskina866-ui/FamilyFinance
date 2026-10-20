@@ -45,10 +45,10 @@ export const SafeToSpendCard: React.FC<SafeToSpendCardProps> = ({
   return (
     <div className="card p-4 flex flex-col gap-2.5 bg-white border border-slate-100/90 shadow-sm">
       <div className="flex justify-between items-baseline">
-        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+        <span className="text-[11px] font-bold text-slate-400 tracking-normal">
           Бюджет на сегодня
         </span>
-        <span className={`text-[10px] font-bold ${calculation.isOver ? 'text-rose-500' : 'text-slate-400'}`}>
+        <span className={`text-[11px] font-bold ${calculation.isOver ? 'text-rose-500' : 'text-slate-400'}`}>
           {calculation.isOver ? 'Превышен' : `${calculation.daysRemaining} дн. до конца месяца`}
         </span>
       </div>

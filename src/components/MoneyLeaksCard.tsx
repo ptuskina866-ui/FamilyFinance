@@ -37,7 +37,7 @@ export const MoneyLeaksCard: React.FC<MoneyLeaksCardProps> = ({ transactions }) 
   return (
     <div className="card p-4 flex flex-col gap-3 bg-white border border-slate-100/90 shadow-sm">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+        <span className="text-[11px] font-bold text-slate-400 tracking-normal">
           Расходы для проверки
         </span>
         <span className="text-[11px] font-extrabold text-emerald-600 flex items-center gap-0.5">
@@ -50,7 +50,7 @@ export const MoneyLeaksCard: React.FC<MoneyLeaksCardProps> = ({ transactions }) 
         <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex flex-col gap-0.5">
           <div className="flex items-center justify-between text-slate-400">
             <Fuel className="w-3.5 h-3.5 text-amber-600" />
-            <span className="text-[10px] font-bold">{fmt(analysis.taxiSum)}</span>
+            <span className="text-[11px] font-bold">{fmt(analysis.taxiSum)}</span>
           </div>
           <span className="text-xs font-black text-slate-800">
             Транспорт
@@ -61,7 +61,7 @@ export const MoneyLeaksCard: React.FC<MoneyLeaksCardProps> = ({ transactions }) 
         <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex flex-col gap-0.5">
           <div className="flex items-center justify-between text-slate-400">
             <Coffee className="w-3.5 h-3.5 text-yellow-600" />
-            <span className="text-[10px] font-bold">{fmt(analysis.cafesSum)}</span>
+            <span className="text-[11px] font-bold">{fmt(analysis.cafesSum)}</span>
           </div>
           <span className="text-xs font-black text-slate-800">
             Кафе

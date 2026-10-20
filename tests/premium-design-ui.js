@@ -36,7 +36,8 @@ async (page) => {
     for(const target of ['.balance-value','.daily-amount','.transaction-amount'])for(const value of await p.locator(target).allTextContents())if(!value.includes('••••'))throw Error('Visible money in privacy mode');
     if(/\d[\s\S]*Br/.test(await p.locator('.monthly-strip').innerText()))throw Error('Monthly totals leak');
     await p.getByLabel('Показать суммы',{exact:true}).click();
-    await p.getByRole('button',{name:'Операции',exact:true}).click();await p.getByLabel('Поиск операций').fill('Продукты на неделю');
+    // Air reserves the third quick action for transfers; reach history by ordinary scrolling.
+    await p.mouse.move(width/2,400);await p.mouse.wheel(0,800);await p.getByLabel('Поиск операций').fill('Продукты на неделю');
     const rowBox=await p.locator('.transaction-row').first().boundingBox(),journalNav=await nav.boundingBox();
     if(journalNav.y+journalNav.height>(width===1024?768:844)||journalNav.y<0)throw Error('Journal moved the navigation out of view');
     if(rowBox.y+rowBox.height>journalNav.y)throw Error('Search result is below navigation');

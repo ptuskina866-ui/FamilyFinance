@@ -101,7 +101,7 @@ const AnalyticsScreen: React.FC = () => {
     if (!active || !payload?.length) return null;
     const data = payload[0].payload;
     return (
-      <div className="bg-white border border-slate-100 shadow-md px-3 py-1.5 rounded-xl text-[10px] font-bold text-slate-700">
+      <div className="bg-white border border-slate-100 shadow-md px-3 py-1.5 rounded-xl text-[11px] font-bold text-slate-700">
         День {data.day}: {fmt(data.amount)}
       </div>
     );
@@ -128,7 +128,7 @@ const AnalyticsScreen: React.FC = () => {
           <button
             onClick={() => setActiveTab('income')}
             className={`flex-1 py-2.5 text-xs font-black rounded-xl transition-all duration-200 ${
-              activeTab === 'income' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-900'
+              activeTab === 'income' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:text-slate-900'
             }`}
           >
             Доходы
@@ -163,7 +163,7 @@ const AnalyticsScreen: React.FC = () => {
 
           {/* Amount and Subtitle */}
           <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+            <span className="text-[11px] text-slate-400 font-bold tracking-normal">
               {activeTab === 'expense' ? 'Всего расходов' : 'Всего доходов'}
             </span>
             <p className="money text-[32px] font-bold tracking-tight text-slate-950 leading-tight">
@@ -183,28 +183,28 @@ const AnalyticsScreen: React.FC = () => {
                 <AreaChart data={getChartDataPoints()} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
                   <defs>
                     <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={activeTab === 'expense' ? '#18372b' : '#059669'} stopOpacity={0.18} />
-                      <stop offset="95%" stopColor={activeTab === 'expense' ? '#18372b' : '#059669'} stopOpacity={0.0} />
+                      <stop offset="5%" stopColor={activeTab === 'expense' ? '#555861' : '#059669'} stopOpacity={0.18} />
+                      <stop offset="95%" stopColor={activeTab === 'expense' ? '#555861' : '#059669'} stopOpacity={0.0} />
                     </linearGradient>
                   </defs>
                   <XAxis
                     dataKey="day"
                     tickLine={false}
                     axisLine={false}
-                    tick={{ fontSize: 9, fontWeight: 500, fill: '#64796c' }}
+                    tick={{ fontSize: 9, fontWeight: 500, fill: '#707278' }}
                     dy={8}
                   />
                   <YAxis
                     tickLine={false}
                     axisLine={false}
-                    tick={{ fontSize: 9, fontWeight: 500, fill: '#64796c' }}
+                    tick={{ fontSize: 9, fontWeight: 500, fill: '#707278' }}
                   />
                   <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#F1F5F9', strokeWidth: 1 }} />
                   <Area
                     type="monotone"
                     isAnimationActive={false}
                     dataKey="amount"
-                    stroke={activeTab === 'expense' ? '#18372b' : '#059669'}
+                    stroke={activeTab === 'expense' ? '#555861' : '#059669'}
                     strokeWidth={2.5}
                     fillOpacity={1}
                     fill="url(#chartGradient)"
@@ -224,7 +224,7 @@ const AnalyticsScreen: React.FC = () => {
         <div className="card p-5 bg-white border border-white/80 shadow-[0_4px_20px_rgba(0,30,10,0.03)] rounded-[28px] flex flex-col gap-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xs font-black text-slate-900 tracking-tight">Разделение по категориям</h2>
-            <span className="text-[10px] font-bold text-slate-400">
+            <span className="text-[11px] font-bold text-slate-400">
               {breakdownData.length} {breakdownData.length === 1 ? 'категория' : 'категорий'}
             </span>
           </div>
@@ -242,7 +242,7 @@ const AnalyticsScreen: React.FC = () => {
                   <div key={cat.id} className="flex items-center gap-3">
                     <span className="transaction-icon"><DynamicIcon name={cat.icon} className="w-[18px] h-[18px]"/></span>
                     <div className="flex-1 min-w-0"><div className="flex justify-between gap-3 text-xs mb-2"><span className="font-medium text-slate-700 break-words">{cat.name}</span><span className="money font-bold text-slate-950 text-right">{fmt(item.value)}</span></div>
-                      <div className="h-1 rounded-full bg-slate-100 overflow-hidden" aria-hidden="true"><div className="h-full rounded-full bg-[#7b9566]" style={{width:`${totalAmountForTab>0?Math.min(100,item.value/totalAmountForTab*100):0}%`}}/></div>
+                      <div className="h-1 rounded-full bg-slate-100 overflow-hidden" aria-hidden="true"><div className="h-full rounded-full bg-[#8b8e96]" style={{width:`${totalAmountForTab>0?Math.min(100,item.value/totalAmountForTab*100):0}%`}}/></div>
                     </div>
                   </div>
                 );
@@ -253,7 +253,7 @@ const AnalyticsScreen: React.FC = () => {
 
         {/* ── Summary Comparison Cards ── */}
         <div className="flex flex-col gap-3 mt-4 pb-4">
-          <h2 className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Сводка за месяц</h2>
+          <h2 className="text-[11px] text-slate-400 font-bold tracking-normal">Сводка за месяц</h2>
           <div className="flex flex-col gap-2.5">
             {/* Income Summary card */}
             <div className="card p-4 flex justify-between items-center">

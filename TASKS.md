@@ -1,5 +1,11 @@
 # TASKS.md
 
+## Current approved Air design · 2026-10-20
+
+- Implemented the owner-approved «Воздух» concept across all eight screens and existing dialogs: neutral light/white/charcoal system, restrained glass navigation, open home balance, circular actions, header privacy and existing transfer dialog access. Priorbank has a short introduction, dedicated login state and reviewed import; Alfa is secondary. Planning fields/buttons are consistent, emergency categories disclose on request, and profile bank access is a single labelled button. No domain/backend changes or dependencies.
+- Passing: 63 app checks, 26 bank/server checks; existing screen/browser scenarios at 320/390/1024 px and remembered-bank scenarios at 320/390 px. Added Air form regressions at 320×640/390×640: goal/reserve/recurring, budget/transfer/template, emergency/fund, focus, profile-to-bank and no horizontal clipping. Visual review and TypeScript/Vite/PWA build pass. Only isolated demo/synthetic data; physical Safari/keyboard/installed PWA and live owner bank response remain unverified.
+- Release preparation and file inventory: `docs/air-design-release.md`; publication pending GitHub/Cloudflare completion.
+
 ## Current home and bank clarity update · 2026-10-20
 
 - Simplified Priorbank into connection, review and selected-save states. Settings/card selection/account binding are collapsed once known; explicit login consent, bank-session expiry, first-use confirmation, duplicate warnings and category review stay available. Equal account/purchase amounts are no longer repeated; foreign amounts and nonzero fees remain visible. Linked selections have a compact sticky save summary; first-use confirmation stays in the document flow.

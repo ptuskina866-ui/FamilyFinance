@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, Landmark, RefreshCw, ShieldCheck } from 'lucide-react';
+import { ChevronDown, Landmark, LockKeyhole, RefreshCw, ShieldCheck, X } from 'lucide-react';
 import type { PriorBankConnectionStatus, PriorConnectionResult, PriorImportSnapshot } from '../types';
 import { planningDateISO } from '../lib/planning';
 import { connectPriorBank, syncPriorBank, priorBankStatus, PriorBankError } from '../services/priorBankService';
@@ -72,28 +72,32 @@ export function PriorBankConnection({disabled, onStart, onBusy, onConnected}: Pr
     // An unknown card needs a choice; selecting an option must leave its confirm action visible.
     if (cards.length > 1 && cardIndex === '') cardPicker.current?.setAttribute('open', '');
   }, [cards, cardIndex]);
+  useEffect(() => { if (open) login.current?.focus({preventScroll:true}); }, [open]);
+  const cancelLogin = () => { if (password.current) password.current.value=''; setOpen(false); setConsent(false); };
   const control = 'mt-2 input-light w-full min-w-0';
   const disabledControls = disabled || loading;
   const cardSelection = cards.length > 1 && <details ref={cardPicker} className="disclosure"><summary>Выбор карты<ChevronDown size={15}/></summary><div className="disclosure-body space-y-3"><label className="block text-xs font-semibold">Карта для проверки<select aria-label="Карта Приорбанка" value={cardIndex} disabled={disabledControls} className={control} onChange={e => setCardIndex(e.target.value)}><option value="">Выберите карту</option>{cards.map((card, index) => <option key={index} value={index}>{card.card.title} · {card.card.maskedNumber} · {card.card.currency}</option>)}</select></label><button type="button" disabled={!cardIndex || disabledControls} onClick={() => void run('select')} className="auth-button">Запомнить карту и показать операции</button></div></details>;
-  return <div className="space-y-3" aria-busy={loading}>
-    <div className="flex items-center gap-3">
+  return <div className={`bank-connection space-y-4 ${!open && !connection?.connected?'bank-connection--intro':''}`} aria-busy={loading}>
+    {!open && !connection?.connected && <div className="bank-hero"><span className="bank-mark"><Landmark size={29} strokeWidth={1.4}/></span><h2>Меньше ввода.<br/>Больше ясности.</h2><p className="bank-copy">Операции из банка — в вашем журнале.<br/>Вы выбираете, что добавить.</p></div>}
+    <div className={`flex items-center gap-3 ${!open && !connection?.connected?'bank-choice':''}`}>
       <span className="bank-mark"><Landmark size={23} strokeWidth={1.6}/></span>
-      <div className="flex-1 min-w-0"><h2 className="section-title">Приорбанк</h2><p className="text-xs text-slate-500 mt-1">{connection?.connected ? (custom?'Подключён · выбранный период':'Подключён · 10 дней') : open ? 'Вход в Prior Online' : 'Операции без ручного ввода'}</p></div>
+      <div className="flex-1 min-w-0"><h2 className="section-title">Приорбанк</h2><p className="text-xs text-slate-500 mt-1">{connection?.connected ? (custom?'Подключён · выбранный период':'Подключён · 10 дней') : 'Вход через Prior Online'}</p></div>
       {connection?.connected && <button type="button" className="icon-button" aria-label="Обновить операции" disabled={disabledControls} onClick={()=>void run('sync')}><RefreshCw size={18} className={loading?'animate-spin':''}/></button>}
+      {open && !connection?.connected && <button type="button" disabled={loading} onClick={cancelLogin} className="icon-button" aria-label="Закрыть вход в банк"><X size={18}/></button>}
     </div>
     {!connection?.connected && !open && <>
-      <p className="bank-copy">Войдите один раз. При следующем открытии FinApp получит операции, пока действует сессия банка.</p>
       <button type="button" disabled={disabledControls} onClick={() => {setOpen(true); setError('');}} className="auth-button">Подключить Приорбанк</button>
-      <p className="bank-caption">Вы сами выбираете, что добавить в журнал.</p>
+      <p className="bank-caption flex items-center justify-center gap-1.5"><LockKeyhole size={12}/>Пароль не сохраняется</p>
     </>}
     {error && <p role="alert" className="bank-notice text-rose-700">{error}</p>}
     {open && <form onSubmit={event => {event.preventDefault(); if (consent) void run('connect');}} className="space-y-4" autoComplete="off">
+      <p className="bank-login-intro">Войдите один раз.<br/><span className="text-slate-500">Дальше — пока действует сессия банка.</span></p>
       <label className="block text-xs font-semibold">Логин Prior Online<input ref={login} name="prior-login" autoComplete="off" autoCapitalize="none" spellCheck={false} maxLength={128} required disabled={disabledControls} className={control}/></label>
       <label className="block text-xs font-semibold">Пароль интернет-банка<input ref={password} name="prior-password" type="password" autoComplete="off" required disabled={disabledControls} className={control}/><span className="block bank-caption mt-2">Пароль от Prior Online, не ПИН приложения.</span></label>
       <div className="bank-security"><ShieldCheck size={17} className="shrink-0"/><p>Вход выполняется через сервер FinApp. Пароль не сохраняется; банковская сессия хранится зашифрованной.</p></div>
       <label className="flex items-start gap-3 text-xs leading-relaxed py-1"><input type="checkbox" checked={consent} disabled={disabledControls} className="w-5 h-5 shrink-0 mt-0.5" onChange={e => setConsent(e.target.checked)}/>Разрешаю вход и сохранение защищённой банковской сессии. Пароль не сохраняется.</label>
       <button type="submit" disabled={disabledControls || !consent} className="auth-button">Подключить и получить операции</button>
-      <button type="button" disabled={loading} className="text-action w-full" onClick={() => {if(password.current) password.current.value='';setOpen(false);setConsent(false);}}>Отмена</button>
+      <button type="button" disabled={loading} className="text-action w-full" onClick={cancelLogin}>Отмена</button>
     </form>}
     {(open || connection?.connected) && <details className="disclosure bank-settings">
       <summary>{connection?.connected ? 'Настройки подключения' : 'Период и помощь'}<ChevronDown size={15}/></summary>

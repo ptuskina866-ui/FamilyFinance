@@ -86,7 +86,7 @@ export function PriorImportPanel() {
   const accountName = bankAccounts.find(account => account.id === accountId)?.name;
   const accountSelect = <label className="block text-xs font-semibold">Счёт для операций<select aria-label="Счёт для операций Приорбанка" className={control+' mt-2'} value={accountId} disabled={controlsDisabled} onChange={e => {resetReview();setAccountId(e.target.value);}}><option value="">Выберите банковский счёт BYN</option>{bankAccounts.map(account => <option key={account.id} value={account.id}>{account.name}</option>)}</select></label>;
   return <div className="bank-import flex flex-col gap-4 max-w-lg mx-auto w-full">
-    <div className="card p-5">
+    <div>
       <PriorBankConnection key={user?.id+':'+profile?.household_id} disabled={busy} onBusy={setConnecting} onStart={() => {resetReview();setSnapshot(null);}} onConnected={(value,savedAccountId) => {resetReview();setSnapshot(value);setShowImported(false);setAccountId(savedAccountId??'');}}/>
     </div>
     {error && <div role="alert" className="bank-notice text-rose-700 flex gap-2"><AlertCircle className="shrink-0" size={18}/><span>{error}</span></div>}
