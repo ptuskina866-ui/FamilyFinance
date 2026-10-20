@@ -91,9 +91,9 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
   // Set default category and member
   useEffect(() => {
     const isIncome = txType === 'income';
-    const defaultCat = categories.find(c => 
-      isIncome 
-        ? c.id === 'salary' || c.id.startsWith('income-') 
+    const defaultCat = categories.find(c =>
+      isIncome
+        ? c.id === 'salary' || c.id.startsWith('income-')
         : c.id === 'food' || (!c.id.startsWith('income-') && c.id !== 'salary')
     );
     if (defaultCat) {
@@ -176,7 +176,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
 
         {/* ── Amount Hero Section ── */}
         <div className="card p-6 flex flex-col items-center justify-center gap-2 text-center bg-white border border-white/80 shadow-sm">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+          <span className="text-[11px] font-bold tracking-normal text-slate-400">
             {isIncome ? 'Поступление' : 'Сумма расхода'}
           </span>
 
@@ -224,8 +224,8 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
             type="button"
             onClick={() => handleTypeChange('expense')}
             className={`flex-1 py-2.5 text-xs font-black rounded-xl transition-all duration-200 ${
-              txType === 'expense' 
-                ? 'bg-slate-950 text-white shadow-sm' 
+              txType === 'expense'
+                ? 'bg-slate-950 text-white shadow-sm'
                 : 'text-slate-500 hover:text-slate-900'
             }`}
           >
@@ -235,8 +235,8 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
             type="button"
             onClick={() => handleTypeChange('income')}
             className={`flex-1 py-2.5 text-xs font-black rounded-xl transition-all duration-200 ${
-              txType === 'income' 
-                ? 'bg-emerald-600 text-white shadow-sm' 
+              txType === 'income'
+                ? 'bg-slate-900 text-white shadow-sm'
                 : 'text-slate-500 hover:text-slate-900'
             }`}
           >
@@ -247,8 +247,8 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
         {/* Categories Selector */}
         <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm flex flex-col gap-3.5">
           <div className="flex items-center justify-between">
-            <h2 className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Категория</h2>
-            <span className="text-[10px] font-bold text-slate-500">
+            <h2 className="text-[11px] text-slate-400 font-bold tracking-normal">Категория</h2>
+            <span className="text-[11px] font-bold text-slate-500">
               Выбрано: {categories.find(c => c.id === selectedCategoryId)?.name || 'Не выбрано'}
             </span>
           </div>
@@ -289,16 +289,16 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
                 >
                   <div
                     className={`w-13 h-13 rounded-2xl flex items-center justify-center transition-all border ${
-                      active 
-                        ? 'bg-slate-900 text-white border-slate-900 shadow-md ring-2 ring-slate-900/15 scale-105' 
-                        : `${cat.bgColor || 'bg-slate-50'} ${cat.color || 'text-slate-700'} border-slate-100 hover:scale-105`
+                      active
+                        ? 'bg-slate-900 text-white border-slate-900 shadow-md ring-2 ring-slate-900/15 scale-105'
+                        : 'bg-slate-50 text-slate-600 border-slate-100 hover:scale-105'
                     }`}
                     style={{ width: '52px', height: '52px' }}
                   >
                     <DynamicIcon name={cat.icon || 'HelpCircle'} className="w-5 h-5" />
                   </div>
                   <span
-                    className={`text-[10px] font-bold text-center leading-tight truncate w-full px-0.5 ${
+                    className={`text-[11px] font-bold text-center leading-tight truncate w-full px-0.5 ${
                       active ? 'text-slate-900 font-extrabold' : 'text-slate-600'
                     }`}
                   >
@@ -312,11 +312,11 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
 
         {/* Details Card (Member, Date, Comment) */}
         <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm flex flex-col gap-4">
-          
+
           {/* Member Selector */}
           {members.length > 0 && (
             <div className="flex flex-col gap-2">
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Кто добавляет</span>
+              <span className="text-[11px] text-slate-400 font-bold tracking-normal">Кто добавляет</span>
               <div className="flex gap-2 flex-wrap">
                 {members.map(m => {
                   const active = selectedMemberId === m.id;
@@ -326,8 +326,8 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
                       type="button"
                       onClick={() => setSelectedMemberId(m.id)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all active:scale-95 ${
-                        active 
-                          ? 'border-slate-900 text-white bg-slate-900 shadow-sm' 
+                        active
+                          ? 'border-slate-900 text-white bg-slate-900 shadow-sm'
                           : 'border-slate-200 text-slate-600 bg-slate-50 hover:bg-slate-100'
                       }`}
                     >
@@ -342,11 +342,12 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
 
           {/* Date Picker */}
           <div className="flex flex-col gap-1.5 w-full min-w-0">
-            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Дата операции</span>
+            <span className="text-[11px] text-slate-400 font-bold tracking-normal">Дата операции</span>
             <div className="relative flex items-center w-full min-w-0 max-w-full overflow-hidden rounded-2xl bg-slate-50 border border-slate-200 focus-within:border-slate-900 focus-within:ring-2 focus-within:ring-slate-900/10">
               <Calendar className="absolute left-3.5 w-4 h-4 text-slate-400 pointer-events-none shrink-0" />
               <input
                 type="date"
+                aria-label="Дата новой операции"
                 value={txDate}
                 onChange={e => setTxDate(e.target.value)}
                 className="w-full min-w-0 max-w-full pl-10 pr-4 py-2.5 bg-transparent text-xs font-bold text-slate-800 focus:outline-none appearance-none block"
@@ -356,7 +357,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
 
           {/* Comment */}
           <div className="flex flex-col gap-1.5 w-full min-w-0">
-            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Комментарий</span>
+            <span className="text-[11px] text-slate-400 font-bold tracking-normal">Комментарий</span>
             <div className="relative flex items-center w-full min-w-0 max-w-full overflow-hidden rounded-2xl bg-slate-50 border border-slate-200 focus-within:border-slate-900 focus-within:ring-2 focus-within:ring-slate-900/10">
               <MessageSquare className="absolute left-3.5 w-4 h-4 text-slate-400 pointer-events-none shrink-0" />
               <input
@@ -376,11 +377,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
           type="button"
           onClick={handleSave}
           disabled={saving || financeLoading || (schemaReady && !accountsReady) || !amountStr || (parseMoneyInput(amountStr) || 0) <= 0 || !selectedCategoryId}
-          className={`w-full flex items-center justify-center gap-2 py-4 rounded-2xl text-white font-black text-sm active:scale-95 transition-all shadow-xl disabled:opacity-40 disabled:pointer-events-none ${
-            isIncome 
-              ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20' 
-              : 'bg-slate-950 hover:bg-slate-900 shadow-slate-950/25'
-          }`}
+          className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-slate-950 hover:bg-slate-900 text-white font-black text-sm active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none"
         >
           <Check className="w-5 h-5" strokeWidth={3} />
           <span>{saving ? 'Сохраняем…' : `Сохранить ${isIncome ? 'доход' : 'расход'} · ${parseMoneyInput(amountStr) || 0} Br`}</span>

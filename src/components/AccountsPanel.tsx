@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowRightLeft, Check, CreditCard, PiggyBank, Plus, Wallet, X } from 'lucide-react';
+import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { Check, CreditCard, PiggyBank, Plus, Wallet, X } from 'lucide-react';
 import { useApp } from '../AppContext';
 import { cashflowTotals, legacyMigrationCandidates, reservedGoals } from '../lib/finance';
 import { localDateISO, parseMoneyInput, sumMoney } from '../lib/money';
@@ -8,7 +8,8 @@ const fmt = (amount: number) => amount.toLocaleString('ru-RU', { minimumFraction
 const kinds = { bank: 'Банковский счет', cash: 'Наличные', savings: 'Накопительный счет' };
 type Modal = 'setup' | 'create' | 'transfer' | null;
 
-export const AccountsPanel: React.FC<{ hideBalances?: boolean }> = ({ hideBalances = false }) => {
+export interface AccountsPanelHandle { openTransfer: () => void; }
+export const AccountsPanel = forwardRef<AccountsPanelHandle, { hideBalances?: boolean }>(({ hideBalances = false }, ref) => {
   const { accounts, accountBalances, accountsReady, schemaReady, financeLoading, financeError, transactions, savingsGoals, initializeFinance, createAccount, transferBetweenAccounts } = useApp();
   const activeAccounts = accounts.filter(account => !account.is_archived);
   const candidates = useMemo(() => legacyMigrationCandidates(transactions), [transactions]);
@@ -64,6 +65,9 @@ export const AccountsPanel: React.FC<{ hideBalances?: boolean }> = ({ hideBalanc
     if (next === 'transfer') { setFromAccountId(activeAccounts[0]?.id || ''); setToAccountId(activeAccounts[1]?.id || ''); setAmount(''); setDate(localDateISO()); setComment(''); }
     setModal(next);
   };
+  useImperativeHandle(ref, () => ({ openTransfer: () => {
+    if (!financeLoading && schemaReady && accountsReady && activeAccounts.length >= 2) open('transfer');
+  } }));
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -99,7 +103,6 @@ export const AccountsPanel: React.FC<{ hideBalances?: boolean }> = ({ hideBalanc
       <div className="flex items-center justify-between gap-2 px-1">
         <h2 id="accounts-heading" className="section-title">Счета</h2>
         {accountsReady && <div className="flex gap-2">
-          <button type="button" onClick={() => open('transfer')} disabled={financeLoading || !schemaReady || activeAccounts.length < 2} aria-label="Записать перевод между счетами" className="icon-button disabled:opacity-30"><ArrowRightLeft className="w-4 h-4" /></button>
           <button type="button" onClick={() => open('create')} disabled={financeLoading || !schemaReady} aria-label="Добавить счет" className="icon-button disabled:opacity-30"><Plus className="w-4 h-4" /></button>
         </div>}
       </div>
@@ -111,9 +114,9 @@ export const AccountsPanel: React.FC<{ hideBalances?: boolean }> = ({ hideBalanc
       </div> : <div className="flex gap-3 overflow-x-auto no-scrollbar -mx-5 px-5 pb-1">
         {activeAccounts.map(account => {
           const Icon = account.kind === 'cash' ? Wallet : account.kind === 'savings' ? PiggyBank : CreditCard;
-          return <div key={account.id} className="card p-4 min-w-[176px] max-w-[230px] flex flex-col gap-4 shrink-0">
+          return <div key={account.id} className="card p-4 min-w-[168px] max-w-[230px] flex flex-col gap-4 shrink-0">
             <div className="flex items-center gap-2"><Icon className="w-4 h-4 text-slate-500 shrink-0" /><span className="text-[11px] font-bold text-slate-700 truncate" title={account.name}>{account.name}</span></div>
-            <div><p className="text-base font-black text-slate-900">{hideBalances ? '••••••' : fmt(accountBalances[account.id] ?? 0)}</p><p className="text-[10px] text-slate-400">{kinds[account.kind]}</p></div>
+            <div><p className="text-base font-black text-slate-900">{hideBalances ? '••••••' : fmt(accountBalances[account.id] ?? 0)}</p><p className="text-[11px] text-slate-400">{kinds[account.kind]}</p></div>
           </div>;
         })}
         {activeAccounts.length === 0 && <p className="card p-4 text-xs text-slate-500">Нет активных счетов. Добавьте новый счет.</p>}
@@ -129,7 +132,7 @@ export const AccountsPanel: React.FC<{ hideBalances?: boolean }> = ({ hideBalanc
               {candidates.length > 0 ? <div className="flex flex-col gap-2">
                 {candidates.map(tx => <label key={tx.id} className="flex items-start gap-3 rounded-2xl border border-slate-100 p-3 cursor-pointer">
                   <input type="checkbox" checked={selectedIds.has(tx.id)} disabled={pending} onChange={() => setSelectedIds(previous => { const next = new Set(previous); if (next.has(tx.id)) next.delete(tx.id); else next.add(tx.id); return next; })} className="mt-1 w-4 h-4 accent-slate-900 shrink-0" />
-                  <span className="flex-1 min-w-0"><span className="block text-[11px] text-slate-700 break-words">{tx.comment.replace(/\s*\[goal_id:[^\]]+\]/g, '')}</span><span className="block text-[10px] text-slate-400 mt-1">{tx.date} · {tx.type === 'expense' ? 'В копилку' : 'Из копилки'} · {fmt(tx.amount)}</span></span>
+                  <span className="flex-1 min-w-0"><span className="block text-[11px] text-slate-700 break-words">{tx.comment.replace(/\s*\[goal_id:[^\]]+\]/g, '')}</span><span className="block text-[11px] text-slate-400 mt-1">{tx.date} · {tx.type === 'expense' ? 'В копилку' : 'Из копилки'} · {fmt(tx.amount)}</span></span>
                 </label>)}
                 <p className="text-[11px] text-slate-600">Выбрано {selectedCandidates.length}. В копилки: {fmt(sumMoney(selectedCandidates.filter(tx => tx.type === 'expense').map(tx => tx.amount)))}; возвраты: {fmt(sumMoney(selectedCandidates.filter(tx => tx.type === 'income').map(tx => tx.amount)))}.</p>
               </div> : <p className="text-[11px] text-slate-500">Записей для пересмотра не найдено.</p>}
@@ -164,4 +167,4 @@ export const AccountsPanel: React.FC<{ hideBalances?: boolean }> = ({ hideBalanc
       </div>}
     </section>
   );
-};
+});

@@ -37,7 +37,7 @@ export const PayDreamFirstBanner: React.FC<PayDreamFirstBannerProps> = ({ transa
         <PiggyBank className="w-5 h-5 text-emerald-200 shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
           <p className="text-xs font-bold">Сначала — ваша цель</p>
-          <p className="text-[11px] text-[#d1decb] leading-relaxed mt-1">Недавно поступило {hideAmounts ? '••••' : fmt(recentIncome.amount)}. Можно запланировать до {hideAmounts ? '••••' : fmt(recommendedAmount)} в «{goal.name}».</p>
+          <p className="text-[11px] text-[#d5d6dc] leading-relaxed mt-1">Недавно поступило {hideAmounts ? '••••' : fmt(recentIncome.amount)}. Можно запланировать до {hideAmounts ? '••••' : fmt(recommendedAmount)} в «{goal.name}».</p>
         </div>
         <button type="button" onClick={() => setDismissedIncomeId(recentIncome.id)} aria-label="Скрыть предложение накопления" className="w-8 h-8 rounded-full flex items-center justify-center text-slate-300 shrink-0"><X className="w-4 h-4" /></button>
       </div>

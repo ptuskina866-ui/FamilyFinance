@@ -295,15 +295,15 @@ PDF.js is loaded on demand; its worker is included in the PWA asset cache. Finan
 
 Current visual direction:
 
-Neo-Fintech / Liquid Glass.
+Approved **Air / «Воздух»** direction: Apple-inspired light interface with restrained Liquid Glass.
 
-Premium design update (2026-10-19): warm light surfaces, forest-green financial hero, restrained lime actions and Inter with tabular money. Shared tokens live in `src/index.css`/Tailwind; `ScreenHeader` provides consistent screen headings and `OverviewCards` composes existing context values without changing financial rules. The home order prioritizes balance/actions/daily estimate, with labelled five-item navigation and a readable journal. Reports use category rows, all eight screens share typography/spacing, and Priorbank is the initial bank tab. Mobile safe areas/100dvh, zoom, visible focus and reduced motion are supported. Manifest colors/name match the interface; existing PWA cache policy remains. References, checks and limitations: `docs/premium-design-release.md`.
+Air implementation (2026-10-20), explicitly approved by the owner after concept review: neutral #F7F7F9 background, white content surfaces, charcoal actions, light Inter/system typography, tabular money and fine icons. Glass is concentrated in the floating navigation. Shared tokens live in `src/index.css`/Tailwind; all eight screens and their existing dialogs use the same system. Home has an open centered balance, header privacy control and circular savings/bank/transfer actions. The transfer action opens the existing AccountsPanel dialog through a typed ref; calculations and save handlers are reused. Reports retain readable category rows; planning forms share neutral fields and disclose emergency categories on request. Priorbank starts with a short introduction, then a dedicated inline login state, then reviewed operations; Alfa file import is a secondary action. Mobile safe areas/100dvh, native swiping/zoom, visible focus, 44px button targets and reduced motion remain supported. Manifest colors match the interface; PWA cache policy is unchanged. Scope, validation and release details: `docs/air-design-release.md`. The superseded forest/lime release is recorded historically in `docs/premium-design-release.md`.
 
 Clarity update (2026-10-20): Priorbank reveals settings, remembered account/card controls and file help progressively; login consent and financial review remain explicit. Equal bank/purchase amounts are displayed once; foreign amounts/fees and duplicate/first-use confirmation remain visible. Home groups extra goal/recurring cards behind a disclosure and explains the daily estimate on demand; transfer semantics are stated in the transfer dialog. Linked import save summaries stay nearby, while the larger first-use confirmation scrolls normally. No financial/backend changes. See `docs/clean-home-bank-release.md`.
 
 Key characteristics:
 
-- frosted glass surfaces;
+- restrained glass navigation and opaque white content surfaces;
 - clean mobile cards;
 - rounded geometry;
 - restrained modern financial UI;

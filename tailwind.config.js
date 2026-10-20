@@ -8,12 +8,12 @@ export default {
     extend: {
       colors: {
         slate: {
-          50:'#f2f5f3',100:'#e7ede9',200:'#d5dfd8',300:'#b0c0b6',400:'#64796c',
-          500:'#536b5d',600:'#425b4d',700:'#314c3d',800:'#233e30',900:'#18372b',950:'#102d23',
+          50:'#f7f7f9',100:'#eff0f3',200:'#e4e5e9',300:'#cacdd4',400:'#767982',
+          500:'#707278',600:'#555861',700:'#3d4048',800:'#2d3037',900:'#202124',950:'#17181c',
         },
         brand: {
-          primary: '#3b82f6', // blue
-          accent: '#10b981', // emerald
+          primary: '#202124',
+          accent: '#555861',
           danger: '#ef4444', // red
           warning: '#f59e0b', // amber
         }
@@ -21,7 +21,7 @@ export default {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
       },
-      fontWeight: {black:'700',extrabold:'700',bold:'600'},
+      fontWeight: {black:'600',extrabold:'600',bold:'600'},
       boxShadow: {
         'glow-green': '0 0 15px rgba(16, 185, 129, 0.25)',
         'glow-red': '0 0 15px rgba(239, 68, 68, 0.25)',

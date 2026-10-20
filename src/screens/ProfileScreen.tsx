@@ -2,7 +2,7 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import React, { useState } from 'react';
 import { useApp } from '../AppContext';
 import { useAuth } from '../AuthContext';
-import { LogOut, Copy, Check as CheckIcon, Minus, Plus, AlertTriangle, Smartphone, Landmark, RotateCw } from 'lucide-react';
+import { LogOut, Copy, Check as CheckIcon, Minus, Plus, AlertTriangle, Smartphone, Landmark, ChevronRight } from 'lucide-react';
 import { BankSyncModal } from '../components/BankSyncModal';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 
@@ -55,25 +55,25 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onOpenStatement }) => {
         {/* Profile card */}
         <div className="card px-4 py-4 flex flex-col gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full flex items-center justify-center text-2xl shadow-sm bg-[#FAF2EA]">
+            <div className="w-14 h-14 rounded-full flex items-center justify-center text-2xl shadow-sm bg-[#f0f0f4]">
               {profile?.avatar || '👤'}
             </div>
             <div>
               <p className="font-bold text-base text-slate-800 leading-tight">{profile?.name || 'Загрузка...'}</p>
-              <p className="text-xs text-slate-400 font-semibold mt-1 uppercase tracking-wider">{household?.name || 'Моя семья'}</p>
+              <p className="text-xs text-slate-400 font-semibold mt-1 tracking-normal">{household?.name || 'Моя семья'}</p>
             </div>
           </div>
 
           {/* Household ID */}
           {household?.id && (
             <div className="bg-slate-50/50 rounded-2xl p-3 border border-slate-100/60">
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-2">Приглашение в семью · действует 7 дней</p>
+              <p className="text-[9px] font-bold text-slate-400 tracking-normal mb-2">Приглашение в семью · действует 7 дней</p>
               <div className="flex items-center gap-2">
                 <p className="text-[11px] text-slate-600 flex-1 min-w-0 break-all">{inviteToken || 'Одноразовый код для регистрации партнера'}</p>
                 <button
                   onClick={handleCopy}
                   disabled={inviteLoading}
-                  className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all active:scale-95 shadow-sm ${
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all active:scale-95 shadow-sm ${
                     copied ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-white border border-slate-200 text-slate-600'
                   }`}
                 >
@@ -98,22 +98,22 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onOpenStatement }) => {
 
         {/* Members */}
         <div className="card px-4 py-4 flex flex-col gap-3">
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Участники семьи</p>
+          <p className="text-[11px] text-slate-400 font-bold tracking-normal">Участники семьи</p>
           <div className="flex flex-col gap-2.5">
             {members.length === 0 ? (
               <p className="text-xs text-slate-400 text-center py-2">Загрузка...</p>
             ) : (
               members.map(m => (
                 <div key={m.id} className="flex items-center gap-3.5 py-0.5">
-                  <div className="w-11 h-11 rounded-full flex items-center justify-center text-xl shadow-sm bg-[#FAF2EA]">
+                  <div className="w-11 h-11 rounded-full flex items-center justify-center text-xl shadow-sm bg-[#f0f0f4]">
                     {m.avatar}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-sm text-slate-800 truncate">
-                      {m.name} {m.id === profile?.id ? <span className="text-[10px] text-emerald-600 font-black ml-1">(Вы)</span> : ''}
+                      {m.name} {m.id === profile?.id ? <span className="text-[11px] text-emerald-600 font-black ml-1">(Вы)</span> : ''}
                     </p>
                   </div>
-                  <span className="text-[10px] text-slate-500">Участник</span>
+                  <span className="text-[11px] text-slate-500">Участник</span>
                 </div>
               ))
             )}
@@ -122,26 +122,26 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onOpenStatement }) => {
 
         {/* Budget limit matching Home budget bar design */}
         <div className="card px-4 py-4 flex flex-col gap-4">
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Месячный лимит расходов</p>
+          <p className="text-[11px] text-slate-400 font-bold tracking-normal">Месячный лимит расходов</p>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Потрачено</p>
+              <p className="text-[11px] text-slate-400 font-bold tracking-normal">Потрачено</p>
               <p className="text-lg font-black text-slate-800 mt-0.5">{fmt(monthlyExpense)}</p>
             </div>
             <div className="text-right">
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Лимит</p>
+              <p className="text-[11px] text-slate-400 font-bold tracking-normal">Лимит</p>
               {editLimit ? (
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <input
                     type="number"
                     value={limitVal}
                     onChange={e => setLimitVal(e.target.value)}
-                    className="w-24 text-right text-sm font-bold border border-slate-300 focus:border-[#0F172A] rounded-xl px-2.5 py-1 text-slate-800 focus:outline-none"
+                    className="w-24 text-right text-sm font-bold border border-slate-300 focus:border-[#202124] rounded-xl px-2.5 py-1 text-slate-800 focus:outline-none"
                     autoFocus
                   />
                   <button
                     onClick={handleSaveLimit}
-                    className="px-3 py-1 bg-slate-950 hover:bg-[#1E293B] text-white font-extrabold text-xs rounded-xl active:scale-95"
+                    className="px-3 py-1 bg-slate-950 hover:bg-[#3d4048] text-white font-extrabold text-xs rounded-xl active:scale-95"
                   >
                     ОК
                   </button>
@@ -163,7 +163,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onOpenStatement }) => {
               className="h-full rounded-full transition-all duration-500"
               style={{
                 width: `${pct}%`,
-                backgroundColor: over ? '#F43F5E' : '#0F172A'
+                backgroundColor: over ? '#F43F5E' : '#202124'
               }}
             />
           </div>
@@ -196,36 +196,25 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onOpenStatement }) => {
 
         {/* Bank Integrations */}
         <div className="card px-4 py-4 flex flex-col gap-3">
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-2">
+          <p className="text-[11px] text-slate-400 font-bold tracking-normal flex items-center gap-2">
             <Landmark className="w-3.5 h-3.5 text-slate-800" />
-            Банковские выписки
+            Подключение банка
           </p>
-          <div 
+          <button type="button"
             onClick={onOpenStatement || (() => setBankSyncOpen(true))}
-            className="p-3.5 rounded-2xl bg-white border border-slate-200/80 hover:border-slate-300 flex items-center justify-between gap-3 cursor-pointer group transition-all"
+            className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 hover:border-slate-300 flex items-center justify-between gap-3 text-left transition-all"
           >
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-black text-base shadow-sm">
-                <Landmark size={18} />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xs font-black text-slate-800">Выписка из банка</span>
-                <span className="text-[10px] text-slate-400">Выгрузить выписку</span>
-              </div>
-            </div>
-            <button
-              type="button"
-              className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
-            >
-              <RotateCw size={12} className="group-hover:rotate-180 transition-transform duration-500" />
-              Выгрузить
-            </button>
-          </div>
+            <span className="flex-1 min-w-0">
+                <span className="text-xs font-black text-slate-800">Карты и операции</span>
+                <span className="block text-[11px] text-slate-500 mt-1">Приорбанк и выписки Альфы</span>
+            </span>
+            <ChevronRight size={18} className="shrink-0 text-slate-500"/>
+          </button>
         </div>
 
         {/* PWA install tips */}
         <div className="card px-4 py-4 flex flex-col gap-3">
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-2">
+          <p className="text-[11px] text-slate-400 font-bold tracking-normal flex items-center gap-2">
             <Smartphone className="w-3.5 h-3.5 text-slate-800" />
             Установка на смартфон (PWA)
           </p>

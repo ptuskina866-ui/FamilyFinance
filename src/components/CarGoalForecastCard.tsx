@@ -41,7 +41,7 @@ export const CarGoalForecastCard: React.FC<CarGoalForecastCardProps> = ({ goals,
         <div className="flex items-center gap-2.5 min-w-0">
           <span className="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-2xl shrink-0">{goal.emoji}</span>
           <div className="min-w-0">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">План накопления</p>
+            <p className="text-[11px] font-bold text-slate-400 tracking-normal">План накопления</p>
             <h3 className="text-sm font-black text-slate-900 break-words">{goal.name}</h3>
           </div>
         </div>
@@ -51,9 +51,9 @@ export const CarGoalForecastCard: React.FC<CarGoalForecastCardProps> = ({ goals,
         <p className="text-[11px] text-slate-500"><strong className="text-slate-800">{fmt(goal.current_amount)}</strong> из {fmt(goal.target_amount)} · {percent}%</p>
         <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden"><div className="h-full rounded-full bg-slate-900" style={{ width: `${percent}%` }} /></div>
       </div>
-      {goal.deadline && <div className="rounded-2xl bg-emerald-50/70 p-3 text-[11px] text-slate-600">
+      {goal.deadline && <div className="rounded-2xl bg-slate-50 p-3 text-[11px] text-slate-600">
         <p>Срок: <strong>{new Date(`${goal.deadline}T12:00:00`).toLocaleDateString('ru-RU')}</strong></p>
-        {monthlyNeeded !== null ? <p className="mt-1">Чтобы успеть: <strong className="text-emerald-800">{fmt(monthlyNeeded)} в месяц</strong></p> : <p className="mt-1">Срок уже прошёл. Для нового плана создайте цель с будущей датой.</p>}
+        {monthlyNeeded !== null ? <p className="mt-1">Чтобы успеть: <strong className="text-slate-800">{fmt(monthlyNeeded)} в месяц</strong></p> : <p className="mt-1">Срок уже прошёл. Для нового плана создайте цель с будущей датой.</p>}
       </div>}
       {forecast ? <div className="text-[11px] text-slate-500 leading-relaxed">
         <p>По истории этой цели: <strong className="text-slate-800">{fmt(forecast.monthlyContribution)} в месяц</strong>.</p>

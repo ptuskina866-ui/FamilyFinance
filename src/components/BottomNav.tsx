@@ -32,8 +32,8 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onChangeTab }) => {
               aria-label={tab.label}
               aria-current={active ? 'page' : undefined}
             >
-              <span className="nav-icon"><Icon size={20} strokeWidth={active ? 2.3 : 1.8} /></span>
-              <span>{tab.label}</span>
+              <span className="nav-icon"><Icon size={tab.isCenter ? 23 : 20} strokeWidth={1.6} /></span>
+              {!tab.isCenter && <span>{tab.label}</span>}
             </button>
           );
         })}

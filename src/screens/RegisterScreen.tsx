@@ -51,11 +51,11 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogin }) =>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {/* Credentials - Liquid Glass */}
-          <div className="card p-5 flex flex-col gap-3.5 shadow-[0_8px_32px_rgba(10,35,15,0.04)]">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Данные аккаунта</p>
+          <div className="card p-5 flex flex-col gap-3.5 shadow-none">
+            <p className="text-[11px] font-bold text-slate-400 tracking-normal">Данные аккаунта</p>
 
             <div className="flex flex-col gap-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Email</label>
+              <label className="text-[11px] font-bold text-slate-400 tracking-normal">Email</label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
@@ -70,7 +70,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogin }) =>
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Пароль</label>
+              <label className="text-[11px] font-bold text-slate-400 tracking-normal">Пароль</label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
@@ -87,11 +87,11 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogin }) =>
           </div>
 
           {/* Profile - Liquid Glass */}
-          <div className="card p-5 flex flex-col gap-3.5 shadow-[0_8px_32px_rgba(10,35,15,0.04)]">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ваш профиль</p>
+          <div className="card p-5 flex flex-col gap-3.5 shadow-none">
+            <p className="text-[11px] font-bold text-slate-400 tracking-normal">Ваш профиль</p>
 
             <div className="flex flex-col gap-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ваше имя</label>
+              <label className="text-[11px] font-bold text-slate-400 tracking-normal">Ваше имя</label>
               <div className="relative">
                 <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
@@ -107,7 +107,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogin }) =>
 
             {/* Avatar */}
             <div className="flex flex-col gap-1.5 pt-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Иконка аватара</label>
+              <label className="text-[11px] font-bold text-slate-400 tracking-normal">Иконка аватара</label>
               <div className="flex gap-2 flex-wrap">
                 {AVATARS.map(av => (
                   <button
@@ -128,7 +128,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogin }) =>
 
             {/* Color */}
             <div className="flex flex-col gap-1.5 pt-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Фирменный цвет</label>
+              <label className="text-[11px] font-bold text-slate-400 tracking-normal">Фирменный цвет</label>
               <div className="flex gap-2.5 flex-wrap items-center">
                 {COLORS.map(col => (
                   <button
@@ -146,8 +146,8 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogin }) =>
           </div>
 
           {/* Household - Liquid Glass */}
-          <div className="card p-5 flex flex-col gap-3.5 shadow-[0_8px_32px_rgba(10,35,15,0.04)]">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Семейная группа</p>
+          <div className="card p-5 flex flex-col gap-3.5 shadow-none">
+            <p className="text-[11px] font-bold text-slate-400 tracking-normal">Семейная группа</p>
 
             <div className="p-1 bg-white/75 backdrop-blur-xl border border-white/90 rounded-2xl flex shadow-sm">
               <button
@@ -176,7 +176,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogin }) =>
 
             {householdAction === 'create' ? (
               <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Название семьи</label>
+                <label className="text-[11px] font-bold text-slate-400 tracking-normal">Название семьи</label>
                 <div className="relative">
                   <Plus className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input
@@ -190,7 +190,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogin }) =>
               </div>
             ) : (
               <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Код приглашения</label>
+                <label className="text-[11px] font-bold text-slate-400 tracking-normal">Код приглашения</label>
                 <div className="relative">
                   <Link className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input

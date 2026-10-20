@@ -60,7 +60,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 {this.state.error?.name}: {this.state.error?.message}
               </span>
               {this.state.error?.stack && (
-                <pre className="text-[10px] text-slate-500 whitespace-pre-wrap mt-2">
+                <pre className="text-[11px] text-slate-500 whitespace-pre-wrap mt-2">
                   {this.state.error.stack}
                 </pre>
               )}
