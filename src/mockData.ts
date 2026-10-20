@@ -1,4 +1,5 @@
 import { Category, FamilyMember, Transaction } from './types';
+import { ADDITIONAL_CATEGORIES } from './lib/categories';
 
 export const INITIAL_MEMBERS: FamilyMember[] = [
   { id: 'dad', name: 'Дмитрий', avatar: '👨', color: '#3b82f6' },
@@ -368,7 +369,8 @@ export const CATEGORIES: Category[] = [
     bgColor: 'bg-rose-500/10',
     borderColor: 'border-rose-500/20',
     accentColor: '#f43f5e'
-  }
+  },
+  ...ADDITIONAL_CATEGORIES
 ];
 
 // Helper to get date relative to current month/day

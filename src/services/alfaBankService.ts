@@ -26,6 +26,7 @@ if (typeof (Promise as any).withResolvers === 'undefined') {
 }
 
 import { Transaction, TransactionType } from '../types';
+import { additionalCategorySuggestion } from '../lib/categories';
 import { BANK_CONNECTION_UNAVAILABLE } from '../lib/bankConnection';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
@@ -85,6 +86,32 @@ export class AlfaBankService {
    */
   static detectCategory(text: string, type: TransactionType, cleanedMerchant?: string): string {
     const raw = (text + ' ' + (cleanedMerchant || '')).toLowerCase();
+    // Explicit movements between own accounts keep their existing classification.
+    if (raw.includes('перевод между счетами')) return 'transfer';
+
+    const additional = additionalCategorySuggestion(raw, type);
+    if (additional) return additional;
+
+    // ── 2. Доходы (строгая и точная проверка) ──
+    if (type === 'income') {
+      // Зарплата только если явно указана
+      if (raw.includes('зарплата') || raw.includes('зачисление заработной платы') || raw.includes('аванс') || raw.includes('salary') || raw.includes('оплата труда')) {
+        return 'salary';
+      }
+      // Кэшбэк и бонусы
+      if (raw.includes('альфа-бонус') || raw.includes('бонус') || raw.includes('кэшбэк') || raw.includes('cashback') || raw.includes('манибэк')) {
+        return 'income-cashback';
+      }
+      // Внесение наличных через банкомат / инфокиоск
+      if (raw.includes('банкомат') || raw.includes('внесение наличных') || raw.includes('recatm') || raw.includes('пополнение картсчетов') || raw.includes('инфокиоск')) {
+        return 'income-other';
+      }
+      // Перевод от других людей / ЕРИП
+      if (raw.includes('приорбанк') || raw.includes('беларусбанк') || raw.includes('технобанк') || raw.includes('перевод') || raw.includes('vyplaty') || raw.includes('выплаты')) {
+        return 'income-transfer';
+      }
+      return 'income-other';
+    }
 
     // ── 1. Продуктовые магазины (конкретные категории) ──
     if (raw.includes('gippo') || raw.includes('гиппо') || raw.includes('hippo') || raw.includes('belvillesden') || raw.includes('белвиллесден')) {
@@ -123,31 +150,6 @@ export class AlfaBankService {
       raw.includes('pekarnya') || raw.includes('пекарня') || raw.includes('terri')
     ) {
       return 'food';
-    }
-
-    // ── 2. Доходы (строгая и точная проверка) ──
-    if (type === 'income') {
-      // Зарплата только если явно указана
-      if (raw.includes('зарплата') || raw.includes('зачисление заработной платы') || raw.includes('аванс') || raw.includes('salary') || raw.includes('оплата труда')) {
-        return 'salary';
-      }
-      // Кэшбэк и бонусы
-      if (raw.includes('альфа-бонус') || raw.includes('бонус') || raw.includes('кэшбэк') || raw.includes('cashback') || raw.includes('манибэк')) {
-        return 'income-cashback';
-      }
-      // Перевод между своими счетами
-      if (raw.includes('перевод между счетами')) {
-        return 'transfer';
-      }
-      // Внесение наличных через банкомат / инфокиоск
-      if (raw.includes('банкомат') || raw.includes('внесение наличных') || raw.includes('recatm') || raw.includes('пополнение картсчетов') || raw.includes('инфокиоск')) {
-        return 'income-other';
-      }
-      // Перевод от других людей / ЕРИП
-      if (raw.includes('приорбанк') || raw.includes('беларусбанк') || raw.includes('технобанк') || raw.includes('перевод') || raw.includes('vyplaty') || raw.includes('выплаты')) {
-        return 'income-transfer';
-      }
-      return 'income-other';
     }
 
     // ── 3. Расходы ──
@@ -206,7 +208,7 @@ export class AlfaBankService {
     }
 
     // ЕРИП и коммуналка
-    if (raw.includes('insync (erip)') || raw.includes('ерип') || raw.includes('erip') || raw.includes('расчет') || raw.includes('жкх') || raw.includes('коммунал') || raw.includes('водоканал') || raw.includes('электроэнерг') || raw.includes('минскэнерго') || raw.includes('газ')) {
+    if (raw.includes('insync (erip)') || raw.includes('ерип') || raw.includes('erip') || raw.includes('расчет') || raw.includes('жкх') || raw.includes('коммунал') || raw.includes('водоканал') || raw.includes('электроэнерг') || raw.includes('минскэнерго') || raw.includes('газоснабж') || /(?:^|[^\p{L}\p{N}])газ(?:$|[^\p{L}\p{N}])/u.test(raw)) {
       return 'utilities';
     }
 

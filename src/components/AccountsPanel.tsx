@@ -114,7 +114,7 @@ export const AccountsPanel = forwardRef<AccountsPanelHandle, { hideBalances?: bo
       </div> : <div className="flex gap-3 overflow-x-auto no-scrollbar -mx-5 px-5 pb-1">
         {activeAccounts.map(account => {
           const Icon = account.kind === 'cash' ? Wallet : account.kind === 'savings' ? PiggyBank : CreditCard;
-          return <div key={account.id} className="card p-4 min-w-[168px] max-w-[230px] flex flex-col gap-4 shrink-0">
+          return <div key={account.id} data-kind={account.kind} className="card account-card p-4 min-w-[168px] max-w-[230px] flex flex-col gap-4 shrink-0">
             <div className="flex items-center gap-2"><Icon className="w-4 h-4 text-slate-500 shrink-0" /><span className="text-[11px] font-bold text-slate-700 truncate" title={account.name}>{account.name}</span></div>
             <div><p className="text-base font-black text-slate-900">{hideBalances ? '••••••' : fmt(accountBalances[account.id] ?? 0)}</p><p className="text-[11px] text-slate-400">{kinds[account.kind]}</p></div>
           </div>;

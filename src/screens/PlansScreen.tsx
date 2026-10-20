@@ -233,7 +233,7 @@ const PlansScreen: React.FC = () => {
           /* ========================================================================= */
           <div className="flex flex-col gap-3">
             {/* Balance Hint */}
-            <div className="card px-4 py-3.5 flex flex-col gap-2.5">
+            <div className="card accent-savings px-4 py-3.5 flex flex-col gap-2.5">
               <div className="flex justify-between items-center gap-2">
                 <span className="text-[11px] text-slate-500 font-bold">Свободно после резервов</span>
                 <span className={`font-black text-sm tracking-tight ${availableBalance >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>{fmt(availableBalance)}</span>

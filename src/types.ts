@@ -44,6 +44,7 @@ export interface Account {
   created_at: string;
 }
 
+export type ExpenseCategoryGroup = 'food' | 'shopping' | 'transport' | 'bills' | 'life';
 export interface Category {
   id: string;
   name: string;
@@ -52,6 +53,9 @@ export interface Category {
   bgColor: string; // Tailwind background color class, e.g., 'bg-emerald-500/10'
   borderColor: string; // Tailwind border color class, e.g., 'border-emerald-500/20'
   accentColor: string; // Hex color for Recharts or custom inline styles
+  group?: ExpenseCategoryGroup;
+  searchTerms?: string[];
+  note?: string;
 }
 
 export interface FamilyMember {
