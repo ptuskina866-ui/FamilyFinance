@@ -26,4 +26,4 @@ UI: src/components/PriorBankConnection.tsx, PriorImportPanel.tsx, OverviewCards.
 
 ## Публикация
 
-Подготовлена ветка codex/clean-bank-home. Итог проверки сборки и публикации будет внесён после выпуска.
+Опубликовано: [PR #14](https://github.com/ptuskina866-ui/FamilyFinance/pull/14), feature 71acd35738a2233b1a5be3a59ccd6897db6fe326, merge b80680c2b2d5de2f2beecf6c12f3b6eb4e2488e7. Cloudflare build 5c515a94-0393-48f2-96fa-ab97c655fb0d — SUCCESS, version ee306744-d490-4637-b1ef-da38051a5fdb. Production index-BNqwZqAu.js / index-GnS7Gpyt.css, manifest и service worker — HTTP 200; worker содержит новый asset. Свежий Chromium 390×844 получил этот же JS и показал вход без ошибок и переполнения. Проверка UI после авторизации на рабочих данных не выполнялась. Из-за недоступного маршрута IPv6/нестабильного локального DNS использован проверенный IPv4 при исходном HTTPS-хосте, с обычной проверкой TLS.
