@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* Air: quiet white surfaces; glass belongs to navigation, not financial content. */
-:root { --app-bg:#f7f7f9; --ink:#202124; --muted:#707278; --line:#e7e8ec; }
+:root { --app-bg:#f7f7f9; --ink:#202124; --muted:#707278; --line:#e2e5ec; --accent:#476ba7; --accent-soft:#edf2fc; --savings:#796299; }
 @layer base {
   html, body { margin:0; padding:0; width:100%; height:100%; max-width:100vw; background:var(--app-bg); color:var(--ink); font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; overflow:hidden; overscroll-behavior-x:none; touch-action:auto; -webkit-font-smoothing:antialiased; }
   #root { width:100%; height:100%; overflow:hidden; }
@@ -67,17 +67,42 @@
 .quick-actions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; padding:2px 14px 0; }
 .quick-action { display:flex; align-items:center; flex-direction:column; gap:9px; color:var(--ink); font-size:11px; font-weight:400; transition:transform .18s; }
 .quick-action > .quick-action-icon { display:grid; place-items:center; width:52px; height:52px; border:1px solid #e7e8ec80; border-radius:50%; background:#eeeef2; }
-.quick-action.is-primary > .quick-action-icon { background:var(--ink); color:#fff; border-color:var(--ink); }
+.quick-action.is-primary > .quick-action-icon { background:var(--accent); color:#fff; border-color:var(--accent); }
+.quick-action:first-child > .quick-action-icon { background:#eeeaf8; border-color:#e4dcf2; color:#796299; }
 .quick-action:active { transform:scale(.97); }
 .quick-action:disabled { opacity:.35; }
-.daily-card { padding:17px 18px 4px; background:#fff; border:1px solid #eeeef2; border-radius:24px; }
+.daily-card { padding:17px 18px 4px; background:var(--accent-soft); border:1px solid #d9e3f4; border-radius:24px; }
 .daily-amount { font-size:29px; line-height:1.3; font-weight:500; color:var(--ink); letter-spacing:-.05em; }
-.daily-meter { height:3px; border-radius:4px; overflow:hidden; background:#eff0f3; margin-top:12px; }
+.daily-meter { height:3px; border-radius:4px; overflow:hidden; background:#d9e3f4; margin-top:12px; }
 .monthly-strip { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:15px; padding:16px 2px; }
 .goal-preview { width:100%; text-align:left; padding:20px; display:flex; align-items:center; gap:16px; }
 .goal-ring { width:55px; height:55px; border-radius:50%; display:grid; place-items:center; flex-shrink:0; position:relative; background:#eff0f3; }
 .goal-ring::before { content:''; position:absolute; inset:4px; border-radius:50%; background:#fff; }
 .goal-ring span { position:relative; font-size:23px; }
+/* Small, consistent landmarks: blue actions, violet savings, green income. */
+.card.accent-savings { background:#f5f1fb; border-color:#e7dff2; }
+.card.accent-planning { background:#f0f4fc; border-color:#dde6f5; }
+.account-card[data-kind=bank] { background:#f1f4fc; border-color:#e2e8f5; }
+.account-card[data-kind=cash] { background:#f0f5f1; border-color:#e0e9e1; }
+.account-card[data-kind=savings] { background:#f5f1fb; border-color:#e7dff2; }
+.monthly-income,.monthly-expense { padding:14px; border-radius:20px; background:#fff; border:1px solid #e8ebef; }
+.monthly-income > p:first-child > svg { color:#39785e; }
+.monthly-expense > p:first-child > svg { color:#a56b57; }
+.monthly-strip { gap:10px; padding-top:0; padding-bottom:0; }
+.category-search { display:flex; align-items:center; gap:8px; min-height:48px; padding:0 12px; background:#f3f5fa; border:1px solid #e3e7f0; border-radius:15px; }
+.category-search:focus-within { border-color:var(--accent); box-shadow:0 0 0 3px #476ba70b; }
+.category-search input:focus-visible { outline:none; }
+.category-search button { display:grid; place-items:center; margin-right:-10px; }
+.category-choice-icon { display:grid; place-items:center; flex-shrink:0; width:52px; height:52px; border:1px solid transparent; border-radius:17px; background:var(--tone-bg,#f3f3f6); color:var(--tone-ink,#555861); transition:background .18s,color .18s,box-shadow .18s; }
+.category-choice-icon.is-selected { background:var(--tone-ink,var(--accent)); color:#fff; box-shadow:0 0 0 3px #476ba715; }
+.category-note { font-size:11px; line-height:1.65; padding:12px; background:#edf2fc; color:#48618b; border-radius:14px; }
+[data-tone=food] { --tone-bg:#edf4ef; --tone-ink:#3f725a; }
+[data-tone=shopping] { --tone-bg:#f1eef7; --tone-ink:#796299; }
+[data-tone=transport] { --tone-bg:#f8f2e7; --tone-ink:#906d37; }
+[data-tone=bills] { --tone-bg:#edf2fb; --tone-ink:#4d6da7; }
+[data-tone=life] { --tone-bg:#f8eff3; --tone-ink:#976b7b; }
+[data-tone=income] { --tone-bg:#edf5f0; --tone-ink:#34765b; }
+.transaction-icon[data-tone] { background:var(--tone-bg); color:var(--tone-ink); }
 .journal { scroll-margin-top:100px; min-height:calc(100dvh - 200px); }
 .segmented { display:flex; gap:4px; padding:4px; background:#eff0f3; border:1px solid var(--line); border-radius:17px; }
 .segmented button { flex:1; min-height:44px; border-radius:13px; font-size:12px; font-weight:500; color:var(--muted); }
@@ -97,7 +122,7 @@
 .app-nav { width:100%; display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); align-items:center; padding:5px; border-radius:32px; }
 .nav-item { min-width:0; min-height:54px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; font-size:9px; font-weight:400; color:var(--muted); border-radius:25px; transition:background .18s,color .18s; }
 .nav-icon { display:grid; place-items:center; height:23px; }
-.nav-item.is-active { background:#ebebf0b3; color:var(--ink); font-weight:500; }
+.nav-item.is-active { background:#e8eef9; color:#3f6098; font-weight:500; }
 .nav-add .nav-icon { width:44px; height:44px; border-radius:50%; background:var(--ink); color:#fff; }
 .nav-add.is-active { background:transparent; }
 .auth-intro { padding:calc(env(safe-area-inset-top,0px) + 36px) 25px 28px; }
@@ -106,7 +131,7 @@
 .auth-button { width:100%; display:flex; align-items:center; justify-content:center; gap:8px; min-height:52px; padding:12px 16px; border-radius:17px; background:var(--ink); color:#fff; font-size:13px; font-weight:500; transition:transform .18s,background .18s; }
 .auth-button:active { transform:scale(.985); }
 .auth-button:disabled { opacity:.4; }
-.bank-mark { display:grid; place-items:center; width:48px; height:48px; border:1px solid var(--line); border-radius:16px; background:#f5f5f7; color:var(--ink); flex-shrink:0; }
+.bank-mark { display:grid; place-items:center; width:48px; height:48px; border:1px solid #dce5f6; border-radius:16px; background:#edf2fc; color:var(--accent); flex-shrink:0; }
 .bank-copy { font-size:13px; line-height:1.7; color:var(--muted); }
 .bank-caption { font-size:11px; font-weight:400; line-height:1.65; color:var(--muted); }
 .bank-notice { padding:14px; border-radius:16px; background:#eff0f3; font-size:12px; line-height:1.65; overflow-wrap:anywhere; }
@@ -114,6 +139,7 @@
 .bank-check { display:flex; align-items:start; gap:11px; min-height:44px; padding:10px 0; font-size:12px; line-height:1.6; cursor:pointer; }
 .bank-check input { margin-top:1px; flex-shrink:0; }
 .bank-secondary { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; min-height:46px; padding:10px 14px; border:1px solid var(--line); border-radius:15px; background:#fff; color:var(--ink); font-size:12px; font-weight:500; }
+.bank-import .auth-button { background:var(--accent); }
 .bank-secondary:disabled,.bank-import .icon-button:disabled { opacity:.4; }
 .bank-connection { padding:20px; border-radius:24px; background:#fff; border:1px solid #eeeef2; }
 .bank-connection--intro { padding:18px 4px 8px; background:transparent; border:0; }

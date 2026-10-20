@@ -3,59 +3,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../AppContext';
 import { useAuth } from '../AuthContext';
 import { DynamicIcon } from '../components/CategoryGrid';
-import { ChevronLeft, Check, MessageSquare, Calendar } from 'lucide-react';
+import { ChevronLeft, Check, MessageSquare, Calendar, Search, X } from 'lucide-react';
 import { parseMoneyInput, fromMinorUnits, toMinorUnits, localDateISO } from '../lib/money';
 import type { TransactionType } from '../types';
+import { categoryGroup, categoryTone, isIncomeCategory, matchesCategoryQuery } from '../lib/categories';
 
 interface AddTransactionScreenProps {
   onNavigateHome: () => void;
 }
-
-const CATEGORY_GROUPS: Record<string, string> = {
-  // Еда и кафе
-  'food': 'food',
-  'cafes': 'food',
-  'food-hippo': 'food',
-  'food-euroopt': 'food',
-  'food-green': 'food',
-  'food-fixprice': 'food',
-  'food-groshyk': 'food',
-  'food-mayak': 'food',
-  'food-santa': 'food',
-  'food-sosedi': 'food',
-
-  // Покупки
-  'marketplaces': 'shopping',
-  'clothes': 'shopping',
-  'household': 'shopping',
-  'beauty': 'shopping',
-  'electronics': 'shopping',
-  'gifts': 'shopping',
-
-  // Транспорт
-  'transport': 'transport',
-  'car': 'transport',
-  'scooters': 'transport',
-
-  // Счета и связь
-  'housing': 'bills',
-  'utilities': 'bills',
-  'water': 'bills',
-  'mobile': 'bills',
-  'internet': 'bills',
-  'credit': 'bills',
-  'taxes': 'bills',
-
-  // Жизнь и финансы
-  'medical': 'life',
-  'education': 'life',
-  'entertainment': 'life',
-  'cash': 'life',
-  'transfer': 'life',
-  'savings': 'life',
-  'pets': 'life',
-  'other': 'life'
-};
 
 const GROUPS = [
   { id: 'all', name: 'Все' },
@@ -82,6 +37,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedGroup, setSelectedGroup] = useState('all');
+  const [categoryQuery, setCategoryQuery] = useState('');
 
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -116,6 +72,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
   const handleTypeChange = (type: TransactionType) => {
     setTxType(type);
     setSelectedGroup('all');
+    setCategoryQuery('');
   };
 
   const handleQuickAdd = (delta: number) => {
@@ -146,18 +103,11 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
 
   const isIncome = txType === 'income';
 
-  // Filter categories by type (expenses vs incomes)
-  const filteredCategories = categories.filter(c =>
-    isIncome
-      ? c.id === 'salary' || c.id.startsWith('income-')
-      : !c.id.startsWith('income-') && c.id !== 'salary'
+  const filteredCategories = categories.filter(cat => isIncomeCategory(cat.id) === isIncome);
+  const displayCategories = filteredCategories.filter(cat =>
+    (selectedGroup === 'all' || categoryGroup(cat) === selectedGroup) && matchesCategoryQuery(cat, categoryQuery)
   );
-
-  const displayCategories = filteredCategories.filter(cat => {
-    if (selectedGroup === 'all') return true;
-    const group = CATEGORY_GROUPS[cat.id] || 'life';
-    return group === selectedGroup;
-  });
+  const selectedCategory = filteredCategories.find(cat => cat.id === selectedCategoryId);
 
   return (
     <div className="flex flex-col overflow-y-auto no-scrollbar h-full select-none">
@@ -245,13 +195,15 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
         </div>
 
         {/* Categories Selector */}
-        <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm flex flex-col gap-3.5">
+        <div className="card p-5 flex flex-col gap-3.5 category-picker">
           <div className="flex items-center justify-between">
             <h2 className="text-[11px] text-slate-400 font-bold tracking-normal">Категория</h2>
             <span className="text-[11px] font-bold text-slate-500">
               Выбрано: {categories.find(c => c.id === selectedCategoryId)?.name || 'Не выбрано'}
             </span>
           </div>
+
+          <div className="category-search"><Search size={16} className="shrink-0 text-slate-500"/><input aria-label="Поиск категорий" value={categoryQuery} onChange={e=>{setCategoryQuery(e.target.value);setSelectedGroup('all');}} placeholder="Категория или магазин" className="w-full min-w-0 bg-transparent text-sm outline-none"/>{categoryQuery && <button type="button" aria-label="Очистить поиск категорий" onClick={()=>setCategoryQuery('')}><X size={16}/></button>}</div>
 
           {/* Group Tabs (for expenses) */}
           {txType === 'expense' && (
@@ -262,8 +214,8 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
                   <button
                     key={group.id}
                     type="button"
-                    onClick={() => setSelectedGroup(group.id)}
-                    className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold whitespace-nowrap transition-all active:scale-95 border ${
+                    onClick={() => {setSelectedGroup(group.id);setCategoryQuery('');}}
+                    className={`shrink-0 px-3 py-1.5 rounded-xl text-[11px] font-extrabold whitespace-nowrap transition-all active:scale-95 border ${
                       active
                         ? 'bg-slate-900 border-slate-900 text-white shadow-sm'
                         : 'bg-slate-50 border-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -277,7 +229,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
           )}
 
           {/* Categories Grid */}
-          <div className="grid grid-cols-4 gap-y-3.5 gap-x-2 pt-1 max-h-[300px] overflow-y-auto no-scrollbar">
+          <div className={`grid auto-rows-max ${isIncome ? 'grid-cols-3' : 'grid-cols-4'} gap-y-3.5 gap-x-2 pt-1 max-h-[300px] overflow-y-auto no-scrollbar`}>
             {displayCategories.map(cat => {
               const active = selectedCategoryId === cat.id;
               return (
@@ -285,20 +237,17 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
                   key={cat.id}
                   type="button"
                   onClick={() => setSelectedCategoryId(cat.id)}
-                  className="flex flex-col items-center text-center gap-1.5 focus:outline-none active:scale-95 transition-transform"
+                  aria-pressed={active}
+                  className="flex flex-col items-center text-center gap-1.5 min-h-[86px] focus:outline-none active:scale-95 transition-transform"
                 >
                   <div
-                    className={`w-13 h-13 rounded-2xl flex items-center justify-center transition-all border ${
-                      active
-                        ? 'bg-slate-900 text-white border-slate-900 shadow-md ring-2 ring-slate-900/15 scale-105'
-                        : 'bg-slate-50 text-slate-600 border-slate-100 hover:scale-105'
-                    }`}
-                    style={{ width: '52px', height: '52px' }}
+                    className={`category-choice-icon ${active ? 'is-selected' : ''}`}
+                    data-tone={categoryTone(cat)}
                   >
                     <DynamicIcon name={cat.icon || 'HelpCircle'} className="w-5 h-5" />
                   </div>
                   <span
-                    className={`text-[11px] font-bold text-center leading-tight truncate w-full px-0.5 ${
+                    className={`text-[11px] font-bold text-center leading-tight w-full px-0.5 min-h-[28px] line-clamp-2 ${
                       active ? 'text-slate-900 font-extrabold' : 'text-slate-600'
                     }`}
                   >
@@ -308,6 +257,9 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
               );
             })}
           </div>
+          {!displayCategories.length && <p role="status" className="text-xs text-slate-500 text-center py-3">Ничего не найдено. Попробуйте другую группу или запрос.</p>}
+          {selectedCategory?.note && <p className="category-note">{selectedCategory.note}</p>}
+          {isIncome && selectedCategoryId==='income-transfer' && <p className="category-note">Для перевода между своими счетами используйте «Перевод» на главной.</p>}
         </div>
 
         {/* Details Card (Member, Date, Comment) */}

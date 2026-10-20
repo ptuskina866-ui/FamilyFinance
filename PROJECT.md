@@ -313,6 +313,8 @@ Key characteristics:
 
 New screens and components should remain visually consistent with this system.
 
+Air accents and Belarus categories (2026-10-20): key actions/daily guidance use restrained blue, savings use violet, accounts have small type-specific tints and income retains green. White space and the open balance remain. Category metadata is extended additively in `src/lib/categories.ts` and composed into the existing `CATEGORIES` in `src/mockData.ts`: 20 expense and 11 income entries. Existing IDs/history are untouched; `food-*` entries reuse the existing food budget scope. Shared optional `group`, `searchTerms` and `note` fields are UI metadata, not database columns. The add form has type-specific searchable groups/merchant aliases, readable scrolling chips and a three-column income picker. Import suggestions prioritize income before merchant names, suggest the new explicitly matched scenarios, and retain user review; refunds are incoming cashflow with an explicit note that the original expense remains. Existing parsing/amount/date logic, deduplication and persistence are unchanged. No schema, backend or dependency changes. Details and validation: `docs/air-accents-categories-release.md`.
+
 ## Important business behavior
 
 Transactions are shared within a household.

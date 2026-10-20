@@ -183,8 +183,8 @@ const AnalyticsScreen: React.FC = () => {
                 <AreaChart data={getChartDataPoints()} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
                   <defs>
                     <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={activeTab === 'expense' ? '#555861' : '#059669'} stopOpacity={0.18} />
-                      <stop offset="95%" stopColor={activeTab === 'expense' ? '#555861' : '#059669'} stopOpacity={0.0} />
+                      <stop offset="5%" stopColor={activeTab === 'expense' ? '#476ba7' : '#39785e'} stopOpacity={0.18} />
+                      <stop offset="95%" stopColor={activeTab === 'expense' ? '#476ba7' : '#39785e'} stopOpacity={0.0} />
                     </linearGradient>
                   </defs>
                   <XAxis
@@ -204,7 +204,7 @@ const AnalyticsScreen: React.FC = () => {
                     type="monotone"
                     isAnimationActive={false}
                     dataKey="amount"
-                    stroke={activeTab === 'expense' ? '#555861' : '#059669'}
+                    stroke={activeTab === 'expense' ? '#476ba7' : '#39785e'}
                     strokeWidth={2.5}
                     fillOpacity={1}
                     fill="url(#chartGradient)"
@@ -242,7 +242,7 @@ const AnalyticsScreen: React.FC = () => {
                   <div key={cat.id} className="flex items-center gap-3">
                     <span className="transaction-icon"><DynamicIcon name={cat.icon} className="w-[18px] h-[18px]"/></span>
                     <div className="flex-1 min-w-0"><div className="flex justify-between gap-3 text-xs mb-2"><span className="font-medium text-slate-700 break-words">{cat.name}</span><span className="money font-bold text-slate-950 text-right">{fmt(item.value)}</span></div>
-                      <div className="h-1 rounded-full bg-slate-100 overflow-hidden" aria-hidden="true"><div className="h-full rounded-full bg-[#8b8e96]" style={{width:`${totalAmountForTab>0?Math.min(100,item.value/totalAmountForTab*100):0}%`}}/></div>
+                      <div className="h-1 rounded-full bg-slate-100 overflow-hidden" aria-hidden="true"><div className="h-full rounded-full bg-[#8198c0]" style={{width:`${totalAmountForTab>0?Math.min(100,item.value/totalAmountForTab*100):0}%`}}/></div>
                     </div>
                   </div>
                 );

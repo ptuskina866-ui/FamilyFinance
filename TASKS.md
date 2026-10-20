@@ -1,5 +1,11 @@
 # TASKS.md
 
+## Current Air accents and Belarus categories · 2026-10-20
+
+- Added restrained blue/violet/green landmarks to the approved Air interface: daily guidance, actions/navigation, accounts, savings/planning and chart. Added 31 categories (20 expense / 11 income), merchant/name search, grouped tones and readable mobile category grids. Existing category IDs/transactions remain intact; no schema, backend or dependencies changed.
+- Import suggestions now check income before stores, handle new explicit scenarios and no longer treat the substring «газ» inside «магазин» as utilities. Existing review, financial amounts/dates and duplicate protections stay intact. Refunds show their cashflow meaning before manual save.
+- Passing: 69 app checks, 26 bank/server checks, browser regressions at 320/390/1024 px, Air planning forms and remembered-bank flows. New 320/390 px category scenarios save a 12.34 expense and 150.01 income only in an isolated demo, verify exact balances/labels/editor, search/type/group behavior, icon sizes and no clipping. Synthetic CSV/tab/comma/1C/card/account PDF-text/foreign-currency cases preserve original money/dates. Build and diff pass; final publication pending. File inventory and limits: `docs/air-accents-categories-release.md`.
+
 ## Current approved Air design · 2026-10-20
 
 - Implemented the owner-approved «Воздух» concept across all eight screens and existing dialogs: neutral light/white/charcoal system, restrained glass navigation, open home balance, circular actions, header privacy and existing transfer dialog access. Priorbank has a short introduction, dedicated login state and reviewed import; Alfa is secondary. Planning fields/buttons are consistent, emergency categories disclose on request, and profile bank access is a single labelled button. No domain/backend changes or dependencies.

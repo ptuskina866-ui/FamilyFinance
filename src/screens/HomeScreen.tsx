@@ -6,6 +6,7 @@ import { DynamicIcon } from '../components/CategoryGrid';
 import { BankSyncModal } from '../components/BankSyncModal';
 import { TransactionEditor } from '../components/TransactionEditor';
 import { calculateSafeDaily, isCashflow } from '../lib/finance';
+import { categoryTone } from '../lib/categories';
 import { localDateISO } from '../lib/money';
 import { planningDateISO, unassignedDailyTransactions, uncoveredRecurring } from '../lib/planning';
 import { Transaction } from '../types';
@@ -171,7 +172,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
                           key={tx.id}
                           className="transaction-row"
                         >
-                          <div className="transaction-icon"><DynamicIcon name={cat?.icon || 'ShoppingCart'} className="w-[18px] h-[18px]"/></div>
+                          <div className="transaction-icon" data-tone={cat ? categoryTone(cat) : undefined}><DynamicIcon name={cat?.icon || 'ShoppingCart'} className="w-[18px] h-[18px]"/></div>
                           <div className="min-w-0">
                             <div className="transaction-main">
                               <span className="transaction-name min-w-0 text-slate-900">

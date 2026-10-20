@@ -18,7 +18,7 @@ export const CarGoalForecastCard: React.FC<CarGoalForecastCardProps> = ({ goals,
 
   if (!goal) {
     return (
-      <div className="card p-5 flex items-center justify-between gap-3">
+      <div className="card accent-savings p-5 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-10 h-10 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0"><Target className="w-5 h-5" /></div>
           <div>
@@ -36,7 +36,7 @@ export const CarGoalForecastCard: React.FC<CarGoalForecastCardProps> = ({ goals,
   const percent = Math.min(100, Math.max(0, goal.target_amount > 0 ? Math.round(goal.current_amount / goal.target_amount * 100) : 0));
 
   return (
-    <div className="card p-5 flex flex-col gap-4">
+    <div className="card accent-savings p-5 flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5 min-w-0">
           <span className="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-2xl shrink-0">{goal.emoji}</span>
