@@ -301,6 +301,8 @@ Air implementation (2026-10-20), explicitly approved by the owner after concept 
 
 Clarity update (2026-10-20): Priorbank reveals settings, remembered account/card controls and file help progressively; login consent and financial review remain explicit. Equal bank/purchase amounts are displayed once; foreign amounts/fees and duplicate/first-use confirmation remain visible. Home groups extra goal/recurring cards behind a disclosure and explains the daily estimate on demand; transfer semantics are stated in the transfer dialog. Linked import save summaries stay nearby, while the larger first-use confirmation scrolls normally. No financial/backend changes. See `docs/clean-home-bank-release.md`.
 
+PWA identity also follows Air: `public/app-icon.svg` is the editable source for the existing wallet mark; browser/Safari/manifest icons use the neutral artwork. PNG exports have the declared 48/192/512 px dimensions. The former BloomFi artwork is replaced; existing cache update policy remains unchanged.
+
 Key characteristics:
 
 - restrained glass navigation and opaque white content surfaces;

@@ -4,7 +4,7 @@
 
 - Implemented the owner-approved «Воздух» concept across all eight screens and existing dialogs: neutral light/white/charcoal system, restrained glass navigation, open home balance, circular actions, header privacy and existing transfer dialog access. Priorbank has a short introduction, dedicated login state and reviewed import; Alfa is secondary. Planning fields/buttons are consistent, emergency categories disclose on request, and profile bank access is a single labelled button. No domain/backend changes or dependencies.
 - Passing: 63 app checks, 26 bank/server checks; existing screen/browser scenarios at 320/390/1024 px and remembered-bank scenarios at 320/390 px. Added Air form regressions at 320×640/390×640: goal/reserve/recurring, budget/transfer/template, emergency/fund, focus, profile-to-bank and no horizontal clipping. Visual review and TypeScript/Vite/PWA build pass. Only isolated demo/synthetic data; physical Safari/keyboard/installed PWA and live owner bank response remain unverified.
-- Release preparation and file inventory: `docs/air-design-release.md`; publication pending GitHub/Cloudflare completion.
+- Core published in PR #15 / merge `cea8a9c`, Cloudflare build `5979f683-aa41-4170-9211-0fdf993335e3` SUCCESS, version `aa7f3a00-92d7-4445-a2bf-a4374f4d71a9`. Fresh production `index-Dl3HyA8s.js`/`index-CS3czsl3.css`, manifest and worker return 200; neutral theme/login checked without overflow or runtime errors. Final icon follow-up replaces outdated BloomFi art with the same neutral wallet, editable SVG and correctly sized 48/192/512 PNGs; build/dimension/visual checks pass. Icon publication pending. Details: `docs/air-design-release.md`.
 
 ## Current home and bank clarity update · 2026-10-20
 
