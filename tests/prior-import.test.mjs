@@ -3,7 +3,7 @@ import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import test from 'node:test';
 const require = createRequire(import.meta.url);
-const { parsePriorImportFile, priorBlockedReason, priorPossibleDuplicates, priorImportError } = require(join(process.env.FINAPP_TEST_OUTPUT, 'lib/priorImport.js'));
+const { parsePriorImportFile, priorBlockedReason, priorPossibleDuplicates, priorImportError, priorDateLabel } = require(join(process.env.FINAPP_TEST_OUTPUT, 'lib/priorImport.js'));
 const today = '2026-10-19';
 const row = (extra = {}) => ({ date:'2026-10-18T12:00:00+03:00', description:'Shop', accountAmount:'-12.34', operationAmount:'-4.99', operationCurrency:'EUR', fee:'0.10', source:'history', ...extra });
 const packet = (rows = [row()]) => ({ format:'finapp-prior', version:1, from:'2026-10-13', to:today, fetchedAt:`${today}T12:00:00Z`, card:{ sourceKey:'a'.repeat(64), title:'Test', maskedNumber:'•••• 1234', currency:'BYN', records:rows } });
@@ -34,4 +34,18 @@ test('Prior server failures explain changed history, bindings and recoverable re
   for(const code of ['PRIOR_DAY_CHANGED','PRIOR_SOURCE_BOUND','PRIOR_ACCOUNT_BOUND','PRIOR_CONFIRM_EXISTING','PGRST202','PRIOR_FORMAT','private backend message']) {
     const output=priorImportError(code);assert.ok(output.length>30);assert.equal(output.includes(code),false);
   }
+});
+test('bank timestamps display their calendar day without appending a second time or shifting timezones',()=>{
+  const day=priorDateLabel('2026-10-18');assert.notEqual(day,'Invalid Date');
+  for(const value of ['2026-10-18T23:55:00+03:00','2026-10-18T23:55:00-10:00','2026-10-18T00:05:00Z'])assert.equal(priorDateLabel(value),day);
+  for(const value of ['garbage','2026-02-30',''])assert.equal(priorDateLabel(value),'Дата не указана');
+});
+test('unverified additional rows warn about manual same-amount entries without assuming bank direction or allowing imports',()=>{
+  const value=packet([row({source:'additional',accountAmount:null,operationAmount:'27.00',operationCurrency:'BYN'}),row({source:'additional',accountAmount:null,operationAmount:'-10.00',operationCurrency:'BYN'}),row({source:'additional',accountAmount:null,operationAmount:'27.00',operationCurrency:'USD'})]);
+  const base={id:'manual',kind:'cashflow',accountId:'a',date:'2026-10-18',categoryId:'other',addedBy:'member',comment:''};
+  const ledger=[{...base,type:'expense',amount:27},{...base,id:'income',type:'income',amount:10}];
+  assert.deepEqual([...priorPossibleDuplicates(value,ledger,'a')],[0,1]);
+  assert.deepEqual([...priorPossibleDuplicates(value,ledger,'other-account')],[]);
+  for(const r of value.card.records)assert.ok(priorBlockedReason(value,r,today));
+  assert.equal(value.card.records[1].operationAmount,'-10.00');assert.equal(value.card.records[1].accountAmount,null);
 });

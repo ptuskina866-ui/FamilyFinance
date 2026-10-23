@@ -5,9 +5,10 @@ export function parsePriorConnection(value: unknown): PriorConnectionResult {
   const invalid = () => new Error('Банк вернул неподдерживаемые данные. Ничего не сохранено.');
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw invalid();
   const data = value as Record<string, unknown>;
-  if (Object.keys(data).some(key => !['format','version','cards','externalCards','connection'].includes(key)) || data.format !== 'finapp-prior-connection' || data.version !== 1 || !Array.isArray(data.cards) || data.cards.length > 20 || !Number.isInteger(data.externalCards) || Number(data.externalCards) < 0) throw invalid();
+  if (Object.keys(data).some(key => !['format','version','cards','externalCards','connection','syncState'].includes(key)) || data.format !== 'finapp-prior-connection' || data.version !== 1 || !Array.isArray(data.cards) || data.cards.length > 20 || !Number.isInteger(data.externalCards) || Number(data.externalCards) < 0) throw invalid();
+  if(data.syncState!==undefined&&(typeof data.syncState!=='string'||!['saved','fresh','updating'].includes(data.syncState)))throw invalid();
   if (JSON.stringify(data).length > 8_000_000) throw invalid();
-  return {cards: data.cards.map(card => parsePriorImportFile(JSON.stringify(card))), externalCards: Number(data.externalCards),...(data.connection === undefined ? {} : {connection: parsePriorStatus(data.connection)})};
+  return {cards: data.cards.map(card => parsePriorImportFile(JSON.stringify(card))), externalCards: Number(data.externalCards),...(data.connection === undefined ? {} : {connection: parsePriorStatus(data.connection)}),...(data.syncState===undefined?{}:{syncState:data.syncState as PriorConnectionResult['syncState']})};
 }
 
 export function parsePriorStatus(value: unknown): PriorBankConnectionStatus {
@@ -26,7 +27,7 @@ export function priorConnectionError(code: unknown, status?: number): string {
   const messages: Record<string, string> = {
     LOGIN_REJECTED: 'Банк отклонил вход. Проверьте логин и пароль в Prior Online. Повтор автоматически не выполняется.',
     ADDITIONAL_CONFIRMATION: 'Банк запросил дополнительное подтверждение. Этот способ входа пока не поддерживается; ничего не сохранено.',
-    COOLDOWN: 'Вход уже выполняется или был недавно. Подождите две минуты перед новой попыткой.',
+    COOLDOWN: 'Обновление уже выполняется или было недавно. Сохранённая история остаётся доступной; повторите обновление немного позже.',
     PASSWORD_UNSUPPORTED: 'Пароли длиннее 16 символов пока не поддерживаются этим подключением. Не меняйте банковский пароль ради проверки.',
     DATE_INVALID: 'Выберите период до 31 дня, без будущих дат.',
     INPUT_INVALID: 'Проверьте данные для входа и выбранный период.',

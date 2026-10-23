@@ -31,7 +31,7 @@ export interface PriorImportCheck { importedIndexes: number[]; linked: boolean; 
 export interface PriorImportResult { imported: number; skipped: number; }
 export interface PriorConnectionInput { login: string; password: string; from: string; to: string; }
 export interface PriorBankConnectionStatus { connected: boolean; reauthRequired: boolean; lastSyncedAt: string | null; selectedSourceKey: string | null; accountId: string | null; }
-export interface PriorConnectionResult { cards: PriorImportSnapshot[]; externalCards: number; connection?: PriorBankConnectionStatus; }
+export interface PriorConnectionResult { cards: PriorImportSnapshot[]; externalCards: number; connection?: PriorBankConnectionStatus; syncState?: 'saved' | 'fresh' | 'updating'; }
 export interface PriorAutomationState {
   owner_id: string; household_id: string; account_id: string; source_key: string; enabled: boolean;
   started_on: string; last_checked_at: string | null; issue: 'network' | 'bank_limit' | 'reauth' | 'history_changed' | 'gap' | 'account' | 'format' | null;

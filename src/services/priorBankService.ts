@@ -24,7 +24,10 @@ export async function connectPriorBank(input: PriorConnectionInput, signal: Abor
   finally { input.password = ''; input.login = ''; }
 }
 export async function syncPriorBank(signal: AbortSignal, range?: {from: string; to: string}): Promise<PriorConnectionResult> {
-  return parsePriorConnection(await invoke({action: 'sync', ...range}, signal));
+  return parsePriorConnection(await invoke({action: 'refresh', ...range}, signal));
+}
+export async function viewPriorBank(signal:AbortSignal):Promise<PriorConnectionResult> {
+  return parsePriorConnection(await invoke({action:'view'},signal));
 }
 export async function priorBankStatus(action: 'status' | 'disconnect' | 'select', signal: AbortSignal, sourceKey?: string): Promise<PriorBankConnectionStatus> {
   const value = await invoke({action, ...(sourceKey ? {sourceKey} : {})}, signal);

@@ -14,13 +14,13 @@ async (page) => {
     const snapshot={format:'finapp-prior',version:1,from:shift(-10),to:shift(-1),fetchedAt:new Date().toISOString(),card:{sourceKey:source,title:'Card',maskedNumber:'•••• 1234',currency:'BYN',records:[{date:shift(-2),description:'Already imported',accountAmount:'-56.78',operationAmount:'-56.78',operationCurrency:'BYN',fee:null,source:'history'},{date:shift(-1),description:'Shop <img src=x onerror=alert(1)>',accountAmount:'-12.34',operationAmount:'-4.99',operationCurrency:'EUR',fee:'0.10',source:'history'}]}};
     await context.route('**/functions/v1/prior-connect',async route=>{
       const body=route.request().postDataJSON();calls.push(body);
-      if(body.action==='sync'&&delayNext){delayNext=false;await new Promise(resolve=>{releaseLate=resolve;markDelayed();});}
+      if(body.action==='refresh'&&delayNext){delayNext=false;await new Promise(resolve=>{releaseLate=resolve;markDelayed();});}
       if(body.action==='disconnect')connected=false;
       if(body.action==='connect'){connected=true;expired=false;}
       if(body.action==='select')selectedSource=body.sourceKey;
-      const failure=body.action==='sync'&&expired;
+      const failure=body.action==='refresh'&&expired;
       const cards=width===390?[snapshot,{...snapshot,card:{...snapshot.card,sourceKey:'c'.repeat(64),title:'Second card'}}]:[snapshot];
-      const value=failure?{code:'SESSION_EXPIRED'}:['sync','connect'].includes(body.action)?{format:'finapp-prior-connection',version:1,cards,externalCards:0,connection:status()}:{format:'finapp-prior-status',version:1,connection:status()};
+      const value=failure?{code:'SESSION_EXPIRED'}:['refresh','connect','view'].includes(body.action)?{format:'finapp-prior-connection',version:1,cards:connected?cards:[],externalCards:0,connection:status()}:{format:'finapp-prior-status',version:1,connection:status()};
       try {await route.fulfill({status:failure?400:200,json:value});} catch { /* The test intentionally cancels one browser request. */ }
     });
     await context.route('**/rest/v1/**',r=>r.fulfill({status:500,json:{message:'Unexpected real request'}}));
@@ -41,7 +41,7 @@ async (page) => {
     `}));
     await p.goto('http://127.0.0.1:5190/');
     await p.getByText('Проверка пройдена.',{exact:false}).waitFor({timeout:10000});
-    if(calls.filter(c=>c.action==='sync').length!==1)throw Error('Opening sync count');
+    if(calls.filter(c=>c.action==='view').length!==1||calls.some(c=>c.action==='refresh'))throw Error('Opening read must not start bank sync');
     if(await p.locator('input[name=prior-password]').count())throw Error('Unexpected login');
     if(await p.getByLabel('Счёт для операций Приорбанка').inputValue()!==account)throw Error('Lost saved account');
     if(await p.getByText('Already imported',{exact:true}).count())throw Error('Imported row visible');
@@ -60,7 +60,7 @@ async (page) => {
     await p.getByText('Всё добавлено.',{exact:false}).waitFor({timeout:10000});
     const saved=await p.evaluate(()=>window.__saves);if(saved.length!==1||saved[0].items[0].index!==1)throw Error('Wrong selection');
     await p.getByRole('button',{name:'Reopen test',exact:true}).click();await p.getByText('Всё добавлено.',{exact:false}).waitFor({timeout:10000});
-    if(calls.filter(c=>c.action==='sync').length!==2||calls.some(c=>c.action==='connect'))throw Error('Revisit relogged');
+    if(calls.filter(c=>c.action==='view').length!==2||calls.some(c=>c.action==='connect'||c.action==='refresh'))throw Error('Revisit reread bank or relogged');
     if(width===390){
       await p.getByText('Настройки подключения',{exact:true}).click();
       await p.getByText('Выбор карты',{exact:true}).click();
@@ -89,7 +89,7 @@ async (page) => {
     await p.locator('input[name=prior-login]').fill('SyntheticUser');await p.locator('input[name=prior-password]').fill('Synthetic123!');
     await p.getByLabel('Разрешаю вход и сохранение защищённой банковской сессии.',{exact:false}).check();
     await p.getByRole('button',{name:'Подключить и получить операции',exact:true}).click();
-    await p.getByText('Подключён · 10 дней',{exact:true}).waitFor({timeout:10000});
+    await p.getByText('Подключён',{exact:true}).waitFor({timeout:10000});
     if(await p.locator('input[name=prior-password]').count())throw Error('Password form retained');
     await p.getByText('Настройки подключения',{exact:true}).click();await p.getByRole('button',{name:'Отключить банк',exact:true}).click();await p.getByRole('button',{name:'Удалить подключение',exact:true}).click();
     await p.getByText('Подключение удалено.',{exact:false}).waitFor({timeout:10000});

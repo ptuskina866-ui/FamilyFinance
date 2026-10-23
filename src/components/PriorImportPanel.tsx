@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, CheckCircle2, ChevronDown, UploadCloud } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ChevronDown, Clock3, UploadCloud } from 'lucide-react';
 import { useApp } from '../AppContext';
 import { useAuth } from '../AuthContext';
 import type { PriorImportCheck, PriorImportResult, PriorImportSelection, PriorImportSnapshot } from '../types';
-import { parsePriorImportFile, PRIOR_FILE_LIMIT, priorBlockedReason, priorPossibleDuplicates } from '../lib/priorImport';
+import { parsePriorImportFile, PRIOR_FILE_LIMIT, priorBlockedReason, priorPossibleDuplicates, priorDateLabel } from '../lib/priorImport';
 import { toMinorUnits } from '../lib/money';
 import { AlfaBankService } from '../services/alfaBankService';
 import { PriorBankConnection } from './PriorBankConnection';
@@ -23,10 +23,11 @@ export function PriorImportPanel() {
   const [page, setPage] = useState(0);
   const [connecting, setConnecting] = useState(false);
   const [showImported, setShowImported] = useState(false);
+  const [fileMode,setFileMode]=useState(false);
   const version = useRef(0), pending = useRef(false);
   useEffect(() => () => { ++version.current; }, []);
   useEffect(() => {
-    setConnecting(false); setError('');
+    setConnecting(false);setFileMode(false); setError('');
     ++version.current; setSnapshot(null); setAccountId(''); setChecked(null); setItems({}); setConfirmed(false); setResult(null);
   }, [user?.id, profile?.household_id]);
   const controlsDisabled = busy || connecting;
@@ -34,6 +35,8 @@ export function PriorImportPanel() {
   const possible = useMemo(() => new Set([...(snapshot ? priorPossibleDuplicates(snapshot, transactions, accountId) : []), ...(checked?.possibleIndexes || [])]), [snapshot, transactions, accountId, checked]);
   const imported = new Set(checked?.importedIndexes || []);
   const visibleRows = snapshot?.card.records.map((row,index) => ({row,index})).filter(({index}) => showImported || !imported.has(index)) || [];
+  const availableCount=snapshot?.card.records.filter((row,index)=>!imported.has(index)&&!priorBlockedReason(snapshot,row)&&!possible.has(index)).length??0;
+  const unverifiedCount=snapshot?.card.records.filter((row,index)=>row.source==='additional'&&!imported.has(index)).length??0;
   const selected = Object.values(items);
   let net = 0n;
   for (const item of selected) net += BigInt(toMinorUnits(snapshot!.card.records[item.index].accountAmount!));
@@ -45,7 +48,7 @@ export function PriorImportPanel() {
   }, [accounts, accountId, financeLoading, financeError]);
   const load = async (file?: File) => {
     if (!file || pending.current || connecting) return;
-    resetReview(); setSnapshot(null);
+    resetReview();setFileMode(true); setSnapshot(null);
     const current = version.current;
     try {
       if (file.size > PRIOR_FILE_LIMIT) throw new Error('Файл слишком большой. Выберите меньший период в помощнике.');
@@ -83,19 +86,19 @@ export function PriorImportPanel() {
     return { index, categoryId: categories.some(c => c.id === suggestion) ? suggestion : '', confirmExisting: false };
   };
   const control = 'input-light w-full min-w-0';
-  const dateLabel = (value: string) => new Date(value+'T12:00:00Z').toLocaleDateString('ru-RU',{day:'numeric',month:'short',year:'numeric',timeZone:'Europe/Minsk'});
+  const dateLabel=priorDateLabel;
   const accountName = bankAccounts.find(account => account.id === accountId)?.name;
   const accountSelect = <label className="block text-xs font-semibold">Счёт для операций<select aria-label="Счёт для операций Приорбанка" className={control+' mt-2'} value={accountId} disabled={controlsDisabled} onChange={e => {resetReview();setAccountId(e.target.value);}}><option value="">Выберите банковский счёт BYN</option>{bankAccounts.map(account => <option key={account.id} value={account.id}>{account.name}</option>)}</select></label>;
   return <div className="bank-import flex flex-col gap-4 max-w-lg mx-auto w-full">
     <div>
-      <PriorBankConnection key={user?.id+':'+profile?.household_id} disabled={busy} onBusy={setConnecting} onStart={() => {resetReview();setSnapshot(null);}} onConnected={(value,savedAccountId) => {resetReview();setSnapshot(value);setShowImported(false);setAccountId(savedAccountId??'');}}/>
+      <PriorBankConnection key={user?.id+':'+profile?.household_id} disabled={busy} pausePreview={selected.length>0||fileMode} onBusy={setConnecting} onStart={() => {resetReview();setFileMode(false);setSnapshot(null);}} onConnected={(value,savedAccountId) => {resetReview();setFileMode(false);setSnapshot(value);setShowImported(false);setAccountId(savedAccountId??'');}}/>
     </div>
     <PriorAutomation accountId={bankAccounts.some(a=>a.id===accountId)?accountId:undefined} sourceKey={snapshot?.card.sourceKey} linked={checked?.linked} disabled={controlsDisabled||financeLoading||!!financeError}/>
     {error && <div role="alert" className="bank-notice text-rose-700 flex gap-2"><AlertCircle className="shrink-0" size={18}/><span>{error}</span></div>}
     {result && <div role="status" className="bank-notice text-emerald-800 flex gap-2"><CheckCircle2 className="shrink-0" size={18}/><span>Добавлено: {result.imported}.{result.skipped>0 && ' Уже загружено, пропущено: '+result.skipped+'.'}</span></div>}
     {snapshot && <>
       <section className="bank-review space-y-3 px-1" aria-label="Проверка операций Приорбанка">
-        <div><h3 className="section-title">{checked && !visibleRows.length ? 'Всё актуально' : 'Выберите операции'}</h3><p className="bank-caption mt-2">{dateLabel(snapshot.from)} — {dateLabel(snapshot.to)}</p><p className="bank-caption mt-1 break-words">{snapshot.card.title} · {snapshot.card.maskedNumber} · {snapshot.card.currency}</p></div>
+        <div><h3 className="section-title">{checked && !visibleRows.length ? 'Всё актуально' : 'Операции банка'}</h3><p className="bank-caption mt-2">{dateLabel(snapshot.from)} — {dateLabel(snapshot.to)}</p><p className="bank-caption mt-1 break-words">{snapshot.card.title} · {snapshot.card.maskedNumber} · {snapshot.card.currency}</p></div>
         {checked?.linked && accountName ? <details className="disclosure"><summary><span className="min-w-0 break-words">Счёт: {accountName}</span><ChevronDown size={15}/></summary><div className="disclosure-body">{accountSelect}</div></details> : accountSelect}
         {financeLoading && <p role="status" className="bank-caption">Загружаем счета FinApp…</p>}
         {financeError && <p role="alert" className="bank-notice text-rose-700">{financeError}</p>}
@@ -104,7 +107,7 @@ export function PriorImportPanel() {
         {busy && <p role="status" className="bank-caption">Проверяем операции…</p>}
         {error && <button type="button" onClick={() => void check()} disabled={controlsDisabled || !accountId || snapshot.card.currency!=='BYN' || financeLoading || !!financeError} className="auth-button">Повторить проверку</button>}
         {checked && <>
-          <p role="status" className="sr-only">Проверка пройдена.</p><div className="flex items-center justify-between gap-3"><span className="text-xs text-slate-500">Новых: {snapshot.card.records.length-imported.size}</span>
+          <p role="status" className="sr-only">Проверка пройдена.</p><div className="flex items-center justify-between gap-3"><div className="min-w-0"><span className="text-xs text-slate-500">Можно добавить: {availableCount}</span>{unverifiedCount>0&&<p className="bank-caption mt-1">Статус уточняется: {unverifiedCount}. Эти записи не включены в баланс.</p>}</div>
           {visibleRows.some(({row,index})=>!priorBlockedReason(snapshot,row) && !imported.has(index) && !possible.has(index)) && <button type="button" disabled={controlsDisabled} className="text-action" onClick={() => {
             if(selected.length){setItems({});setConfirmed(false);return;}
             const next: Record<number,PriorImportSelection> = {};
@@ -113,6 +116,7 @@ export function PriorImportPanel() {
           }}>{selected.length?'Снять выбор':'Выбрать новые'}</button>}</div>
           {visibleRows.length>0 && <p className="bank-caption">Не выбирайте свои переводы и уже учтённые записи.{possible.size>0 && ' Похожие операции требуют отдельного подтверждения.'}</p>}
           {imported.size>0 && <label className="bank-check"><input type="checkbox" checked={showImported} onChange={e => {setShowImported(e.target.checked);setPage(0);}} className="w-5 h-5"/>Показать уже добавленные ({imported.size})</label>}
+          {unverifiedCount>0&&<details className="disclosure"><summary>Почему некоторые записи ещё не учтены<ChevronDown size={15}/></summary><p className="disclosure-body bank-caption">В дополнительном списке пока нельзя подтвердить статус, направление и итоговую сумму по счёту. Показываем исходные данные банка. Такие записи не меняют баланс; автоучёт проверит основную историю при следующем обновлении.</p></details>}
         </>}
       </section>
       {checked && !visibleRows.length && <p role="status" className="bank-empty"><CheckCircle2 size={26} strokeWidth={1.5}/>Всё добавлено. Новых операций за этот период нет.</p>}
@@ -120,16 +124,18 @@ export function PriorImportPanel() {
         {visibleRows.slice(page*40,(page+1)*40).map(({row,index}) => {
           const blocked=priorBlockedReason(snapshot,row),chosen=items[index];
           const showOriginal=row.operationCurrency!==snapshot.card.currency || row.operationAmount!==row.accountAmount;
+          const Choice=row.source==='additional'?'div':'label';
           return <article key={index} className={'import-row'+(chosen?' is-selected':'')}>
-            <label className="import-row-choice">
-              <input type="checkbox" aria-label={`Выбрать операцию ${index+1}`} className="w-5 h-5 shrink-0" checked={!!chosen} disabled={controlsDisabled || !checked || !!blocked || imported.has(index)} onChange={e => {
+            <Choice className="import-row-choice">
+              {row.source==='additional'?<Clock3 aria-label="Статус уточняется" size={20} className="shrink-0 text-slate-400 mt-0.5"/>:<input type="checkbox" aria-label={`Выбрать операцию ${index+1}`} className="w-5 h-5 shrink-0" checked={!!chosen} disabled={controlsDisabled || !checked || !!blocked || imported.has(index)} onChange={e => {
                 if(e.target.checked) update(index,{});else {setItems(previous => {const next={...previous};delete next[index];return next;});setConfirmed(false);}
-              }}/>
+              }}/>}
               <span className="min-w-0 flex-1"><span className="block text-xs font-semibold break-words leading-relaxed">{row.description}</span><span className="block bank-caption mt-1">{dateLabel(row.date)}</span></span>
-              <span className={'import-row-amount money'+(row.accountAmount?.startsWith('-')?'':' text-emerald-800')}>{row.accountAmount?.replace('.',',')??'—'}<span className="block bank-caption mt-1">{snapshot.card.currency}</span></span>
-            </label>
-            {(showOriginal || (row.fee && row.fee!=='0.00')) && <p className="bank-caption">{showOriginal && 'Сумма покупки: '+row.operationAmount+' '+row.operationCurrency}{row.fee && row.fee!=='0.00' && (showOriginal?' · ':'')+'Комиссия в ответе банка: '+row.fee}</p>}
-            {blocked && <p className="bank-notice text-amber-800">{blocked}</p>}
+              <span className={'import-row-amount money'+(row.accountAmount!==null&&!row.accountAmount.startsWith('-')?' text-emerald-800':'')}>{row.accountAmount?.replace('.',',')??'—'}<span className="block bank-caption mt-1">{snapshot.card.currency}</span></span>
+            </Choice>
+            {(showOriginal || (row.fee && row.fee!=='0.00')) && <p className="bank-caption">{showOriginal && (row.source==='additional'?'Сумма в ответе банка: ':'Сумма покупки: ')+row.operationAmount+' '+row.operationCurrency}{row.fee && row.fee!=='0.00' && (showOriginal?' · ':'')+'Комиссия в ответе банка: '+row.fee}</p>}
+            {blocked && <p className={row.source==='additional'?'bank-caption text-amber-800':'bank-notice text-amber-800'}>{row.source==='additional'?'Статус уточняется · в баланс не включено':blocked}</p>}
+            {row.source==='additional'&&possible.has(index)&&<p className="bank-caption">В журнале уже есть запись с такой суммой за этот день. Сверьте после подтверждения банка.</p>}
             {imported.has(index) && <p className="bank-caption text-emerald-800">Уже добавлена</p>}
             {possible.has(index) && !imported.has(index) && !blocked && <p className="bank-notice text-amber-800">Возможно, повтор. Сверьте дату, сумму и описание с журналом.</p>}
             {chosen && <div className="space-y-3">

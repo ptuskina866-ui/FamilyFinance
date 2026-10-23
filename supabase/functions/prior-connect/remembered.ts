@@ -16,9 +16,10 @@ function publicStatus(value: Record<string, unknown>) {
 }
 /** The only path that retains bank access: an explicitly requested encrypted session, no password. */
 export async function rememberedPrior(req: Request, raw: Record<string, unknown>, owner: string, runtime: Runtime): Promise<string> {
-  const action = raw.action;
+  const enhanced=raw.action==='refresh'||raw.action==='view';
+  const action = raw.action==='refresh'?'sync':raw.action;
   const permitted = action === 'connect' ? ['action','login','password','from','to'] : action === 'sync' ? ['action','from','to'] : action === 'select' ? ['action','sourceKey'] : ['action'];
-  if (!['connect','sync','status','disconnect','select'].includes(String(action)) || Object.keys(raw).some(key => !permitted.includes(key))) throw new PreviewError('INPUT_INVALID','Неподдерживаемый запрос.');
+  if (!['connect','sync','status','disconnect','select','view'].includes(String(action)) || Object.keys(raw).some(key => !permitted.includes(key))) throw new PreviewError('INPUT_INVALID','Неподдерживаемый запрос.');
   const state = async (operation: string, data: Record<string, unknown> = {}) => {
     const response = await runtime.rpc('prior_connection_state',{p_owner: owner,p_action: operation,p_data: data});
     if (!response.ok) {
@@ -33,6 +34,9 @@ export async function rememberedPrior(req: Request, raw: Record<string, unknown>
     return JSON.stringify({format:'finapp-prior-status',version:1,connection:publicStatus(status)});
   }
   const stored = await state('load');
+  const cached=stored.connected===true&&stored.preview?object(stored.preview):null;
+  // Read-only opening: never claims a lease, logs in, or competes with the scheduled worker.
+  if(action==='view')return JSON.stringify({...(cached??{format:'finapp-prior-connection',version:1,cards:[],externalCards:0}),connection:publicStatus(stored),syncState:'saved'});
   if (action === 'sync' && stored.connected !== true) throw new PreviewError('SESSION_EXPIRED','Войдите в банк, чтобы запомнить подключение.');
   const range = raw.from === undefined && raw.to === undefined ? recentPriorRange() : {from: raw.from, to: raw.to};
   let input: PreviewInput | null = null;
@@ -43,13 +47,16 @@ export async function rememberedPrior(req: Request, raw: Record<string, unknown>
     if (action === 'sync' && stored.cacheFresh === true && stored.preview) {
       const cached = object(stored.preview), cards = cached.cards;
       if (Array.isArray(cards) && cards.every(card => object(card).from === input!.from && object(card).to === input!.to)) {
-        return JSON.stringify({...cached,connection:publicStatus(stored)});
+        return JSON.stringify({...cached,connection:publicStatus(stored),...(enhanced?{syncState:'saved'}:{})});
       }
     }
     const loginKey = action === 'connect' ? createHmac('sha256',runtime.serviceKey).update('prior-login-v1:'+input.login.normalize('NFKC').toLowerCase()).digest('hex') : stored.loginKey;
     const claim = await runtime.rpc('claim_prior_connection',{p_owner:owner,p_login_key:loginKey,p_attempt:attempt});
     if (!claim.ok) {
       const reason = await claim.text();
+      if(action==='sync'&&reason.includes('PRIOR_CONNECTION_LIMIT')&&cached&&Array.isArray(cached.cards)&&cached.cards.every(card=>object(card).from===input!.from&&object(card).to===input!.to)) {
+        return JSON.stringify({...cached,connection:publicStatus(stored),...(enhanced?{syncState:'updating'}:{})});
+      }
       throw new PreviewError(reason.includes('PRIOR_CONNECTION_LIMIT') ? 'COOLDOWN' : 'CONNECTION_FAILED','Подключение уже обновляется или временно недоступно.');
     }
     claimed = true;
@@ -62,7 +69,7 @@ export async function rememberedPrior(req: Request, raw: Record<string, unknown>
     const status = await state(action === 'connect' ? 'save' : 'touch',{
       revision: stored.revision,preview: result,...(action === 'connect' ? {session,loginKey} : {}),
     });
-    return JSON.stringify({...result,connection:publicStatus(status)});
+    return JSON.stringify({...result,connection:publicStatus(status),...(enhanced?{syncState:'fresh'}:{})});
   } catch (error) {
     if (action === 'sync' && error instanceof PreviewError && ['SESSION_EXPIRED','ACCESS_DENIED','LOGIN_REJECTED'].includes(error.code)) {
       await state('expire',{revision:stored.revision});

@@ -58,7 +58,7 @@ test('release failure leaves the expiring lease and never discards valid data or
   assert.throws(()=>connectionResult({...fixture(),cards:Array(21).fill(fixture().cards[0])}));
 });
 
-function rememberedHarness({connected=true,readError,cache=false}={}) {
+function rememberedHarness({connected=true,readError,cache=false,cacheFresh=cache,limited=false}={}) {
   let opens=0,reads=0; const calls=[];
   const session={token:'PRIVATE_TOKEN',client:'PRIVATE_CLIENT',userSession:'PRIVATE_SESSION'};
   const connection={connected,reauthRequired:false,lastSyncedAt:null,selectedSourceKey:null,accountId:null};
@@ -66,11 +66,12 @@ function rememberedHarness({connected=true,readError,cache=false}={}) {
     if(url.endsWith('/auth/v1/user'))return response({id:uid});
     const body=JSON.parse(options.body);calls.push({url,body});
     if(url.endsWith('/prior_connection_state')) {
-      if(body.p_action==='load')return response({...connection,revision:'revision',loginKey:'a'.repeat(64),session,cacheFresh:cache,preview:cache?JSON.parse(connectionResult({...fixture(),...recentPriorRange(),cards:fixture().cards})):null});
+      if(body.p_action==='load')return response({...connection,revision:'revision',loginKey:'a'.repeat(64),session,cacheFresh,preview:cache?JSON.parse(connectionResult({...fixture(),...recentPriorRange(),cards:fixture().cards})):null});
       if(body.p_action==='expire'||body.p_action==='disconnect')connection.connected=false;
       if(body.p_action==='save')connection.connected=true;
       return response({...connection,revision:'private-generation'});
     }
+    if(limited&&url.endsWith('/claim_prior_connection'))return new Response('PRIOR_CONNECTION_LIMIT',{status:400});
     return response(null);
   };
   const handler=createPriorConnectHandler(config,{fetcher,
@@ -98,6 +99,21 @@ test('remembered sync uses no password or login calls; recent range is ten compl
 test('fresh cached financial data avoids bank requests and rate-limit claims on immediate reopen',async()=>{
   const h=rememberedHarness({cache:true}),r=await h.handler(req({action:'sync'}));assert.equal(r.status,200);
   assert.equal(h.reads,0);assert.equal(h.opens,0);assert.equal(h.calls.length,1);
+});
+test('opening cached history never claims a lease or reads the bank, even with stale data and a busy worker',async()=>{
+  const h=rememberedHarness({cache:true,cacheFresh:false,limited:true});
+  for(let i=0;i<2;i++){const r=await h.handler(req({action:'view'}));assert.equal(r.status,200);const data=await r.json();assert.equal(data.syncState,'saved');assert.equal(data.cards.length,1);assert.doesNotMatch(JSON.stringify(data),/PRIVATE_|session|loginKey|revision/);}
+  assert.equal(h.reads,0);assert.equal(h.opens,0);assert.equal(h.calls.length,2);
+});
+test('manual refresh during a scheduled lease returns saved data and an updating status instead of a failed-login alert',async()=>{
+  const h=rememberedHarness({cache:true,cacheFresh:false,limited:true});const r=await h.handler(req({action:'refresh'}));
+  assert.equal(r.status,200);assert.equal((await r.json()).syncState,'updating');assert.equal(h.reads,0);assert.equal(h.opens,0);
+  const mismatch=await h.handler(req({action:'sync',from:'2026-10-01',to:'2026-10-02'}));assert.equal((await mismatch.json()).code,'COOLDOWN');
+  const disconnected=rememberedHarness({connected:false,cache:true});const view=await disconnected.handler(req({action:'view'}));
+  const data=await view.json();assert.deepEqual(data.cards,[]);assert.equal(data.connection.connected,false);
+  const legacy=rememberedHarness({cache:true,cacheFresh:false,limited:true});
+  const old=await (await legacy.handler(req({action:'sync'}))).json();
+  assert.deepEqual(Object.keys(old).sort(),['cards','connection','externalCards','format','version']);
 });
 test('session expiry clears access once, transient failure retains it, neither relogs or retries',async()=>{
   const expired=rememberedHarness({readError:new PreviewError('SESSION_EXPIRED','Expired')});

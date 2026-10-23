@@ -1,5 +1,12 @@
 # TASKS.md
 
+## Current Priorbank sync reliability · 2026-10-24
+
+- Fixed the real worker failure: successful void PostgREST RPCs may return empty 204/200, which the JSON-only reader treated as a network error before recording its lease. Empty-success handling and representative regressions now cover claim/release; safe stage/issue diagnostics contain no upstream payloads. Existing opted-in native scheduler has successfully imported new history. Only the scoped owner's temporary network backoff was rearmed; financial records were not manually repaired.
+- Bank opening now reads saved history without querying the bank. Explicit refresh preserves history during a worker lease/cooldown, retaining selected rows/categories for unchanged snapshots. Idle cache peeks every 30 seconds pause during review/file/card choices. Older installed clients keep the original sync/connect response envelope. Disconnect, session expiry and household boundaries retain existing checks.
+- Correct ISO bank dates; separate importable/unknown counts; clock and compact status for unverified rows, neutral missing amount, original wire sign and conservative same-account/day/amount journal warning. Additional rows remain non-importable and no longer disappear when the worker caches completed days. Auto mode explains that saved entries appear in the Home journal.
+- Passing: 71 app checks, 31 bank/server checks, seven SQL scenarios / 330 assertions, strict TypeScript/Vite/PWA build and diff. Actual components on synthetic API at 320/390 px: 20-second reopen, no bank call on opening, no false login alert, draft retained during concurrent refresh, valid dates/counts, unknown signs/status, old login/card/import/expiry/disconnect paths and automation/account-switch guard. Backend prior-connect v3 and prior-auto-sync v3 ACTIVE. Frontend publication/production asset check pending; details/file inventory: docs/prior-sync-reliability.md.
+
 ## Current automatic Priorbank accounting · 2026-10-23
 
 - Implemented one-time owner opt-in, automatic income/expense history entries including today, exact source amounts, shared immutable occurrence receipts, append-only day updates and atomic pause on changed/removed history. Explicit own transfers/manual collisions stay in a review list; unverified additional lists never affect balances. One BYN card/account; no new runtime dependencies.

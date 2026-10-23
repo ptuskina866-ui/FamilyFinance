@@ -49,7 +49,7 @@ export function parsePriorImportFile(raw: string, today = planningDateISO()): Pr
 export function priorBlockedReason(snapshot: PriorImportSnapshot, row: PriorImportRecord, today = planningDateISO()): string | null {
   const day = row.date.slice(0, 10);
   if (snapshot.card.currency !== 'BYN') return 'Счета FinApp пока поддерживают только BYN';
-  if (row.source !== 'history') return 'Дополнительный список банка: статус не определён';
+  if (row.source !== 'history') return 'Статус этой записи не подтверждён. В баланс FinApp она не включена.';
   if (day < snapshot.from || day > snapshot.to) return 'Вне выбранного периода';
   if (day >= today) return 'Сегодняшняя история ещё может меняться';
   if (day >= planningDateISO(new Date(snapshot.fetchedAt))) return 'День получения истории ещё не был завершён — получите новые данные';
@@ -61,6 +61,11 @@ export function priorBlockedReason(snapshot: PriorImportSnapshot, row: PriorImpo
 export function priorPossibleDuplicates(snapshot: PriorImportSnapshot, transactions: Transaction[], accountId: string): Set<number> {
   const groups = new Map<string, number[]>(), result = new Set<number>();
   snapshot.card.records.forEach((row, index) => {
+    if(row.source==='additional'&&row.accountAmount===null){
+      // Wire signs in this unverified list do not establish income/expense direction.
+      if(row.operationCurrency===snapshot.card.currency&&transactions.some(tx=>tx.accountId===accountId&&(!tx.kind||tx.kind==='cashflow')&&tx.date===row.date.slice(0,10)&&toMinorUnits(tx.amount)===Math.abs(toMinorUnits(row.operationAmount))))result.add(index);
+      return;
+    }
     if (row.source !== 'history' || row.accountAmount === null) return;
     const signed = toMinorUnits(row.accountAmount), key = `${row.date.slice(0, 10)}:${signed}`;
     const indexes = groups.get(key) || []; indexes.push(index); groups.set(key, indexes);
@@ -69,6 +74,12 @@ export function priorPossibleDuplicates(snapshot: PriorImportSnapshot, transacti
   });
   for (const indexes of groups.values()) if (indexes.length > 1) indexes.forEach(index => result.add(index));
   return result;
+}
+
+/** The bank's calendar day stays authoritative even when its field also contains a time/offset. */
+export function priorDateLabel(value:string):string {
+  try {const day=date(value.slice(0,10));return new Date(day+'T12:00:00Z').toLocaleDateString('ru-RU',{day:'numeric',month:'short',year:'numeric',timeZone:'Europe/Minsk'});}
+  catch{return 'Дата не указана';}
 }
 
 export function priorImportError(message: string): string {
