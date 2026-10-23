@@ -5,6 +5,7 @@ import { OverviewCards } from '../components/OverviewCards';
 import { DynamicIcon } from '../components/CategoryGrid';
 import { BankSyncModal } from '../components/BankSyncModal';
 import { TransactionEditor } from '../components/TransactionEditor';
+import { PriorAutomation } from '../components/PriorAutomation';
 import { calculateSafeDaily, isCashflow } from '../lib/finance';
 import { categoryTone } from '../lib/categories';
 import { localDateISO } from '../lib/money';
@@ -121,6 +122,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
       <div className="screen-body flex flex-col gap-5">
         <OverviewCards hideAmounts={hideBalance} daily={safeDaily} goal={carGoal} onBank={onOpenStatement||(()=>setBankSyncOpen(true))} onPlans={()=>onNavigateTab?.('plans')} onReview={ids=>{setInsightTransactionIds(ids);setSearch('');setFilterType('all');setAccountFilter('');scrollToJournal();}}/>
 
+        <PriorAutomation compact onOpenBank={onOpenStatement||(()=>setBankSyncOpen(true))}/>
         {/* ── Latest Transactions Section ── */}
         <section ref={journalRef} className="journal flex flex-col gap-3 pt-1" aria-labelledby="journal-heading">
           <div className="section-heading"><h2 id="journal-heading" className="section-title">Операции</h2><span className="text-[11px] text-slate-500">История денег</span></div>
@@ -182,7 +184,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
                               {hideBalance ? '••••' : `${cashflow ? (isIncome ? '+' : '−') : '↔ '}${fmt(tx.amount)}`}
                             </span>
                             </div>
-                            <div className="transaction-meta"><span className="text-[11px] text-slate-500 min-w-0">{label}{member ? ` · ${member.name}` : ''}</span><div className="transaction-tools">
+                            <div className="transaction-meta"><span className="text-[11px] text-slate-500 min-w-0">{label}{member ? ` · ${member.name}` : ''}{tx.importOrigin==='prior-auto'?' · Из банка автоматически':''}</span><div className="transaction-tools">
                             {cashflow && accountsReady && <button type="button" aria-label="Редактировать операцию" onClick={() => setEditing(tx)}><Pencil className="w-3.5 h-3.5" /></button>}
                             <button
                               type="button"

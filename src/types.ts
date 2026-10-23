@@ -32,6 +32,12 @@ export interface PriorImportResult { imported: number; skipped: number; }
 export interface PriorConnectionInput { login: string; password: string; from: string; to: string; }
 export interface PriorBankConnectionStatus { connected: boolean; reauthRequired: boolean; lastSyncedAt: string | null; selectedSourceKey: string | null; accountId: string | null; }
 export interface PriorConnectionResult { cards: PriorImportSnapshot[]; externalCards: number; connection?: PriorBankConnectionStatus; }
+export interface PriorAutomationState {
+  owner_id: string; household_id: string; account_id: string; source_key: string; enabled: boolean;
+  started_on: string; last_checked_at: string | null; issue: 'network' | 'bank_limit' | 'reauth' | 'history_changed' | 'gap' | 'account' | 'format' | null;
+  imported_count: number; additional_count: number;
+}
+export interface PriorAutomationReview { event_key: string; day: string; description: string; amount: number | string; reason: 'similar' | 'transfer'; }
 
 export interface Account {
   id: string;
@@ -111,6 +117,7 @@ export interface Transaction {
   goalId?: string | null;
   recurringId?: string | null;
   incomeDistributionId?: string | null;
+  importOrigin?: 'prior-auto' | null;
 }
 
 export interface RecurringExpenseInsight {

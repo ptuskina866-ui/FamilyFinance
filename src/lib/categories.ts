@@ -1,4 +1,4 @@
-import type { Category, ExpenseCategoryGroup, TransactionType } from '../types';
+import type { Category, ExpenseCategoryGroup, TransactionType } from '../types.ts';
 
 type Tone = ExpenseCategoryGroup | 'income';
 const tones: Record<Tone, Pick<Category, 'color' | 'bgColor' | 'borderColor' | 'accentColor'>> = {
