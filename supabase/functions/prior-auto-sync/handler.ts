@@ -18,7 +18,9 @@ export function createPriorAutoHandler(config: Config, deps: Dependencies = {}) 
       const response=await fetcher(config.url+'/rest/v1/rpc/'+name,{method:'POST',redirect:'error',signal:AbortSignal.timeout(18_000),
         headers:{apikey:config.serviceKey,Authorization:'Bearer '+config.serviceKey,'Content-Type':'application/json'},body:JSON.stringify(body)});
       if(!response.ok) throw new Error(name==='claim_prior_connection'&&(await response.text()).includes('PRIOR_CONNECTION_LIMIT')?'LEASE_BUSY':'RPC_FAILED');
-      return await response.json() as unknown;
+      // PostgREST returns an empty body (including 204) for void lease RPCs.
+      const bodyText=await response.text();
+      return bodyText.trim()?JSON.parse(bodyText) as unknown:null;
     };
     try {
       if(!req.body) return reply(401,{error:'TICKET'});
@@ -31,15 +33,15 @@ export function createPriorAutoHandler(config: Config, deps: Dependencies = {}) 
       if(!Array.isArray(jobs))return reply(401,{error:'TICKET'});
       let imported=0;
       await Promise.all(jobs.map(async value=>{
-        const job=object(value),owner=job.owner_id,attempt=randomUUID();let claimed=false,connection:Record<string,unknown>|null=null;
+        const job=object(value),owner=job.owner_id,attempt=randomUUID();let claimed=false,connection:Record<string,unknown>|null=null,stage='connection';
         const state=(action:string,data:Record<string,unknown>={})=>rpc('prior_connection_state',{p_owner:owner,p_action:action,p_data:data});
         const complete=(extra:Record<string,unknown>)=>rpc('complete_prior_auto_job',{p_owner:owner,p_revision:job.revision,p_connection_revision:connection?.revision,...extra});
         try {
           connection=object(await state('load'));
           if(connection.connected!==true)return;
-          await rpc('claim_prior_connection',{p_owner:owner,p_login_key:connection.loginKey,p_attempt:attempt});claimed=true;
+          stage='lease';await rpc('claim_prior_connection',{p_owner:owner,p_login_key:connection.loginKey,p_attempt:attempt});claimed=true;
           const to=minskToday(),start=new Date(to+'T00:00:00Z');start.setUTCDate(start.getUTCDate()-30);
-          const preview=await(deps.readSession??readPriorSession)(validatePriorSession(connection.session),{from:start.toISOString().slice(0,10),to},AbortSignal.timeout(90_000));
+          stage='bank';const preview=await(deps.readSession??readPriorSession)(validatePriorSession(connection.session),{from:start.toISOString().slice(0,10),to},AbortSignal.timeout(90_000));
           const result=object(JSON.parse(connectionResult(preview)) as unknown);
           if(!Array.isArray(result.cards))throw new Error('FORMAT');
           const snapshot=result.cards.map(object).find(card=>object(card.card).sourceKey===job.source_key);
@@ -54,9 +56,10 @@ export function createPriorAutoHandler(config: Config, deps: Dependencies = {}) 
           const range=recentPriorRange();
           const manualPreview={...result,cards:result.cards.map(value=>{
             const item=object(value),itemCard=object(item.card);
-            return {...item,...range,card:{...itemCard,records:(itemCard.records as Record<string,unknown>[]).filter(row=>String(row.date).slice(0,10)>=range.from&&String(row.date).slice(0,10)<=range.to)}};
+            return {...item,...range,card:{...itemCard,records:(itemCard.records as Record<string,unknown>[]).filter(row=>row.source==='additional'||(String(row.date).slice(0,10)>=range.from&&String(row.date).slice(0,10)<=range.to))}};
           })};
-          await state('touch',{revision:connection.revision,preview:manualPreview});
+          stage='cache';await state('touch',{revision:connection.revision,preview:manualPreview});
+          stage='import';
           const saved=await complete({p_snapshot:snapshot,p_categories:categories});
           if(saved&&typeof saved==='object'&&'imported' in saved)imported+=Number(saved.imported)||0;
         } catch(error) {
@@ -65,6 +68,7 @@ export function createPriorAutoHandler(config: Config, deps: Dependencies = {}) 
             const code=error instanceof PreviewError?error.code:'';
             const expired=['SESSION_EXPIRED','ACCESS_DENIED','LOGIN_REJECTED','BANK_BLOCKED'].includes(code);
             const issue=expired?'reauth':code==='BANK_LIMIT'?'bank_limit':['FORMAT_CHANGED','AMOUNT_INVALID','TOO_MANY_ROWS','RESPONSE_TOO_LARGE'].includes(code)?'format':'network';
+            console.warn('prior_auto_failed',stage,issue); // Enum-only diagnostics; never the upstream error or payload.
             try {await complete({p_issue:issue});if(expired)await state('expire',{revision:connection.revision});}catch{/* No secrets or financial data in logs/responses. */}
           }
         } finally {

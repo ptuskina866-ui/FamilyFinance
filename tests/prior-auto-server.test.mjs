@@ -6,13 +6,13 @@ import {createHash} from 'node:crypto';
 const source=createHash('sha256').update(JSON.stringify(['prior-card-v1','BANK_ID','BYN'])).digest('hex');
 const response=body=>new Response(JSON.stringify(body),{headers:{'Content-Type':'application/json'}});
 const request=ticket=>new Request('https://project.example/auto',{method:'POST',body:JSON.stringify({ticket})});
-function harness({invalid=false,expired=false}={}){
+function harness({invalid=false,expired=false,voidStatus=204}={}){
   const calls=[];let bankCalls=0,used=false;
   const handler=createPriorAutoHandler({url:'https://project.example',serviceKey:'PRIVATE_KEY'},{
     fetcher:async(url,options)=>{const body=JSON.parse(options.body);calls.push({url,body});
       if(url.endsWith('/claim_prior_auto_job')){if(invalid||used)return response(null);used=true;return response([{owner_id:'OWNER',revision:'REVISION',source_key:source}]);}
       if(url.endsWith('/prior_connection_state'))return response({connected:true,revision:'CONNECTION',loginKey:'PRIVATE_LOGIN',session:{token:'PRIVATE_TOKEN',client:'PRIVATE_CLIENT',userSession:'PRIVATE_SESSION'}});
-      if(url.endsWith('/claim_prior_connection')||url.endsWith('/release_prior_connection'))return response(null);
+      if(url.endsWith('/claim_prior_connection')||url.endsWith('/release_prior_connection'))return new Response(null,{status:voidStatus});
       if(url.endsWith('/complete_prior_auto_job'))return response({imported:2});
       throw Error('Unexpected call');
     },readSession:async(session,range)=>{bankCalls++;assert.equal(session.token,'PRIVATE_TOKEN');if(expired)throw new PreviewError('SESSION_EXPIRED','PRIVATE_ERROR');
@@ -39,4 +39,10 @@ test('session expiration pauses jobs without a login attempt or ledger write',as
   assert.equal(saved.p_issue,'reauth');assert.equal(saved.p_snapshot,undefined);
   assert.ok(h.calls.some(c=>c.body.p_action==='expire'));
   assert.ok(h.calls.some(c=>c.url.endsWith('/release_prior_connection')));
+});
+test('empty 200 lease responses also permit bank reads, commit and lease release',async()=>{
+  const h=harness({voidStatus:200}),r=await h.handler(request('c'.repeat(64)));
+  assert.deepEqual(await r.json(),{checked:1,imported:2});assert.equal(h.bankCalls,1);
+  assert.ok(h.calls.some(c=>c.url.endsWith('/release_prior_connection')));
+  assert.ok(!h.calls.some(c=>c.body.p_issue==='network'));
 });

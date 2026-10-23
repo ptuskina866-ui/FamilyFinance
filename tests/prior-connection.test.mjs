@@ -77,10 +77,12 @@ test('missing helper, expired login and closed window end the exchange and rejec
 test('server result strictly preserves original money and rejects extra secret fields',()=>{
   const result={format:'finapp-prior-connection',version:1,cards:[packet()],externalCards:0};
   assert.deepEqual(parsePriorConnection(result),{cards:[packet()],externalCards:0});
+  for(const syncState of ['saved','fresh','updating'])assert.equal(parsePriorConnection({...result,syncState}).syncState,syncState);
+  for(const syncState of [null,[],['saved'],{},true,'unknown'])assert.throws(()=>parsePriorConnection({...result,syncState}));
   for(const change of [v=>{v.session='secret';},v=>{v.cards[0].card.password='secret';},v=>{v.cards[0].card.records[0].accountAmount='1.001';},v=>{v.version=2;},v=>{v.externalCards=-1;},v=>{v.cards=Array(21).fill(packet());}]){
     const copy=structuredClone(result);change(copy);assert.throws(()=>parsePriorConnection(copy));
   }
-  assert.match(priorConnectionError('COOLDOWN'),/две минуты/);
+  assert.match(priorConnectionError('COOLDOWN'),/Сохранённая история/);
   assert.match(priorConnectionError('ADDITIONAL_CONFIRMATION'),/подтверждение/);
   assert.doesNotMatch(priorConnectionError('PRIVATE_SECRET'),/PRIVATE_SECRET/);
   assert.match(priorConnectionError(undefined,401),/Войдите/);

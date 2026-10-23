@@ -2,19 +2,21 @@ import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, Landmark, LockKeyhole, RefreshCw, ShieldCheck, X } from 'lucide-react';
 import type { PriorBankConnectionStatus, PriorConnectionResult, PriorImportSnapshot } from '../types';
 import { planningDateISO } from '../lib/planning';
-import { connectPriorBank, syncPriorBank, priorBankStatus, PriorBankError } from '../services/priorBankService';
+import { connectPriorBank, syncPriorBank, viewPriorBank, priorBankStatus, PriorBankError } from '../services/priorBankService';
 
-interface Props { disabled: boolean; onStart: () => void; onBusy: (busy: boolean) => void; onConnected: (snapshot: PriorImportSnapshot, accountId?: string) => void; }
-export function PriorBankConnection({disabled, onStart, onBusy, onConnected}: Props) {
+interface Props { disabled: boolean; pausePreview?:boolean; onStart: () => void; onBusy: (busy: boolean) => void; onConnected: (snapshot: PriorImportSnapshot, accountId?: string) => void; }
+export function PriorBankConnection({disabled,pausePreview, onStart, onBusy, onConnected}: Props) {
   const [open, setOpen] = useState(false), [loading, setLoading] = useState(false), [consent, setConsent] = useState(false);
   const [error, setError] = useState(''), [message, setMessage] = useState('Проверяем подключение…');
+  const [notice,setNotice]=useState('');
   const [connection, setConnection] = useState<PriorBankConnectionStatus | null>(null), [disconnecting, setDisconnecting] = useState(false);
   const [cards, setCards] = useState<PriorImportSnapshot[]>([]), [cardIndex, setCardIndex] = useState('');
   const login = useRef<HTMLInputElement>(null), password = useRef<HTMLInputElement>(null);
   const cardPicker = useRef<HTMLDetailsElement>(null);
   const controller = useRef<AbortController | null>(null), version = useRef(0);
+  const acceptedStamp=useRef('');
   // Parent updates must not restart the opening request.
-  const callbacks = useRef({onStart, onBusy, onConnected}); callbacks.current = {onStart, onBusy, onConnected};
+  const callbacks = useRef({onStart, onBusy, onConnected,disabled,pausePreview}); callbacks.current = {onStart, onBusy, onConnected,disabled,pausePreview};
   const today = planningDateISO(), end = new Date(today + 'T00:00:00Z'); end.setUTCDate(end.getUTCDate() - 1);
   const defaultTo = end.toISOString().slice(0,10); end.setUTCDate(end.getUTCDate() - 9);
   const [from, setFrom] = useState(end.toISOString().slice(0,10)), [to, setTo] = useState(defaultTo), [custom, setCustom] = useState(false);
@@ -24,13 +26,19 @@ export function PriorBankConnection({disabled, onStart, onBusy, onConnected}: Pr
     const index = preferred >= 0 ? preferred : value.cards.length === 1 ? 0 : -1;
     setCardIndex(index < 0 ? '' : String(index));
     setMessage(value.cards.length ? 'История получена. Выберите операции для добавления.' : 'Банк не вернул доступных карт.');
-    if (index >= 0) callbacks.current.onConnected(value.cards[index], preferred >= 0 ? state?.accountId ?? undefined : undefined);
+    setNotice(value.syncState==='updating'?'Банк уже обновляется. Показываем последнюю сохранённую историю.':value.syncState==='saved'?'Показываем сохранённую историю. Проверка банка выполняется отдельно; повторный вход не нужен.':'');
+    if(index>=0){
+      const card=value.cards[index],stamp=JSON.stringify([card.card.sourceKey,card.fetchedAt,card.from,card.to,state?.accountId]);
+      if(stamp!==acceptedStamp.current){acceptedStamp.current=stamp;callbacks.current.onConnected(card,preferred>=0?state?.accountId??undefined:undefined);}
+    }
   };
-  const run = async (action: 'open' | 'connect' | 'sync' | 'select' | 'disconnect') => {
-    if (controller.current || disabled) return;
+  const run = async (action: 'open' | 'peek' | 'connect' | 'sync' | 'select' | 'disconnect') => {
+    if (controller.current || callbacks.current.disabled) return;
+    const quiet=action==='peek';
+    if(quiet&&(callbacks.current.pausePreview||cardPicker.current?.open))return;
     const request = new AbortController(), current = ++version.current; controller.current = request;
-    setLoading(true); setError(''); callbacks.current.onBusy(true);
-    if (action !== 'select') {callbacks.current.onStart(); setCards([]);}
+    if(!quiet){setLoading(true); setError('');setNotice(''); callbacks.current.onBusy(true);}
+    if (['open','connect','disconnect'].includes(action)) {acceptedStamp.current='';callbacks.current.onStart(); setCards([]);}
     const input = action === 'connect' ? {login: login.current?.value ?? '',password: password.current?.value ?? '',from,to} : null;
     if (password.current) password.current.value = '';
     try {
@@ -42,13 +50,22 @@ export function PriorBankConnection({disabled, onStart, onBusy, onConnected}: Pr
         const card = cards[Number(cardIndex)]; if (!card) return;
         const state = await priorBankStatus('select',request.signal,card.card.sourceKey);
         if (version.current !== current) return;
-        setConnection(state); cardPicker.current?.removeAttribute('open'); callbacks.current.onStart(); callbacks.current.onConnected(card,state.accountId ?? undefined);
+        setConnection(state);acceptedStamp.current=JSON.stringify([card.card.sourceKey,card.fetchedAt,card.from,card.to,state.accountId]); cardPicker.current?.removeAttribute('open'); callbacks.current.onStart(); callbacks.current.onConnected(card,state.accountId ?? undefined);
       } else {
-        if (action === 'open') {
-          const state = await priorBankStatus('status',request.signal);
+        if (action === 'open'||action==='peek') {
+          const value=await viewPriorBank(request.signal),state=value.connection;
           if (version.current !== current) return;
-          setConnection(state);
-          if (!state.connected) {setMessage(state.reauthRequired ? 'Банк завершил сессию. Войдите заново.' : 'Подключите банк один раз, затем история будет открываться автоматически.'); return;}
+          if(quiet&&(callbacks.current.disabled||callbacks.current.pausePreview||cardPicker.current?.open))return;
+          setConnection(state??null);
+          if (!state?.connected) {
+            if(quiet){acceptedStamp.current='';setCards([]);callbacks.current.onStart();}
+            setNotice('');setMessage(state?.reauthRequired ? 'Банк завершил сессию. Войдите заново.' : 'Подключите банк один раз, затем история будет открываться автоматически.');return;
+          }
+          if(quiet){
+            const index=value.cards.findIndex(card=>card.card.sourceKey===state.selectedSourceKey),card=value.cards[index>=0?index:0];
+            if(card&&JSON.stringify([card.card.sourceKey,card.fetchedAt,card.from,card.to,state.accountId])===acceptedStamp.current)return;
+          }
+          accept(value);return;
         }
         setMessage('Получаем историю банка…');
         const value = input ? await connectPriorBank(input,request.signal) : await syncPriorBank(request.signal, action === 'sync' && custom ? {from,to} : undefined);
@@ -56,18 +73,26 @@ export function PriorBankConnection({disabled, onStart, onBusy, onConnected}: Pr
       }
     } catch (e) {
       if (version.current === current) {
-        setMessage(''); setError(e instanceof Error ? e.message : 'Подключение не завершено.');
-        if (e instanceof PriorBankError && e.code === 'SESSION_EXPIRED') {setConnection(null); setOpen(true);}
+        if(quiet)return;
+        setMessage('');
+        if(e instanceof PriorBankError&&e.code==='COOLDOWN'){setNotice('Банк уже обновляется. История и выбранные операции сохранены.');setError('');}
+        else setError(e instanceof Error ? e.message : 'Подключение не завершено.');
+        if (e instanceof PriorBankError && e.code === 'SESSION_EXPIRED') {acceptedStamp.current='';callbacks.current.onStart();setCards([]);setConnection(null); setOpen(true);}
       }
     } finally {
       if (input) {input.password = ''; input.login = '';}
-      if (version.current === current) {controller.current = null; setLoading(false); callbacks.current.onBusy(false);}
+      if (version.current === current) {controller.current = null;if(!quiet){setLoading(false);callbacks.current.onBusy(false);}}
     }
   };
   useEffect(() => {
     void run('open');
     return () => {++version.current; controller.current?.abort(); controller.current = null; if (password.current) password.current.value = '';};
   }, []);
+  useEffect(()=>{
+    if(!connection?.connected||custom||open)return;
+    const timer=window.setInterval(()=>{if(document.visibilityState==='visible')void run('peek');},30_000);
+    return()=>window.clearInterval(timer);
+  },[connection?.connected,custom,open]);
   useEffect(() => {
     // An unknown card needs a choice; selecting an option must leave its confirm action visible.
     if (cards.length > 1 && cardIndex === '') cardPicker.current?.setAttribute('open', '');
@@ -81,7 +106,7 @@ export function PriorBankConnection({disabled, onStart, onBusy, onConnected}: Pr
     {!open && !connection?.connected && <div className="bank-hero"><span className="bank-mark"><Landmark size={29} strokeWidth={1.4}/></span><h2>Меньше ввода.<br/>Больше ясности.</h2><p className="bank-copy">Операции из банка — в вашем журнале.<br/>Вы выбираете, что добавить.</p></div>}
     <div className={`flex items-center gap-3 ${!open && !connection?.connected?'bank-choice':''}`}>
       <span className="bank-mark"><Landmark size={23} strokeWidth={1.6}/></span>
-      <div className="flex-1 min-w-0"><h2 className="section-title">Приорбанк</h2><p className="text-xs text-slate-500 mt-1">{connection?.connected ? (custom?'Подключён · выбранный период':'Подключён · 10 дней') : 'Вход через Prior Online'}</p></div>
+      <div className="flex-1 min-w-0"><h2 className="section-title">Приорбанк</h2><p className="text-xs text-slate-500 mt-1">{connection?.connected ? (custom?'Подключён · выбранный период':'Подключён') : 'Вход через Prior Online'}</p></div>
       {connection?.connected && <button type="button" className="icon-button" aria-label="Обновить операции" disabled={disabledControls} onClick={()=>void run('sync')}><RefreshCw size={18} className={loading?'animate-spin':''}/></button>}
       {open && !connection?.connected && <button type="button" disabled={loading} onClick={cancelLogin} className="icon-button" aria-label="Закрыть вход в банк"><X size={18}/></button>}
     </div>
@@ -90,6 +115,7 @@ export function PriorBankConnection({disabled, onStart, onBusy, onConnected}: Pr
       <p className="bank-caption flex items-center justify-center gap-1.5"><LockKeyhole size={12}/>Пароль не сохраняется</p>
     </>}
     {error && <p role="alert" className="bank-notice text-rose-700">{error}</p>}
+    {notice&&<p role="status" className="bank-caption">{notice}</p>}
     {open && <form onSubmit={event => {event.preventDefault(); if (consent) void run('connect');}} className="space-y-4" autoComplete="off">
       <p className="bank-login-intro">Войдите один раз.<br/><span className="text-slate-500">Дальше — пока действует сессия банка.</span></p>
       <label className="block text-xs font-semibold">Логин Prior Online<input ref={login} name="prior-login" autoComplete="off" autoCapitalize="none" spellCheck={false} maxLength={128} required disabled={disabledControls} className={control}/></label>
@@ -114,7 +140,7 @@ export function PriorBankConnection({disabled, onStart, onBusy, onConnected}: Pr
       </div>
     </details>}
     {loading && <p role="status" className="bank-caption">{message || 'Обновляем подключение…'}</p>}
-    {loading && <button type="button" onClick={() => {++version.current; controller.current?.abort(); controller.current = null; setLoading(false); callbacks.current.onBusy(false); setMessage('Ожидание отменено. Откройте раздел заново, чтобы проверить состояние подключения.');}} className="text-action w-full">Отменить ожидание</button>}
+    {loading && <button type="button" onClick={() => {++version.current; controller.current?.abort(); controller.current = null; setLoading(false); callbacks.current.onBusy(false); setNotice('Ожидание отменено.');setMessage('');}} className="text-action w-full">Отменить ожидание</button>}
     {!loading && message && !cards.length && (connection?.connected || error || message.startsWith('Подключение удалено') || message.startsWith('Ожидание отменено') || connection?.reauthRequired) && <p role="status" className="bank-caption">{message}</p>}
     {!connection?.selectedSourceKey && cardSelection}
   </div>;
