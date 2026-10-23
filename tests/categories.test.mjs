@@ -11,7 +11,12 @@ const {categoryGroup,isIncomeCategory,matchesCategoryQuery,additionalCategorySug
 const {budgetProgress}=require(join(root,'lib/planning.js'));
 const source=readFileSync(new URL('../src/services/alfaBankService.ts',import.meta.url),'utf8'),exports={};
 vm.runInNewContext(ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.CommonJS}}).outputText,{exports,require:name=>{
-  if(name==='../lib/categories'||name==='../lib/bankConnection')return require(join(root,name.replace('../','')+'.js'));
+  if(name==='../lib/bankCategory') {
+      const categoryExports={};
+      vm.runInNewContext(ts.transpileModule(readFileSync(new URL('../src/lib/bankCategory.ts',import.meta.url),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.CommonJS}}).outputText,{exports:categoryExports,require:()=>require(join(process.env.FINAPP_TEST_OUTPUT,'lib/categories.js'))});
+      return categoryExports;
+    }
+    if(name==='../lib/categories'||name==='../lib/bankConnection')return require(join(root,name.replace('../','')+'.js'));
   if(name.endsWith('?url'))return '/pdf-worker';throw Error('Unexpected bank dependency '+name);
 }});
 const bank=exports.AlfaBankService;

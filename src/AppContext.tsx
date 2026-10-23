@@ -52,6 +52,7 @@ interface TransactionRow {
   category_id: string; comment: string | null; added_by: string | null; date: string;
   kind?: Transaction['kind']; account_id?: string | null; target_account_id?: string | null;
   goal_id?: string | null; recurring_id?: string | null; income_distribution_id?: string | null;
+  import_origin?: Transaction['importOrigin'];
 }
 type BudgetRow = Omit<CategoryBudget, 'allocated_amount'> & { allocated_amount: number | string };
 type DistributionRow = Omit<IncomeDistribution, 'total_amount' | 'items'> & { total_amount: number | string; items: (Omit<IncomeAllocation,'amount'> & {amount:number | string})[] };
@@ -135,7 +136,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const rows = txResult.data as unknown as TransactionRow[];
       setTransactions(rows.map(t => ({ id: t.id, type: t.type, amount: money(t.amount), categoryId: t.category_id,
         comment: t.comment || '', addedBy: t.added_by || '', date: t.date, kind: t.kind || 'cashflow',
-        accountId: t.account_id, targetAccountId: t.target_account_id, goalId: t.goal_id, recurringId: t.recurring_id, incomeDistributionId: t.income_distribution_id })));
+        accountId: t.account_id, targetAccountId: t.target_account_id, goalId: t.goal_id, recurringId: t.recurring_id, incomeDistributionId: t.income_distribution_id, importOrigin: t.import_origin })));
       setMembers(memberResult.data as FamilyMember[]);
       setAccounts((accountResult.data || []).map(a => ({ ...a, opening_balance: money(a.opening_balance) })) as Account[]);
       setSavingsGoals((goalResult.data || []).map(g => ({ ...g, target_amount: money(g.target_amount), current_amount: money(g.current_amount ?? 0), essential_amount:g.essential_amount == null ? null : money(g.essential_amount) })) as SavingsGoal[]);
@@ -162,12 +163,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `household_id=eq.${householdId}` }, () => { void refresh(); });
     }
     channel.subscribe();
+    const onReturn = () => { if(document.visibilityState==='visible') void refresh(); };
+    document.addEventListener('visibilitychange',onReturn);
+    window.addEventListener('online',onReturn);
     let loadedDay = planningDateISO();
     const clock = window.setInterval(() => {
       const day = planningDateISO();
       if (day !== loadedDay) {loadedDay = day; void refresh();}
     },60_000);
-    return () => { window.clearInterval(clock); ++loadVersion.current; void supabase.removeChannel(channel); };
+    return () => { window.clearInterval(clock); document.removeEventListener('visibilitychange',onReturn); window.removeEventListener('online',onReturn); ++loadVersion.current; void supabase.removeChannel(channel); };
   }, [householdId, refresh]);
   const accountsReady = accounts.length > 0;
   const requireHousehold = () => {

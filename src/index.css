@@ -185,3 +185,16 @@
 @media (hover:none) and (pointer:coarse) { .app-shell input:not([type=checkbox]):not([type=radio]):not([inputmode=decimal]),.app-shell select,.app-shell textarea { font-size:16px; } }
 @media (min-width:640px) { .app-backdrop { align-items:center; padding:24px; background:radial-gradient(ellipse at 20% 10%,#fff,transparent 65%),#e7e8ed; } .app-shell { max-height:940px; height:calc(100dvh - 48px); border-radius:36px; border:1px solid #ffffffc9; box-shadow:0 30px 100px #20212412; } }
 @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; scroll-behavior:auto !important; } }
+/* Restrained Air accents for unattended bank accounting. */
+.prior-auto-card {padding:18px;border:1px solid #dce5f2;border-radius:22px;background:linear-gradient(135deg,#f0f5fd,#fafbfe);min-width:0;}
+.prior-auto-switch {position:relative;width:46px;height:44px;border-radius:20px;flex-shrink:0;}
+.prior-auto-switch::before {content:'';position:absolute;inset:8px 0;border-radius:20px;background:#cdd2da;transition:background .2s;}
+.prior-auto-switch[aria-checked="true"]::before {background:#476ba7;}
+.prior-auto-switch span {position:absolute;top:11px;left:3px;display:block;width:22px;height:22px;border-radius:50%;background:white;box-shadow:0 1px 4px #0002;transition:transform .2s;}
+.prior-auto-switch[aria-checked="true"] span {transform:translateX(18px);}
+.prior-auto-switch:disabled {opacity:.45;}
+.prior-auto-switch:focus-visible {outline:2px solid #476ba7;outline-offset:4px;}
+.prior-auto-summary {display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:12px 14px;border-radius:18px;background:#edf3fc;color:#476ba7;}
+.prior-auto-summary>span {flex:1;}
+.prior-auto-summary strong {display:block;font-size:12px;font-weight:600;}
+.prior-auto-summary span span {display:block;font-size:11px;line-height:1.5;margin-top:3px;color:#637187;}

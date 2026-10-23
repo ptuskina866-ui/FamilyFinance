@@ -20,7 +20,7 @@ test('remembered session permissions, disconnect generations, household changes 
     CREATE FUNCTION vault.create_secret(new_secret text,new_name text DEFAULT NULL,new_description text DEFAULT NULL,new_key_id uuid DEFAULT NULL) RETURNS uuid LANGUAGE sql AS $$INSERT INTO vault.secrets(secret) VALUES(new_secret) RETURNING id$$;`);
   const schema = await fs.readFile(new URL('../supabase_schema.sql',import.meta.url),'utf8');
   const migration = await fs.readFile(new URL('../supabase/migrations/20261019112835_prior_remembered_session.sql',import.meta.url),'utf8');
-  equal(schema.split('-- 17. Remembered Priorbank session (2026-10-19)')[1].trim(),migration.trim());
+  equal(schema.split('-- 17. Remembered Priorbank session (2026-10-19)')[1].split('-- 18. Automatic Priorbank accounting')[0].trim(),migration.trim());
   await db.exec(schema); await db.exec(migration); checks++;
   await db.exec('GRANT USAGE ON SCHEMA public TO anon,authenticated; GRANT SELECT ON public.transactions TO authenticated;');
   const a='11111111-1111-4111-8111-111111111111',b='22222222-2222-4222-8222-222222222222';

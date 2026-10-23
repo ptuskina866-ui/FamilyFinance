@@ -5,5 +5,5 @@
     "verbatimModuleSyntax": true, "skipLibCheck": true, "types": ["node"],
     "noUnusedLocals": true, "noUnusedParameters": true
   },
-  "include": ["./*.ts", "../../src/lib/money.ts", "../../supabase/functions/prior-connect/handler.ts"]
+  "include": ["./*.ts", "../../src/lib/money.ts", "../../supabase/functions/prior-connect/handler.ts", "../../supabase/functions/prior-auto-sync/handler.ts"]
 }

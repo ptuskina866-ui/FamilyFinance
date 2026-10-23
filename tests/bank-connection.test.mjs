@@ -27,6 +27,11 @@ test('bank client never fabricates login success, accounts or transactions', asy
   const require = createRequire(import.meta.url), exports = {};
   vm.runInNewContext(compiled, { exports, require: name => {
     if (name === '../lib/bankConnection') return require(join(process.env.FINAPP_TEST_OUTPUT, 'lib/bankConnection.js'));
+    if(name==='../lib/bankCategory') {
+      const categoryExports={};
+      vm.runInNewContext(ts.transpileModule(readFileSync(new URL('../src/lib/bankCategory.ts',import.meta.url),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.CommonJS}}).outputText,{exports:categoryExports,require:()=>require(join(process.env.FINAPP_TEST_OUTPUT,'lib/categories.js'))});
+      return categoryExports;
+    }
     if (name === '../lib/categories') return require(join(process.env.FINAPP_TEST_OUTPUT, 'lib/categories.js'));
     if (name.endsWith('?url')) return '/pdf-worker';
     throw Error(`Unexpected bank dependency: ${name}`);

@@ -1,5 +1,12 @@
 # TASKS.md
 
+## Current automatic Priorbank accounting · 2026-10-23
+
+- Implemented one-time owner opt-in, automatic income/expense history entries including today, exact source amounts, shared immutable occurrence receipts, append-only day updates and atomic pause on changed/removed history. Explicit own transfers/manual collisions stay in a review list; unverified additional lists never affect balances. One BYN card/account; no new runtime dependencies.
+- Server: ticket-authenticated prior-auto-sync, native Cron/pg_net every two minutes, encrypted remembered sessions, existing owner/login leases and bounded backoff. Disconnect/household changes invalidate stale work; expiry pauses until bank login. No passwords/user JWTs retained or automatic login.
+- UI: Air switch/setup, status/counters/review, Home status and journal origin label; app return refreshes financial data. Categories are shared between reviewed/browser and background paths without changing existing mappings.
+- Passing: 69 app checks, 28 bank/server checks, seven SQL scenarios / 330 assertions, new 320/390 px automation UI and existing remembered-bank UI. Native rollback probe checks Vault, today income/expense, exact balance, repeat and stale-disable; ticket-to-Edge HTTP 200 with zero jobs, native scheduler run succeeded. Production 180 ledger rows/accounts/goals retain original hashes. Backend/migrations installed; frontend publication being verified. Live bank speed/status transitions remain tomorrow owner verification. Details: docs/prior-automatic-accounting.md.
+
 ## Current Air accents and Belarus categories · 2026-10-20
 
 - Added restrained blue/violet/green landmarks to the approved Air interface: daily guidance, actions/navigation, accounts, savings/planning and chart. Added 31 categories (20 expense / 11 income), merchant/name search, grouped tones and readable mobile category grids. Existing category IDs/transactions remain intact; no schema, backend or dependencies changed.

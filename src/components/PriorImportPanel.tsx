@@ -7,6 +7,7 @@ import { parsePriorImportFile, PRIOR_FILE_LIMIT, priorBlockedReason, priorPossib
 import { toMinorUnits } from '../lib/money';
 import { AlfaBankService } from '../services/alfaBankService';
 import { PriorBankConnection } from './PriorBankConnection';
+import { PriorAutomation } from './PriorAutomation';
 
 export function PriorImportPanel() {
   const { accounts, transactions, categories, accountBalances, financeLoading, financeError, previewPriorImport, importPriorOperations } = useApp();
@@ -89,6 +90,7 @@ export function PriorImportPanel() {
     <div>
       <PriorBankConnection key={user?.id+':'+profile?.household_id} disabled={busy} onBusy={setConnecting} onStart={() => {resetReview();setSnapshot(null);}} onConnected={(value,savedAccountId) => {resetReview();setSnapshot(value);setShowImported(false);setAccountId(savedAccountId??'');}}/>
     </div>
+    <PriorAutomation accountId={bankAccounts.some(a=>a.id===accountId)?accountId:undefined} sourceKey={snapshot?.card.sourceKey} linked={checked?.linked} disabled={controlsDisabled||financeLoading||!!financeError}/>
     {error && <div role="alert" className="bank-notice text-rose-700 flex gap-2"><AlertCircle className="shrink-0" size={18}/><span>{error}</span></div>}
     {result && <div role="status" className="bank-notice text-emerald-800 flex gap-2"><CheckCircle2 className="shrink-0" size={18}/><span>Добавлено: {result.imported}.{result.skipped>0 && ' Уже загружено, пропущено: '+result.skipped+'.'}</span></div>}
     {snapshot && <>
