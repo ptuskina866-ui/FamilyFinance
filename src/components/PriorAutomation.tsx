@@ -30,7 +30,7 @@ export function PriorAutomation({accountId,sourceKey,linked,disabled,compact,onO
     setError('');setState(a.data as PriorAutomationState|null);setReviews((r.data??[]) as PriorAutomationReview[]);
   },[user?.id,profile?.household_id,demo]);
   useEffect(()=>{
-    ++version.current;setState(null);setReviews([]);setConfirm(false);setError('');void load();
+    ++version.current;pending.current=false;setBusy(false);setState(null);setReviews([]);setConfirm(false);setError('');void load();
     if(demo||!user?.id||!profile?.household_id)return;
     const channel=supabase.channel('prior-auto-'+user.id);
     for(const table of ['prior_automation','prior_automation_reviews'])channel.on('postgres_changes',{event:'*',schema:'public',table,filter:'owner_id=eq.'+user.id},()=>void load());
@@ -48,7 +48,7 @@ export function PriorAutomation({accountId,sourceKey,linked,disabled,compact,onO
       if(error)throw new Error(error.message.includes('PRIOR_AUTO_SESSION')?'Сначала войдите в Приорбанк.':priorImportError(error.message));
       if(current===version.current){setConfirm(false);await load();}
     }catch(e){if(current===version.current)setError(e instanceof Error?e.message:'Не удалось изменить режим.');}
-    finally{pending.current=false;if(current===version.current)setBusy(false);}
+    finally{if(current===version.current){pending.current=false;setBusy(false);}}
   };
   const ignore=async(key:string)=>{
     if(pending.current)return;pending.current=true;++loadVersion.current;setBusy(true);const current=version.current;
@@ -57,7 +57,7 @@ export function PriorAutomation({accountId,sourceKey,linked,disabled,compact,onO
       if(error)throw error;
       if(current===version.current)await load();
     }catch{if(current===version.current)setError('Не удалось скрыть запись.');}
-    finally{pending.current=false;if(current===version.current)setBusy(false);}
+    finally{if(current===version.current){pending.current=false;setBusy(false);}}
   };
   if(demo)return null;
   if(compact){
