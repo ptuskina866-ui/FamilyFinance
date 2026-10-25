@@ -30,7 +30,7 @@ async function readBody(req: Request): Promise<unknown> {
   } finally { raw = ''; await reader.cancel().catch(() => {}); }
 }
 
-/** Authenticated proxy: encrypted session retention is explicit, no password storage or ledger writes. */
+/** Authenticated proxy. Vault login retention is explicit v2 consent; public DTOs contain financial fields only. */
 export function createPriorConnectHandler(config: Config, deps: Dependencies = {}) {
   const fetcher = deps.fetcher ?? fetch, preview = deps.preview ?? fetchPreview;
   return async (req: Request): Promise<Response> => {
@@ -79,7 +79,7 @@ export function createPriorConnectHandler(config: Config, deps: Dependencies = {
       return new Response(connectionResult(result), {status: 200, headers});
     } catch (error) {
       if (error instanceof PreviewError) return reply(error.code === 'BODY_TOO_LARGE' ? 413 : error.code === 'COOLDOWN' ? 429 : 400, error.code, error.message);
-      return reply(503, 'CONNECTION_FAILED', 'Не удалось завершить подключение. Автоматического повторного входа нет. Попробуйте позже.');
+      return reply(503, 'CONNECTION_FAILED', 'Не удалось завершить обновление подключения. Повторите попытку позже.');
     } finally {
       if (raw) {raw.password = ''; raw.login = '';}
       if (input) {input.password = ''; input.login = '';}

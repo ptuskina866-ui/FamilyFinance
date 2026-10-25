@@ -5,10 +5,17 @@ export function parsePriorConnection(value: unknown): PriorConnectionResult {
   const invalid = () => new Error('Банк вернул неподдерживаемые данные. Ничего не сохранено.');
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw invalid();
   const data = value as Record<string, unknown>;
-  if (Object.keys(data).some(key => !['format','version','cards','externalCards','connection','syncState'].includes(key)) || data.format !== 'finapp-prior-connection' || data.version !== 1 || !Array.isArray(data.cards) || data.cards.length > 20 || !Number.isInteger(data.externalCards) || Number(data.externalCards) < 0) throw invalid();
+  if (Object.keys(data).some(key => !['format','version','cards','externalCards','connection','syncState',...(data.version===2?['live']:[])].includes(key)) || data.format !== 'finapp-prior-connection' || (data.version!==1&&data.version!==2) || !Array.isArray(data.cards) || data.cards.length > 20 || !Number.isInteger(data.externalCards) || Number(data.externalCards) < 0) throw invalid();
   if(data.syncState!==undefined&&(typeof data.syncState!=='string'||!['saved','fresh','updating'].includes(data.syncState)))throw invalid();
+  let live:PriorConnectionResult['live'];
+  if(data.version===2){
+    if(!data.live||typeof data.live!=='object'||Array.isArray(data.live))throw invalid();
+    const value=data.live as Record<string,unknown>;
+    if(Object.keys(value).length!==3||Object.keys(value).some(k=>!['autoReconnect','enabled','ready'].includes(k))||['autoReconnect','enabled','ready'].some(k=>typeof value[k]!=='boolean'))throw invalid();
+    live={autoReconnect:value.autoReconnect as boolean,enabled:value.enabled as boolean,ready:value.ready as boolean};
+  }
   if (JSON.stringify(data).length > 8_000_000) throw invalid();
-  return {cards: data.cards.map(card => parsePriorImportFile(JSON.stringify(card))), externalCards: Number(data.externalCards),...(data.connection === undefined ? {} : {connection: parsePriorStatus(data.connection)}),...(data.syncState===undefined?{}:{syncState:data.syncState as PriorConnectionResult['syncState']})};
+  return {cards: data.cards.map(card => parsePriorImportFile(JSON.stringify(card))), externalCards: Number(data.externalCards),...(data.connection === undefined ? {} : {connection: parsePriorStatus(data.connection)}),...(data.syncState===undefined?{}:{syncState:data.syncState as PriorConnectionResult['syncState']}),...(live?{live}:{})};
 }
 
 export function parsePriorStatus(value: unknown): PriorBankConnectionStatus {

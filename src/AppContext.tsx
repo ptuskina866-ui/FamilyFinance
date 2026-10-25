@@ -7,7 +7,7 @@ import { accountBalances as calculateAccountBalances, cashflowTotals, reservedGo
 import { fromMinorUnits, localDateISO, toMinorUnits } from './lib/money';
 import { allocationTotal, budgetReserved, planningDateISO, planningErrorMessage } from './lib/planning';
 import { previousPlanningMonth, resolveIncomeTemplate } from './lib/flexiblePlanning';
-import type { PriorImportSnapshot, PriorImportSelection, PriorImportCheck, PriorImportResult } from './types';
+import type { PriorImportSnapshot, PriorImportSelection, PriorImportCheck, PriorImportResult, PriorBankEvent } from './types';
 import { priorImportError } from './lib/priorImport';
 
 export interface AppContextType {
@@ -97,7 +97,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (page.length < 500 || version !== loadVersion.current) return { data: rows, error: null };
       }
     };
-    const fetchPlanning = async <T,>(table: 'category_budgets' | 'income_distributions' | 'income_templates' | 'budget_rollovers' | 'income_distribution_revisions') => {
+    const fetchPlanning = async <T,>(table: 'category_budgets' | 'income_distributions' | 'income_templates' | 'budget_rollovers' | 'income_distribution_revisions'|'prior_bank_events') => {
       const rows: T[] = [];
       for (let offset = 0; ; offset += 500) {
         let request = supabase.from(table).select('*').eq('household_id', householdId);
@@ -110,7 +110,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (result.data.length < 500 || version !== loadVersion.current) return {data:rows,error:null};
       }
     };
-    const [txResult, memberResult, accountResult, goalResult, recurringResult, budgetResult, distributionResult,templateResult,rolloverResult,revisionResult] = await Promise.all([
+    const [txResult, memberResult, accountResult, goalResult, recurringResult, budgetResult, distributionResult,templateResult,rolloverResult,revisionResult,eventResult] = await Promise.all([
       fetchLedger(),
       supabase.from('profiles').select('id, name, avatar, color').eq('household_id', householdId),
       supabase.from('accounts').select('*').eq('household_id', householdId).order('created_at'),
@@ -118,7 +118,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       supabase.from('recurring_transactions').select('*').eq('household_id', householdId).eq('is_active', true).order('created_at', { ascending: false }),
       fetchPlanning<BudgetRow>('category_budgets'),
       fetchPlanning<DistributionRow>('income_distributions'),
-      fetchPlanning<TemplateRow>('income_templates'),fetchPlanning<RolloverRow>('budget_rollovers'),fetchPlanning<DistributionRevision>('income_distribution_revisions')
+      fetchPlanning<TemplateRow>('income_templates'),fetchPlanning<RolloverRow>('budget_rollovers'),fetchPlanning<DistributionRevision>('income_distribution_revisions'),fetchPlanning<PriorBankEvent>('prior_bank_events')
     ]);
     if (version !== loadVersion.current || currentHousehold.current !== householdId) return;
     const missingSchema = accountResult.error && ['PGRST205', '42P01'].includes(accountResult.error.code);
@@ -134,9 +134,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       // Normalize SQL names and exact NUMERIC values at the data boundary.
       const rows = txResult.data as unknown as TransactionRow[];
+      const bankEvents=new Map((eventResult.data??[]).filter(e=>e.transaction_id).map(e=>[e.transaction_id,e]));
       setTransactions(rows.map(t => ({ id: t.id, type: t.type, amount: money(t.amount), categoryId: t.category_id,
         comment: t.comment || '', addedBy: t.added_by || '', date: t.date, kind: t.kind || 'cashflow',
-        accountId: t.account_id, targetAccountId: t.target_account_id, goalId: t.goal_id, recurringId: t.recurring_id, incomeDistributionId: t.income_distribution_id, importOrigin: t.import_origin })));
+        accountId: t.account_id, targetAccountId: t.target_account_id, goalId: t.goal_id, recurringId: t.recurring_id, incomeDistributionId: t.income_distribution_id, importOrigin: t.import_origin,bankEvent:bankEvents.get(t.id) })));
       setMembers(memberResult.data as FamilyMember[]);
       setAccounts((accountResult.data || []).map(a => ({ ...a, opening_balance: money(a.opening_balance) })) as Account[]);
       setSavingsGoals((goalResult.data || []).map(g => ({ ...g, target_amount: money(g.target_amount), current_amount: money(g.current_amount ?? 0), essential_amount:g.essential_amount == null ? null : money(g.essential_amount) })) as SavingsGoal[]);
@@ -159,11 +160,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!householdId) return;
     void refresh();
     const channel = supabase.channel(`finance-${householdId}`);
-    for (const table of ['transactions', 'profiles', 'accounts', 'savings_goals', 'recurring_transactions', 'category_budgets', 'income_distributions','income_templates','budget_rollovers','income_distribution_revisions']) {
+    for (const table of ['transactions', 'profiles', 'accounts', 'savings_goals', 'recurring_transactions', 'category_budgets', 'income_distributions','income_templates','budget_rollovers','income_distribution_revisions','prior_bank_events']) {
       channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `household_id=eq.${householdId}` }, () => { void refresh(); });
     }
     channel.subscribe();
-    const onReturn = () => { if(document.visibilityState==='visible') void refresh(); };
+    const onReturn = () => { if(document.visibilityState==='visible'){void refresh();void supabase.rpc('request_prior_sync').then(()=>{});} };
     document.addEventListener('visibilitychange',onReturn);
     window.addEventListener('online',onReturn);
     let loadedDay = planningDateISO();

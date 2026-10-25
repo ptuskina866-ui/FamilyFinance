@@ -28,6 +28,7 @@ export function OverviewCards({hideAmounts,daily,goal,onBank,onPlans,onReview}:P
         <div className="min-w-0"><dt>В целях</dt><dd className="money">{money(reservedBalance)}</dd></div>
         {budgetReservedBalance>0 && <div className="min-w-0 col-span-2"><dt>В бюджетах</dt><dd className="money">{money(budgetReservedBalance)}</dd></div>}
       </dl>}
+      {!hideAmounts&&availableBalance<0&&<p role="status" className="bank-caption text-amber-800 mt-3">Не хватает {fmt(Math.abs(availableBalance))} свободных средств. Резервы в целях и бюджетах сохранены; их можно пересмотреть в планах.</p>}
     </section>
     <div className="quick-actions" aria-label="Быстрые действия">
       <button type="button" onClick={onPlans} className="quick-action"><span className="quick-action-icon"><Target size={21} strokeWidth={1.6}/></span><span>Накопления</span></button>

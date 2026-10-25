@@ -9,6 +9,8 @@ export interface PreviewRecord {
   date: string; description: string; accountAmount: string | null; operationAmount: string;
   operationCurrency: string; fee: string | null; source: 'history' | 'additional';
   outsidePeriod: boolean; possibleDuplicate: boolean;
+  /** Read-only v2 facts; excluded from the legacy financial envelope. */
+  transTime?: string; purchaseAmount?: string | null;
 }
 export interface PreviewCard {
   id: string; title: string; maskedNumber: string; currency: string;

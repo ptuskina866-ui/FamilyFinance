@@ -1,5 +1,11 @@
 # TASKS.md
 
+## Current Priorbank live accounting and reconnect · 2026-10-25
+
+- Implemented the approved plan on codex/prior-live-accounting: v2 wire normalization/time, atomic bank events/settlement/receipts, zero-effect cancellation with audit, opt-in Vault credentials and one bounded renewal, minute scheduler, journal statuses and review UI. Existing formats, categories/notes, deletion suppression and financial reserves are preserved; ambiguous/manual matches require review.
+- Passing: 71 app checks, 38 bank/server checks, eight SQL scenarios / 379 assertions (49 new v2 assertions), strict TypeScript/Vite/PWA build, diff and actual component tests at 320/390 px. Native rollback probe passed with synthetic users/secrets/money, then rolled back. Both migrations and prior-connect/prior-auto-sync v4 are installed; minute Cron active, native ticket HTTP 200. Working ledger count 178 and journal/account/goal hashes are unchanged.
+- The sole existing enabled connection has live_requested=true, live_enabled=false and issue=reauth. Its old session is expired and credentials were never retained. One new login with separate automatic-reconnect consent is required; the first fresh shadow pass checks matching without financial writes before activation. Frontend publication and fresh production PWA checks remain in progress. No mass history import or manual financial repair. Release details/file inventory: docs/prior-live-accounting.md.
+
 ## Current Priorbank sync reliability · 2026-10-24
 
 - Fixed the real worker failure: successful void PostgREST RPCs may return empty 204/200, which the JSON-only reader treated as a network error before recording its lease. Empty-success handling and representative regressions now cover claim/release; safe stage/issue diagnostics contain no upstream payloads. Existing opted-in native scheduler has successfully imported new history. Only the scoped owner's temporary network backoff was rearmed; financial records were not manually repaired.
@@ -57,7 +63,7 @@ Server Priorbank flow published in PR #11 / merge `832c70e`: inline one-time log
 - Verify frontend deployment, signup/invitation delivery, Realtime and concurrent money RPC calls in hosted Supabase. Server-side accounts migration is installed; local PostgreSQL tests are not proof of the entire hosted lifecycle.
 - Ensure deployment environments provide `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
 - Keep the private pre-release backup until rollout and accounting reconciliation are accepted; do not remove it without explicit authorization.
-- Priorbank pilot published: owner-driven first selected import/balance reconciliation remains. Before continuous automation verify stable operation/account IDs, history completeness, shared cards/accounts, pending/settled changes and movement beyond the 31-day window. Additional bank confirmation and session expiry remain untested. Never request bank passwords/codes in chat or save them on the FinApp server. Alfa personal Open API is unavailable per reviewed bank reply; reconsideration needs new bank evidence (see `docs/alfa-bank-integration-research.md`).
+- Priorbank live accounting: after one new owner login with automatic-reconnect consent, verify real early/posting transitions and arrival latency on the physical PWA. No stable bank operation ID is confirmed; ambiguous transitions stay for review. One BYN card/account and a 31-day window remain. Never request bank passwords/codes in chat; server retention is allowed only through the separately consented Vault flow approved on 2026-10-25. Alfa personal Open API is unavailable per reviewed bank reply; reconsideration needs new bank evidence (see `docs/alfa-bank-integration-research.md`).
 - Add automated tests for bank statement parsing.
 
 ### Medium priority

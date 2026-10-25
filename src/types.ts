@@ -29,13 +29,20 @@ export interface PriorImportSnapshot {
 export interface PriorImportSelection { index: number; categoryId: string; confirmExisting: boolean; }
 export interface PriorImportCheck { importedIndexes: number[]; linked: boolean; possibleIndexes?: number[]; }
 export interface PriorImportResult { imported: number; skipped: number; }
-export interface PriorConnectionInput { login: string; password: string; from: string; to: string; }
+export interface PriorConnectionInput { login: string; password: string; from: string; to: string; autoReconnect?:boolean; }
 export interface PriorBankConnectionStatus { connected: boolean; reauthRequired: boolean; lastSyncedAt: string | null; selectedSourceKey: string | null; accountId: string | null; }
-export interface PriorConnectionResult { cards: PriorImportSnapshot[]; externalCards: number; connection?: PriorBankConnectionStatus; syncState?: 'saved' | 'fresh' | 'updating'; }
+export interface PriorConnectionResult { cards: PriorImportSnapshot[]; externalCards: number; connection?: PriorBankConnectionStatus; syncState?: 'saved' | 'fresh' | 'updating'; live?:{autoReconnect:boolean;enabled:boolean;ready:boolean}; }
 export interface PriorAutomationState {
   owner_id: string; household_id: string; account_id: string; source_key: string; enabled: boolean;
   started_on: string; last_checked_at: string | null; issue: 'network' | 'bank_limit' | 'reauth' | 'history_changed' | 'gap' | 'account' | 'format' | null;
   imported_count: number; additional_count: number;
+  live_enabled?:boolean;live_requested?:boolean;live_probe?:{valid:boolean;at:string}|null;
+}
+export interface PriorBankEvent {
+ id:string;transaction_id:string|null;state:'provisional'|'posted'|'cancelled'|'needs_review';
+ bank_amount:number|string;applied_amount:number|string;original_amount:number|string|null;original_currency:string;
+ description:string;day:string;reason:string|null;suppressed:boolean;observed_state?:string;
+ history:{at:string;fromState:string;toState:string;oldAmount:string;amount:string;reason:string|null}[];
 }
 export interface PriorAutomationReview { event_key: string; day: string; description: string; amount: number | string; reason: 'similar' | 'transfer'; }
 
@@ -118,6 +125,7 @@ export interface Transaction {
   recurringId?: string | null;
   incomeDistributionId?: string | null;
   importOrigin?: 'prior-auto' | null;
+  bankEvent?:PriorBankEvent;
 }
 
 export interface RecurringExpenseInsight {

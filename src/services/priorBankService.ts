@@ -20,14 +20,14 @@ async function invoke(body: Record<string, unknown>, signal: AbortSignal): Promi
     return data;
 }
 export async function connectPriorBank(input: PriorConnectionInput, signal: AbortSignal): Promise<PriorConnectionResult> {
-  try { return parsePriorConnection(await invoke({action: 'connect', ...input}, signal)); }
+  try { return parsePriorConnection(await invoke({action: 'connect',apiVersion:2, ...input}, signal)); }
   finally { input.password = ''; input.login = ''; }
 }
 export async function syncPriorBank(signal: AbortSignal, range?: {from: string; to: string}): Promise<PriorConnectionResult> {
-  return parsePriorConnection(await invoke({action: 'refresh', ...range}, signal));
+  return parsePriorConnection(await invoke({action: 'refresh',apiVersion:2, ...range}, signal));
 }
 export async function viewPriorBank(signal:AbortSignal):Promise<PriorConnectionResult> {
-  return parsePriorConnection(await invoke({action:'view'},signal));
+  return parsePriorConnection(await invoke({action:'view',apiVersion:2},signal));
 }
 export async function priorBankStatus(action: 'status' | 'disconnect' | 'select', signal: AbortSignal, sourceKey?: string): Promise<PriorBankConnectionStatus> {
   const value = await invoke({action, ...(sourceKey ? {sourceKey} : {})}, signal);
