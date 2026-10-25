@@ -6,7 +6,7 @@ import {createHash} from 'node:crypto';
 const source=createHash('sha256').update(JSON.stringify(['prior-card-v1','BANK_ID','BYN'])).digest('hex');
 const response=body=>new Response(JSON.stringify(body),{headers:{'Content-Type':'application/json'}});
 const request=ticket=>new Request('https://project.example/auto',{method:'POST',body:JSON.stringify({ticket})});
-function harness({invalid=false,expired=false,voidStatus=204}={}){
+function harness({invalid=false,expired=false,voidStatus=204,expiryCode='SESSION_EXPIRED'}={}){
   const calls=[];let bankCalls=0,used=false;
   const handler=createPriorAutoHandler({url:'https://project.example',serviceKey:'PRIVATE_KEY'},{
     fetcher:async(url,options)=>{const body=JSON.parse(options.body);calls.push({url,body});
@@ -15,7 +15,7 @@ function harness({invalid=false,expired=false,voidStatus=204}={}){
       if(url.endsWith('/claim_prior_connection')||url.endsWith('/release_prior_connection'))return new Response(null,{status:voidStatus});
       if(url.endsWith('/complete_prior_auto_job'))return response({imported:2});
       throw Error('Unexpected call');
-    },readSession:async(session,range)=>{bankCalls++;assert.equal(session.token,'PRIVATE_TOKEN');if(expired)throw new PreviewError('SESSION_EXPIRED','PRIVATE_ERROR');
+    },readSession:async(session,range)=>{bankCalls++;assert.equal(session.token,'PRIVATE_TOKEN');if(expired)throw new PreviewError(expiryCode,'PRIVATE_ERROR');
       const rows=[{description:'EUROOPT',accountAmount:'-12.34'},{description:'Зарплата Green',accountAmount:'150.01'}].map(r=>({...r,date:range.to,operationAmount:r.accountAmount,operationCurrency:'BYN',fee:null,source:'history'}));
       return {...range,fetchedAt:new Date().toISOString(),cards:[{id:'BANK_ID',title:'Test',maskedNumber:'•••• 1234',currency:'BYN',records:rows}],externalCards:0};
     }
@@ -45,4 +45,9 @@ test('empty 200 lease responses also permit bank reads, commit and lease release
   assert.deepEqual(await r.json(),{checked:1,imported:2});assert.equal(h.bankCalls,1);
   assert.ok(h.calls.some(c=>c.url.endsWith('/release_prior_connection')));
   assert.ok(!h.calls.some(c=>c.body.p_issue==='network'));
+});
+test('bank denial blocks automatic credentials before expiring the session, without repeated login',async()=>{
+ const h=harness({expired:true,expiryCode:'BANK_BLOCKED'});await h.handler(request('d'.repeat(64)));
+ const actions=h.calls.filter(c=>c.body.p_action).map(c=>c.body.p_action);
+ assert.ok(actions.indexOf('auth_failed')<actions.indexOf('expire'));assert.ok(actions.includes('auth_failed'));assert.equal(h.bankCalls,1);
 });

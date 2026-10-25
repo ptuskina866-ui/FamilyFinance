@@ -15,6 +15,7 @@ async page=>{
         await route.fulfill({json:null});return;
       }
       if(url.includes('/rpc/ignore_prior_automation_review')){reviews=[];await route.fulfill({json:null});return;}
+      if(url.includes('/rpc/set_prior_live')){if(state)state.live_requested=true;await route.fulfill({json:null});return;}
       if(url.includes('/prior_automation_reviews')){await route.fulfill({json:reviews});return;}
       if(url.includes('/prior_automation?')){await route.fulfill({json:new URL(url).searchParams.get('owner_id')==='eq.'+owner?state:null});return;}
       throw Error('Unexpected request '+url);

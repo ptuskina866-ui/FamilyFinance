@@ -6,12 +6,16 @@ function recordsFromDetail(detail: Record<string, unknown>, from: string, to: st
   const append = (value: unknown, source: PreviewRecord['source']) => {
     for (const item of list(value)) {
       const row = object(item), rawDate = requiredText(row.transDate, 80), date = dateOnly(rawDate.slice(0, 10));
+      const time=row.transTime==null||row.transTime===''?undefined:requiredText(row.transTime,8);
+      if(time!==undefined&&!/^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/.test(time))throw new PreviewError('FORMAT_CHANGED','Банк вернул непроверенное время операции.');
       records.push({
         date: rawDate, description: requiredText(row.transDetails, 4000),
         accountAmount: row.accountAmount == null ? null : moneyText(row.accountAmount),
         operationAmount: moneyText(row.amount), operationCurrency: requiredText(row.transCurrIso, 8),
         fee: row.feeAmount == null ? null : moneyText(row.feeAmount), source,
         outsidePeriod: date < from || date > to, possibleDuplicate: false,
+        ...(time===undefined?{}:{transTime:time}),
+        ...(source==='additional'?{purchaseAmount:row.transAmount==null?null:moneyText(row.transAmount)}:{}),
       });
       if (source === 'history' && row.accountAmount == null) throw new PreviewError('AMOUNT_INVALID', 'В истории нет суммы по счёту. Проверка остановлена.');
       if (records.length > 2000) throw new PreviewError('TOO_MANY_ROWS', 'Слишком много операций. Выберите меньший период.');

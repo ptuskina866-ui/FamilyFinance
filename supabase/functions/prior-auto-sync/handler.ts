@@ -1,13 +1,16 @@
 import { randomUUID } from 'node:crypto';
-import { readPriorSession, validatePriorSession } from '../_shared/prior/bank.ts';
+import { readPriorSession } from '../_shared/prior/bank.ts';
 import { minskToday, object, PreviewError } from '../_shared/prior/model.ts';
 import { connectionResult } from '../prior-connect/result.ts';
 import { recentPriorRange } from '../prior-connect/remembered.ts';
 import { detectBankCategory } from '../../../src/lib/bankCategory.ts';
+import { priorLiveSnapshot } from '../_shared/prior/live.ts';
+import { readRememberedPrior } from '../_shared/prior/renewal.ts';
+import { openPriorSession } from '../_shared/prior/bank.ts';
 
 interface Config { url: string; serviceKey: string; }
-interface Dependencies { fetcher?: typeof fetch; readSession?: typeof readPriorSession; }
-/** Single-use server ticket authenticates the scheduler; no user JWT or bank password is retained. */
+interface Dependencies { fetcher?: typeof fetch; readSession?: typeof readPriorSession; openSession?:typeof openPriorSession; }
+/** One-use server tickets; optional renewal uses Vault credentials, never a retained user JWT. */
 export function createPriorAutoHandler(config: Config, deps: Dependencies = {}) {
   const fetcher=deps.fetcher??fetch;
   return async (req: Request): Promise<Response> => {
@@ -17,7 +20,15 @@ export function createPriorAutoHandler(config: Config, deps: Dependencies = {}) 
     const rpc=async(name:string,body:Record<string,unknown>)=>{
       const response=await fetcher(config.url+'/rest/v1/rpc/'+name,{method:'POST',redirect:'error',signal:AbortSignal.timeout(18_000),
         headers:{apikey:config.serviceKey,Authorization:'Bearer '+config.serviceKey,'Content-Type':'application/json'},body:JSON.stringify(body)});
-      if(!response.ok) throw new Error(name==='claim_prior_connection'&&(await response.text()).includes('PRIOR_CONNECTION_LIMIT')?'LEASE_BUSY':'RPC_FAILED');
+      if(!response.ok){
+        const failure=await response.text();
+        if(name==='claim_prior_connection'&&failure.includes('PRIOR_CONNECTION_LIMIT'))throw new Error('LEASE_BUSY');
+        if(failure.includes('PRIOR_CONNECTION_CHANGED'))throw new PreviewError('CONNECTION_CHANGED','Подключение изменилось.');
+        if(failure.includes('PRIOR_LIVE_GAP'))throw new PreviewError('HISTORY_GAP','Нужна сверка пропущенного периода.');
+        if(failure.includes('PRIOR_LIVE_ACCOUNT'))throw new PreviewError('ACCOUNT_CHANGED','Проверьте связанный счёт.');
+        if(/PRIOR_LIVE_(INPUT|ROW|SIGN)/.test(failure))throw new PreviewError('FORMAT_CHANGED','Банк изменил формат данных.');
+        throw new Error('RPC_FAILED');
+      }
       // PostgREST returns an empty body (including 204) for void lease RPCs.
       const bodyText=await response.text();
       return bodyText.trim()?JSON.parse(bodyText) as unknown:null;
@@ -35,13 +46,14 @@ export function createPriorAutoHandler(config: Config, deps: Dependencies = {}) 
       await Promise.all(jobs.map(async value=>{
         const job=object(value),owner=job.owner_id,attempt=randomUUID();let claimed=false,connection:Record<string,unknown>|null=null,stage='connection';
         const state=(action:string,data:Record<string,unknown>={})=>rpc('prior_connection_state',{p_owner:owner,p_action:action,p_data:data});
-        const complete=(extra:Record<string,unknown>)=>rpc('complete_prior_auto_job',{p_owner:owner,p_revision:job.revision,p_connection_revision:connection?.revision,...extra});
+          const complete=(extra:Record<string,unknown>)=>rpc('complete_prior_auto_job',{p_owner:owner,p_revision:connection?.automationRevision??job.revision,p_connection_revision:connection?.revision,...extra});
         try {
           connection=object(await state('load'));
-          if(connection.connected!==true)return;
+          if(connection.connected!==true&&connection.autoReconnect!==true)return;
           stage='lease';await rpc('claim_prior_connection',{p_owner:owner,p_login_key:connection.loginKey,p_attempt:attempt});claimed=true;
           const to=minskToday(),start=new Date(to+'T00:00:00Z');start.setUTCDate(start.getUTCDate()-30);
-          stage='bank';const preview=await(deps.readSession??readPriorSession)(validatePriorSession(connection.session),{from:start.toISOString().slice(0,10),to},AbortSignal.timeout(90_000));
+          stage='bank';const preview=await readRememberedPrior(connection,{from:start.toISOString().slice(0,10),to},attempt,AbortSignal.timeout(90_000),{
+            rpc:async(action,data={})=>object(await state(action,data)),readSession:deps.readSession,openSession:deps.openSession});
           const result=object(JSON.parse(connectionResult(preview)) as unknown);
           if(!Array.isArray(result.cards))throw new Error('FORMAT');
           const snapshot=result.cards.map(object).find(card=>object(card.card).sourceKey===job.source_key);
@@ -60,16 +72,23 @@ export function createPriorAutoHandler(config: Config, deps: Dependencies = {}) 
           })};
           stage='cache';await state('touch',{revision:connection.revision,preview:manualPreview});
           stage='import';
+          // v2 first runs in shadow mode. The financial switch is stored per owner after validation.
+          if(connection.liveEnabled!==undefined){
+            const live=priorLiveSnapshot(preview,String(job.source_key));
+            const applied=await rpc('complete_prior_live_job',{p_owner:owner,p_revision:connection.automationRevision??job.revision,p_connection_revision:connection.revision,p_snapshot:live,p_shadow:connection.liveEnabled!==true});
+            if(connection.liveEnabled===true){if(applied)imported+=Number(object(applied).imported)||0;return;}
+          }
           const saved=await complete({p_snapshot:snapshot,p_categories:categories});
           if(saved&&typeof saved==='object'&&'imported' in saved)imported+=Number(saved.imported)||0;
         } catch(error) {
           if(connection){
             if(error instanceof Error&&error.message==='LEASE_BUSY'){try{await complete({p_issue:'busy'});}catch{/* Next scheduled attempt remains bounded. */}return;}
             const code=error instanceof PreviewError?error.code:'';
-            const expired=['SESSION_EXPIRED','ACCESS_DENIED','LOGIN_REJECTED','BANK_BLOCKED'].includes(code);
-            const issue=expired?'reauth':code==='BANK_LIMIT'?'bank_limit':['FORMAT_CHANGED','AMOUNT_INVALID','TOO_MANY_ROWS','RESPONSE_TOO_LARGE'].includes(code)?'format':'network';
+            if(code==='CONNECTION_CHANGED')return;
+            const expired=['SESSION_EXPIRED','ACCESS_DENIED','LOGIN_REJECTED','BANK_BLOCKED','ADDITIONAL_CONFIRMATION'].includes(code);
+            const issue=expired?'reauth':code==='HISTORY_GAP'?'gap':code==='ACCOUNT_CHANGED'?'account':code==='BANK_LIMIT'?'bank_limit':['FORMAT_CHANGED','AMOUNT_INVALID','TOO_MANY_ROWS','RESPONSE_TOO_LARGE'].includes(code)?'format':'network';
             console.warn('prior_auto_failed',stage,issue); // Enum-only diagnostics; never the upstream error or payload.
-            try {await complete({p_issue:issue});if(expired)await state('expire',{revision:connection.revision});}catch{/* No secrets or financial data in logs/responses. */}
+            try {if(expired&&code!=='SESSION_EXPIRED')await state('auth_failed',{revision:connection.revision});await complete({p_issue:issue});if(expired)await state('expire',{revision:connection.revision});}catch{/* No secrets or financial data in logs/responses. */}
           }
         } finally {
           if(connection)connection.session=null;

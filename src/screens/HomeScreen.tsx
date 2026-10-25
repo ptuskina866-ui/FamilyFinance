@@ -5,10 +5,11 @@ import { OverviewCards } from '../components/OverviewCards';
 import { DynamicIcon } from '../components/CategoryGrid';
 import { BankSyncModal } from '../components/BankSyncModal';
 import { TransactionEditor } from '../components/TransactionEditor';
+import { PriorEventDetails } from '../components/PriorEventDetails';
 import { PriorAutomation } from '../components/PriorAutomation';
 import { calculateSafeDaily, isCashflow } from '../lib/finance';
 import { categoryTone } from '../lib/categories';
-import { localDateISO } from '../lib/money';
+import { localDateISO,fromMinorUnits,toMinorUnits } from '../lib/money';
 import { planningDateISO, unassignedDailyTransactions, uncoveredRecurring } from '../lib/planning';
 import { Transaction } from '../types';
 import { Trash2, Pencil, Search, Eye, EyeOff } from 'lucide-react';
@@ -166,6 +167,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
                       const cat = getCategoryById(tx.categoryId);
                       const isIncome = tx.type === 'income';
                       const cashflow = isCashflow(tx);
+                      const cancelled=tx.bankEvent?.state==='cancelled';
                       const label = tx.kind === 'transfer' ? 'Перевод между счетами' : tx.kind === 'goal_deposit' ? 'Резерв в цель' : tx.kind === 'goal_release' ? 'Возврат из цели' : cat?.name || 'Без категории';
                       const member = getMemberById(tx.addedBy);
 
@@ -180,12 +182,12 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
                               <span className="transaction-name min-w-0 text-slate-900">
                                 {(tx.comment || label).replace(/\s*\[goal_id:[^\]]+\]/g, '')}
                               </span>
-                            <span className={`transaction-amount money ${cashflow && isIncome ? 'text-emerald-700' : 'text-slate-900'}`}>
-                              {hideBalance ? '••••' : `${cashflow ? (isIncome ? '+' : '−') : '↔ '}${fmt(tx.amount)}`}
+                            <span className={`transaction-amount money ${cancelled?'line-through text-slate-400':cashflow && isIncome ? 'text-emerald-700' : 'text-slate-900'}`}>
+                              {hideBalance ? '••••' : `${cashflow ? (isIncome ? '+' : '−') : '↔ '}${fmt(cancelled?Math.abs(fromMinorUnits(toMinorUnits(tx.bankEvent!.bank_amount))):tx.amount)}`}
                             </span>
                             </div>
                             <div className="transaction-meta"><span className="text-[11px] text-slate-500 min-w-0">{label}{member ? ` · ${member.name}` : ''}{tx.importOrigin==='prior-auto'?' · Из банка автоматически':''}</span><div className="transaction-tools">
-                            {cashflow && accountsReady && <button type="button" aria-label="Редактировать операцию" onClick={() => setEditing(tx)}><Pencil className="w-3.5 h-3.5" /></button>}
+                            {cashflow && accountsReady && tx.bankEvent?.state!=='cancelled' && <button type="button" aria-label="Редактировать операцию" onClick={() => setEditing(tx)}><Pencil className="w-3.5 h-3.5" /></button>}
                             <button
                               type="button"
                               aria-label="Удалить операцию"
@@ -196,6 +198,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                             </div></div>
+                            {tx.bankEvent&&<PriorEventDetails event={tx.bankEvent} hidden={hideBalance}/>}
                           </div>
                         </div>
                       );

@@ -24,6 +24,7 @@ export function PriorImportPanel() {
   const [connecting, setConnecting] = useState(false);
   const [showImported, setShowImported] = useState(false);
   const [fileMode,setFileMode]=useState(false);
+  const [liveMode,setLiveMode]=useState(false);
   const version = useRef(0), pending = useRef(false);
   useEffect(() => () => { ++version.current; }, []);
   useEffect(() => {
@@ -88,15 +89,17 @@ export function PriorImportPanel() {
   const control = 'input-light w-full min-w-0';
   const dateLabel=priorDateLabel;
   const accountName = bankAccounts.find(account => account.id === accountId)?.name;
+  const liveHistory=liveMode&&!fileMode,History=liveHistory?'details':'div';
   const accountSelect = <label className="block text-xs font-semibold">Счёт для операций<select aria-label="Счёт для операций Приорбанка" className={control+' mt-2'} value={accountId} disabled={controlsDisabled} onChange={e => {resetReview();setAccountId(e.target.value);}}><option value="">Выберите банковский счёт BYN</option>{bankAccounts.map(account => <option key={account.id} value={account.id}>{account.name}</option>)}</select></label>;
   return <div className="bank-import flex flex-col gap-4 max-w-lg mx-auto w-full">
     <div>
-      <PriorBankConnection key={user?.id+':'+profile?.household_id} disabled={busy} pausePreview={selected.length>0||fileMode} onBusy={setConnecting} onStart={() => {resetReview();setFileMode(false);setSnapshot(null);}} onConnected={(value,savedAccountId) => {resetReview();setFileMode(false);setSnapshot(value);setShowImported(false);setAccountId(savedAccountId??'');}}/>
+      <PriorBankConnection key={user?.id+':'+profile?.household_id} disabled={busy} onLiveMode={setLiveMode} pausePreview={selected.length>0||fileMode} onBusy={setConnecting} onStart={() => {resetReview();setFileMode(false);setSnapshot(null);}} onConnected={(value,savedAccountId) => {resetReview();setFileMode(false);setSnapshot(value);setShowImported(false);setAccountId(savedAccountId??'');}}/>
     </div>
     <PriorAutomation accountId={bankAccounts.some(a=>a.id===accountId)?accountId:undefined} sourceKey={snapshot?.card.sourceKey} linked={checked?.linked} disabled={controlsDisabled||financeLoading||!!financeError}/>
     {error && <div role="alert" className="bank-notice text-rose-700 flex gap-2"><AlertCircle className="shrink-0" size={18}/><span>{error}</span></div>}
     {result && <div role="status" className="bank-notice text-emerald-800 flex gap-2"><CheckCircle2 className="shrink-0" size={18}/><span>Добавлено: {result.imported}.{result.skipped>0 && ' Уже загружено, пропущено: '+result.skipped+'.'}</span></div>}
-    {snapshot && <>
+    {snapshot && <History className={liveHistory?'disclosure':''}>
+      {liveHistory&&<summary>История для ручного добавления<ChevronDown size={15}/></summary>}
       <section className="bank-review space-y-3 px-1" aria-label="Проверка операций Приорбанка">
         <div><h3 className="section-title">{checked && !visibleRows.length ? 'Всё актуально' : 'Операции банка'}</h3><p className="bank-caption mt-2">{dateLabel(snapshot.from)} — {dateLabel(snapshot.to)}</p><p className="bank-caption mt-1 break-words">{snapshot.card.title} · {snapshot.card.maskedNumber} · {snapshot.card.currency}</p></div>
         {checked?.linked && accountName ? <details className="disclosure"><summary><span className="min-w-0 break-words">Счёт: {accountName}</span><ChevronDown size={15}/></summary><div className="disclosure-body">{accountSelect}</div></details> : accountSelect}
@@ -107,7 +110,7 @@ export function PriorImportPanel() {
         {busy && <p role="status" className="bank-caption">Проверяем операции…</p>}
         {error && <button type="button" onClick={() => void check()} disabled={controlsDisabled || !accountId || snapshot.card.currency!=='BYN' || financeLoading || !!financeError} className="auth-button">Повторить проверку</button>}
         {checked && <>
-          <p role="status" className="sr-only">Проверка пройдена.</p><div className="flex items-center justify-between gap-3"><div className="min-w-0"><span className="text-xs text-slate-500">Можно добавить: {availableCount}</span>{unverifiedCount>0&&<p className="bank-caption mt-1">Статус уточняется: {unverifiedCount}. Эти записи не включены в баланс.</p>}</div>
+          <p role="status" className="sr-only">Проверка пройдена.</p><div className="flex items-center justify-between gap-3"><div className="min-w-0"><span className="text-xs text-slate-500">Можно добавить: {availableCount}</span>{unverifiedCount>0&&<p className="bank-caption mt-1">{liveHistory?`Ранних записей: ${unverifiedCount}. Результат автоучёта — в журнале на главной.`:`Статус уточняется: ${unverifiedCount}. Эти записи не включены в баланс.`}</p>}</div>
           {visibleRows.some(({row,index})=>!priorBlockedReason(snapshot,row) && !imported.has(index) && !possible.has(index)) && <button type="button" disabled={controlsDisabled} className="text-action" onClick={() => {
             if(selected.length){setItems({});setConfirmed(false);return;}
             const next: Record<number,PriorImportSelection> = {};
@@ -116,7 +119,7 @@ export function PriorImportPanel() {
           }}>{selected.length?'Снять выбор':'Выбрать новые'}</button>}</div>
           {visibleRows.length>0 && <p className="bank-caption">Не выбирайте свои переводы и уже учтённые записи.{possible.size>0 && ' Похожие операции требуют отдельного подтверждения.'}</p>}
           {imported.size>0 && <label className="bank-check"><input type="checkbox" checked={showImported} onChange={e => {setShowImported(e.target.checked);setPage(0);}} className="w-5 h-5"/>Показать уже добавленные ({imported.size})</label>}
-          {unverifiedCount>0&&<details className="disclosure"><summary>Почему некоторые записи ещё не учтены<ChevronDown size={15}/></summary><p className="disclosure-body bank-caption">В дополнительном списке пока нельзя подтвердить статус, направление и итоговую сумму по счёту. Показываем исходные данные банка. Такие записи не меняют баланс; автоучёт проверит основную историю при следующем обновлении.</p></details>}
+          {unverifiedCount>0&&!liveHistory&&<details className="disclosure"><summary>Почему некоторые записи ещё не учтены<ChevronDown size={15}/></summary><p className="disclosure-body bank-caption">Эти записи доступны для быстрого автоматического учёта. В ручном импорте показываем исходные данные банка; без включённого быстрого режима они пока не меняют баланс.</p></details>}
         </>}
       </section>
       {checked && !visibleRows.length && <p role="status" className="bank-empty"><CheckCircle2 size={26} strokeWidth={1.5}/>Всё добавлено. Новых операций за этот период нет.</p>}
@@ -134,7 +137,7 @@ export function PriorImportPanel() {
               <span className={'import-row-amount money'+(row.accountAmount!==null&&!row.accountAmount.startsWith('-')?' text-emerald-800':'')}>{row.accountAmount?.replace('.',',')??'—'}<span className="block bank-caption mt-1">{snapshot.card.currency}</span></span>
             </Choice>
             {(showOriginal || (row.fee && row.fee!=='0.00')) && <p className="bank-caption">{showOriginal && (row.source==='additional'?'Сумма в ответе банка: ':'Сумма покупки: ')+row.operationAmount+' '+row.operationCurrency}{row.fee && row.fee!=='0.00' && (showOriginal?' · ':'')+'Комиссия в ответе банка: '+row.fee}</p>}
-            {blocked && <p className={row.source==='additional'?'bank-caption text-amber-800':'bank-notice text-amber-800'}>{row.source==='additional'?'Статус уточняется · в баланс не включено':blocked}</p>}
+            {blocked && <p className={row.source==='additional'?'bank-caption text-amber-800':'bank-notice text-amber-800'}>{row.source==='additional'?(liveHistory?'Ранняя запись · обрабатывается автоучётом':'Статус уточняется · в баланс не включено'):blocked}</p>}
             {row.source==='additional'&&possible.has(index)&&<p className="bank-caption">В журнале уже есть запись с такой суммой за этот день. Сверьте после подтверждения банка.</p>}
             {imported.has(index) && <p className="bank-caption text-emerald-800">Уже добавлена</p>}
             {possible.has(index) && !imported.has(index) && !blocked && <p className="bank-notice text-amber-800">Возможно, повтор. Сверьте дату, сумму и описание с журналом.</p>}
@@ -152,7 +155,7 @@ export function PriorImportPanel() {
         {selected.some(item=>!item.categoryId) && <p className="bank-caption">Выберите категорию для каждой отмеченной операции.</p>}
         <button type="button" onClick={()=>void save()} disabled={controlsDisabled || !valid || (!checked.linked && !confirmed) || financeLoading || !!financeError} className="auth-button">{busy?'Сохраняем…':`Добавить выбранные операции (${selected.length})`}</button>
       </section>}
-    </>}
+    </History>}
     <details className="disclosure bank-help"><summary>Помощь и загрузка файла<ChevronDown size={15}/></summary><div className="disclosure-body space-y-3">
       <p className="bank-caption">Одна карта BYN связана с одним счётом FinApp. При первом сохранении связь закрепится. Уже добавленные записи пропускаются; изменение ранее полученной истории остановит импорт. Для валютной покупки сохраняется сумма по счёту BYN.</p>
       <p className="bank-caption">Если уже есть файл из локального помощника, его можно загрузить вместо подключения.</p>

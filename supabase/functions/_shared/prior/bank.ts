@@ -12,7 +12,8 @@ function bankFailure(status: number, body?: Record<string, unknown>): never {
   if (/^Необходимо авторизоваться$|session.*(?:expired|invalid)|сесси.*(?:истек|заверш|недейств)/i.test(message)) throw new PreviewError('SESSION_EXPIRED', 'Банк завершил сессию. Войдите в Prior Online заново.');
   if (/неверн.*(?:логин|парол)/i.test(message)) throw new PreviewError('LOGIN_REJECTED', 'Банк отклонил вход. Проверьте данные в Prior Online. Повтор автоматически не выполняется.');
   if (/блокир/i.test(message)) throw new PreviewError('BANK_BLOCKED', 'Банк сообщает об ограничении доступа. Проверку остановили.');
-  if (status === 401 || status === 403) throw new PreviewError('ACCESS_DENIED', 'Банк не разрешил этот запрос. Повтор автоматически не выполняется.');
+  if (status === 401) throw new PreviewError('SESSION_EXPIRED','Банк завершил сессию.');
+  if (status === 403) throw new PreviewError('ACCESS_DENIED', 'Банк не разрешил этот запрос. Повтор автоматически не выполняется.');
   if (status === 429) throw new PreviewError('BANK_LIMIT', 'Банк ограничил частоту запросов. Попробуйте позже.');
   throw new PreviewError('BANK_UNAVAILABLE', 'Банк не выполнил запрос. Проверка остановлена без повторного входа.');
 }

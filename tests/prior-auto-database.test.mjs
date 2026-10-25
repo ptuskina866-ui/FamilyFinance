@@ -18,7 +18,7 @@ test('automatic accounting: consent, household isolation, today, append-only occ
     CREATE FUNCTION vault.create_secret(new_secret text,new_name text DEFAULT NULL,new_description text DEFAULT NULL,new_key_id uuid DEFAULT NULL) RETURNS uuid LANGUAGE sql AS $$INSERT INTO vault.secrets(secret) VALUES(new_secret) RETURNING id$$;`);
   const schema=await fs.readFile(new URL('../supabase_schema.sql',import.meta.url),'utf8');
   const migration=await fs.readFile(new URL('../supabase/migrations/20261023202140_prior_automatic_accounting.sql',import.meta.url),'utf8');
-  equal(schema.split('-- 18. Automatic Priorbank accounting (2026-10-23)')[1].trim(),migration.trim());
+  equal(schema.split('-- 18. Automatic Priorbank accounting (2026-10-23)')[1].split('-- 19. Priorbank live accounting')[0].trim(),migration.trim());
   await db.exec(schema);await db.exec(migration);await db.exec('GRANT SELECT,INSERT ON public.transactions TO authenticated;');
   const owner='11111111-1111-4111-8111-111111111111',other='22222222-2222-4222-8222-222222222222',source='f'.repeat(64);
   await q(`INSERT INTO auth.users VALUES($1,'{"household_action":"create","household_name":"A"}'),($2,'{"household_action":"create","household_name":"B"}')`,[owner,other]);
