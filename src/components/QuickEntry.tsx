@@ -24,14 +24,16 @@ export function QuickEntry({onSaved}:{onSaved:()=>void}) {
   const timer=useRef<ReturnType<typeof setTimeout>|null>(null);
   const Speech=(window as SpeechWindow).SpeechRecognition||(window as SpeechWindow).webkitSpeechRecognition;
   const active=accounts.filter(a=>!a.is_archived);
-  const cancelSpeech=()=>{if(timer.current)clearTimeout(timer.current);timer.current=null;const r=recognition.current;recognition.current=null;if(r){r.onresult=null;r.onerror=null;r.onend=null;r.abort();}if(mounted.current)setListening(false);};
+  const cancelSpeech=()=>{if(timer.current)clearTimeout(timer.current);timer.current=null;const r=recognition.current;recognition.current=null;if(r){r.onresult=null;r.onerror=null;r.onend=null;try{r.abort();}catch{/* Browser service may already be unavailable. */}}if(mounted.current)setListening(false);};
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;cancelSpeech();};},[]);
   useEffect(()=>{const hide=()=>{if(document.hidden)cancelSpeech();};document.addEventListener('visibilitychange',hide);return()=>document.removeEventListener('visibilitychange',hide);},[]);
   const analyze=(value=phrase)=>{const result=parseQuickEntry(value,accounts,categories);setDraft(result);setAmount(result.amount==null?'':result.amount.toFixed(2));setError('');setEditing(false);};
   const dictate=()=>{
-    if(listening){recognition.current?.stop();return;}
+    if(listening){try{recognition.current?.stop();}catch{cancelSpeech();}return;}
     if(!Speech)return;
-    const r=new Speech();r.lang='ru-RU';r.continuous=false;r.interimResults=false;
+    let r:Recognition;
+    try{r=new Speech();}catch{setError('Голосовой ввод недоступен. Используйте диктовку клавиатуры.');return;}
+    r.lang='ru-RU';r.continuous=false;r.interimResults=false;
     r.onresult=e=>{if(!mounted.current||recognition.current!==r)return;const text=Array.from(e.results).map(result=>result[0]?.transcript||'').join(' ').trim();if(text){setPhrase(text);analyze(text);}};
     r.onerror=e=>{if(!mounted.current||recognition.current!==r)return;setError(e.error==='not-allowed'||e.error==='service-not-allowed'?'Микрофон недоступен. Разрешите доступ в браузере или используйте диктовку клавиатуры.':e.error==='no-speech'?'Не услышали фразу. Попробуйте ещё раз или напишите её.':e.error==='aborted'?'':'Не удалось распознать речь. Можно написать фразу или использовать диктовку клавиатуры.');cancelSpeech();};
     r.onend=()=>{if(mounted.current&&recognition.current===r){if(timer.current)clearTimeout(timer.current);timer.current=null;recognition.current=null;setListening(false);}};
