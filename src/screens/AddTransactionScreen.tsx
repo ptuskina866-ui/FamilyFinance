@@ -1,5 +1,5 @@
 import { ScreenHeader } from '../components/ScreenHeader';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../AppContext';
 import { useAuth } from '../AuthContext';
 import { DynamicIcon } from '../components/CategoryGrid';
@@ -7,6 +7,7 @@ import { ChevronLeft, Check, MessageSquare, Calendar, Search, X } from 'lucide-r
 import { parseMoneyInput, fromMinorUnits, toMinorUnits, localDateISO } from '../lib/money';
 import type { TransactionType } from '../types';
 import { categoryGroup, categoryTone, isIncomeCategory, matchesCategoryQuery } from '../lib/categories';
+import { QuickEntry } from '../components/QuickEntry';
 
 interface AddTransactionScreenProps {
   onNavigateHome: () => void;
@@ -39,7 +40,6 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
   const [selectedGroup, setSelectedGroup] = useState('all');
   const [categoryQuery, setCategoryQuery] = useState('');
 
-  const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (!accounts.some(a => a.id === accountId && !a.is_archived)) setAccountId(accounts.find(a => !a.is_archived)?.id || '');
   }, [accounts, accountId]);
@@ -61,13 +61,6 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
       setSelectedMemberId(members[0].id);
     }
   }, [txType, categories, profile, members]);
-
-  // Focus input on mount
-  useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, []);
 
   const handleTypeChange = (type: TransactionType) => {
     setTxType(type);
@@ -116,6 +109,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
 
       {/* ── Scrollable Body ── */}
       <div className="screen-body flex flex-col gap-4">
+        <QuickEntry onSaved={onNavigateHome}/>
         {error && <p role="alert" className="card p-3 text-xs text-rose-600">{error}</p>}
         {accountsReady && <label className="card p-3 flex flex-col gap-1 text-xs font-bold text-slate-500">Счет операции
           <select aria-label="Счет операции" value={accountId} onChange={e => setAccountId(e.target.value)} className="w-full rounded-xl bg-slate-50 p-2 text-slate-800">
@@ -132,7 +126,6 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
 
           <div className="flex items-baseline justify-center gap-1.5 w-full">
             <input
-              ref={inputRef}
               aria-label="Сумма новой операции"
               type="text"
               inputMode="decimal"
