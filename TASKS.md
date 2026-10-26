@@ -1,5 +1,11 @@
 # TASKS.md
 
+## One-phrase entry · 2026-10-26
+
+- First release of the approved order: one-phrase entry → currency accounts → split purchases. Implemented local exact Russian amount/date parsing and optional browser/Safari dictation on Add, compact explicit preview with editable details, income/expense and existing atomic account transfers. Unknown categories/accounts require selection; malformed/ambiguous amounts, debt and foreign currencies are blocked. Preserves the original form and bank logic. No new dependencies or schema/data changes.
+- Passing: 79 app tests, 38 bank/server tests, strict TypeScript/Vite/PWA build, diff check and real AppProvider UI at 320/390 px on synthetic intercepted APIs: confirmation, synchronous double-click guard, exact cash expense/income, transfer preserves capital, ambiguous inputs, network failure draft retention, prefixed/unprefixed speech, missing speech API, denied permission, microphone cleanup and original manual form. Existing bank live/remembered mobile suites pass. Device dictation remains unverified; text/keyboard dictation remains the fallback. Publication status to be recorded in docs/quick-entry.md.
+- Remaining approved roadmap: currency accounts (separate native/account and reporting amounts, actual exchange/fee and consolidated view), then split purchases (one bank parent, exact category allocation, settlement/cancel handling without duplicate money). Not included or claimed implemented in this first release.
+
 ## Current merchant rules and monthly bank bills · 2026-10-26
 
 - Implemented approved points 1 and 2 on codex/merchant-rules-subscriptions. Explicit category/name memory in the operation editor, clean bank merchant labels with original descriptors, household rules/removal in Profile. Existing category/amount/note history is preserved; new Priorbank journal rows receive the confirmed preference atomically.
