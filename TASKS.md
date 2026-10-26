@@ -1,5 +1,12 @@
 # TASKS.md
 
+## Current merchant rules and monthly bank bills · 2026-10-26
+
+- Implemented approved points 1 and 2 on codex/merchant-rules-subscriptions. Explicit category/name memory in the operation editor, clean bank merchant labels with original descriptors, household rules/removal in Profile. Existing category/amount/note history is preserved; new Priorbank journal rows receive the confirmed preference atomically.
+- Extended existing monthly discovery with reviewed confirmation, server-side evidence checks and bank-only plan mode. No scheduled money is created for these plans; real charges satisfy a single monthly occurrence, preserve real amounts and show paid status. Existing manual schedules are preserved. Ambiguous matches do not alter money, month-end dates clamp and cancellation frees the paid occurrence.
+- Passing: 75 app checks, 38 bank/server checks, nine SQL scenarios / 442 assertions including 63 merchant/bill checks, mobile actual-AppProvider flows and existing bank regressions at 320/390 px, strict TypeScript/Vite/PWA build and diff. Two migrations installed; native rollback probe passes with synthetic data only. Working 181 ledger rows and ledger/account/goal hashes unchanged. Four merchant_rules RLS policies and SELECT-only client grants verified; no real rules or bank plans created for the owner. No dependencies or bank session changes.
+- Frontend publication/fresh PWA checks in progress. First real owner preference and a later real monthly charge remain owner verification. File inventory, tests, matching bounds and release record: docs/merchant-rules-subscriptions.md.
+
 ## Current Priorbank live accounting and reconnect · 2026-10-25
 
 - Implemented the approved plan on codex/prior-live-accounting: v2 wire normalization/time, atomic bank events/settlement/receipts, zero-effect cancellation with audit, opt-in Vault credentials and one bounded renewal, minute scheduler, journal statuses and review UI. Existing formats, categories/notes, deletion suppression and financial reserves are preserved; ambiguous/manual matches require review.

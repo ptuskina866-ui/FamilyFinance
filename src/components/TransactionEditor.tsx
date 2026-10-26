@@ -3,9 +3,12 @@ import { X } from 'lucide-react';
 import { Transaction } from '../types';
 import { useApp } from '../AppContext';
 import { parseMoneyInput } from '../lib/money';
+import { transactionMerchant } from '../lib/merchants';
 
 export const TransactionEditor: React.FC<{ transaction: Transaction; onClose: () => void }> = ({ transaction, onClose }) => {
-  const { accounts, categories, members, updateTransaction } = useApp();
+  const { accounts, categories, members, updateTransaction,merchantRules=[],smartRulesReady } = useApp();
+  const merchant=transactionMerchant(transaction),rule=merchantRules.find(r=>r.merchant_key===merchant.key&&r.transaction_type===transaction.type);
+  const [remember,setRemember]=useState(false),[merchantName,setMerchantName]=useState(rule?.display_name||merchant.name.slice(0,80));
   const [amount, setAmount] = useState(transaction.amount.toFixed(2));
   const [categoryId, setCategoryId] = useState(transaction.categoryId);
   const [accountId, setAccountId] = useState(transaction.accountId || accounts.find(a => !a.is_archived)?.id || '');
@@ -34,7 +37,7 @@ export const TransactionEditor: React.FC<{ transaction: Transaction; onClose: ()
     const value = parseMoneyInput(amount);
     if (saving || value === null || value <= 0) { setError('Укажите положительную сумму с точностью до копейки.'); return; }
     setSaving(true); setError(null);
-    try { await updateTransaction(transaction.id, { ...transaction, amount: value, categoryId, accountId: accountId || null, date, comment: comment.trim() }); onClose(); }
+    try { await updateTransaction(transaction.id, { ...transaction, amount: value, categoryId, accountId: accountId || null, date, comment: comment.trim() },remember?{remember:true,name:merchantName.trim()}:undefined); onClose(); }
     catch (err) { setError(err instanceof Error ? err.message : 'Не удалось сохранить изменения.'); }
     finally { setSaving(false); }
   };
@@ -45,11 +48,17 @@ export const TransactionEditor: React.FC<{ transaction: Transaction; onClose: ()
       <form onSubmit={save} className="flex flex-col gap-3">
         <p className="text-xs text-slate-500">{transaction.type === 'income' ? 'Доход' : 'Расход'} · {members.find(m => m.id === transaction.addedBy)?.name || 'Участник семьи'}</p>
         <label className="text-xs font-bold">Сумма, Br<input aria-label="Сумма операции" autoFocus inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} className={inputClass} /></label>
-        <label className="text-xs font-bold">Категория<select value={categoryId} onChange={e => setCategoryId(e.target.value)} className={inputClass}>{!availableCategories.some(c => c.id === categoryId) && <option value={categoryId}>{categoryId}</option>}{availableCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+        <label className="text-xs font-bold">Категория<select aria-label="Категория операции" value={categoryId} onChange={e => setCategoryId(e.target.value)} className={inputClass}>{!availableCategories.some(c => c.id === categoryId) && <option value={categoryId}>{categoryId}</option>}{availableCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
         {accounts.length > 0 && <label className="text-xs font-bold">Счет<select aria-label="Счет редактируемой операции" value={accountId} onChange={e => setAccountId(e.target.value)} className={inputClass}>{accounts.filter(a => !a.is_archived || a.id === accountId).map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label>}
         <label className="text-xs font-bold">Дата<input type="date" required disabled={!!transaction.recurringId} value={date} onChange={e => setDate(e.target.value)} className={inputClass} /></label>
         {transaction.recurringId && <p className="text-xs text-slate-500">Дата связана с регулярным платежом. Остальные поля можно изменить.</p>}
         <label className="text-xs font-bold">Комментарий<input value={comment} onChange={e => setComment(e.target.value)} className={inputClass} /></label>
+        {transaction.bankEvent&&<details className="disclosure"><summary>Исходное описание банка</summary><p className="disclosure-body text-xs break-words">{transaction.bankEvent.description}</p></details>}
+        {smartRulesReady&&accounts.some(a=>a.id===transaction.accountId&&a.kind==='bank')&&!transaction.bankEvent?.suppressed&&merchant.key&&<div className="rounded-2xl bg-blue-50/60 p-3 space-y-3">
+          {rule&&<p className="text-xs text-slate-500">Правило уже есть: {rule.display_name} · {categories.find(c=>c.id===rule.category_id)?.name||rule.category_id}.</p>}
+          <label className="flex gap-3 text-xs leading-relaxed"><input type="checkbox" checked={remember} disabled={saving} onChange={e=>setRemember(e.target.checked)} className="w-5 h-5 shrink-0"/>Всегда относить операции этого магазина в выбранную категорию</label>
+          {remember&&<><label className="block text-xs font-semibold">Название магазина<input aria-label="Название магазина для правила" required maxLength={80} value={merchantName} onChange={e=>setMerchantName(e.target.value)} className={inputClass}/></label><p className="text-[11px] text-slate-500">Сохраним для следующих операций семьи. Категории прошлых покупок не изменятся. Правило можно удалить в профиле.</p></>}
+        </div>}
         {error && <p role="alert" className="text-xs text-rose-600">{error}</p>}
         <button type="submit" disabled={saving} className="rounded-full bg-slate-950 text-white font-bold py-3 text-sm disabled:opacity-50">{saving ? 'Сохраняем…' : 'Сохранить изменения'}</button>
       </form>

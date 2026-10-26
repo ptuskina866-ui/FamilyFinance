@@ -15,8 +15,10 @@ interface Props {
 }
 
 export function RecurringInsights({ hideAmounts = false, onOpenStatement, onReviewTransactions }: Props) {
-  const { transactions, recurringTransactions, accounts, financeLoading, financeError } = useApp();
+  const { transactions, recurringTransactions, accounts, financeLoading, financeError,smartRulesReady,confirmBankBill } = useApp();
   const [showAll, setShowAll] = useState(false);
+  const [confirming,setConfirming]=useState<string|null>(null),[pending,setPending]=useState<string|null>(null),[error,setError]=useState(''),[saved,setSaved]=useState(false);
+  const confirm=async(id:string,evidence:string[])=>{if(pending)return;setPending(id);setError('');setSaved(false);try{await confirmBankBill(evidence);setConfirming(null);setSaved(true);}catch{setError('Не удалось подтвердить платёж. История могла измениться, либо такой план уже существует. Проверьте данные.');}finally{setPending(null);}};
   const today = planningDateISO();
   const insights = useMemo(() => discoverRecurringExpenses(transactions, recurringTransactions, today), [transactions, recurringTransactions, today]);
   const lastDate = useMemo(() => transactions.filter(tx => isCashflow(tx) && tx.date <= today).reduce((latest, tx) => tx.date > latest ? tx.date : latest, ''), [transactions, today]);
@@ -31,8 +33,10 @@ export function RecurringInsights({ hideAmounts = false, onOpenStatement, onRevi
         <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">{lastDate ? `По загруженной истории · последняя операция ${fullDate(lastDate)}` : 'Добавьте историю операций, чтобы увидеть подсказки.'}</p>
       </div>
     </div>
+    {saved&&<p role="status" className="text-xs text-blue-700 leading-relaxed">Добавлено в Планы → Платежи. Оплату отметим по операции банка.</p>}
     {insights.length === 0 ? <p className="text-xs text-slate-500 leading-relaxed">Пока нет похожих ежемесячных платежей. Для первых подсказок нужны операции хотя бы за два месяца; для устойчивого ритма — за три.</p> : <>
-      <p className="text-[11px] text-slate-500 leading-relaxed">Возможные ежемесячные расходы. Даты и суммы — оценка по истории; списания и резервы не создаются.</p>
+      <p className="text-[11px] text-slate-500 leading-relaxed">Возможные ежемесячные расходы. Пока вы не подтвердите подсказку, она не влияет на план.</p>
+      {error&&<p role="alert" className="text-xs text-rose-700">{error}</p>}
       {(showAll ? insights : insights.slice(0, 3)).map(insight => <article key={insight.id} className="rounded-2xl border border-slate-100 bg-white/65 p-3 flex flex-col gap-2">
         <div className="flex justify-between items-start gap-2">
           <div className="min-w-0">
@@ -45,6 +49,9 @@ export function RecurringInsights({ hideAmounts = false, onOpenStatement, onRevi
         <p className="text-[11px] text-slate-600 flex items-start gap-1.5"><CalendarClock size={13} className="shrink-0 mt-0.5" /><span>{insight.evidenceLevel === 'preliminary' ? 'Если повторится' : 'По ритму истории'}: {dateLabel(insight.expectedDate)}</span></p>
         {insight.expectedDate < today && <p className="text-[11px] text-amber-700">Расчётная дата уже прошла. Проверьте, загружены ли свежие операции.</p>}
         {insight.amountChange !== 0 && <p className="text-[11px] text-slate-600">Последний платёж на {fmt(Math.abs(insight.amountChange))} {insight.amountChange > 0 ? 'больше' : 'меньше'} предыдущего.</p>}
+        {smartRulesReady&&!insight.alreadyPlanned&&accounts.some(a=>a.id===insight.accountId&&a.kind==='bank'&&!a.is_archived)&&<>
+          {confirming!==insight.id?<button type="button" className="text-action min-h-[40px] text-left" disabled={!!pending} onClick={()=>setConfirming(insight.id)}>Учитывать в плане</button>:<div className="rounded-2xl bg-blue-50/60 p-3 space-y-3"><p className="text-xs text-slate-600 leading-relaxed">Добавим ежемесячный план: около {fmt(insight.lastAmount)}, дата — по истории. Реальное списание из банка отметит его оплату. Отдельный расход по расписанию создавать не будем.</p><button type="button" className="auth-button" disabled={!!pending} onClick={()=>void confirm(insight.id,insight.evidence.map(t=>t.id))}>{pending===insight.id?'Сохраняем…':'Подтвердить ежемесячный платёж'}</button><button type="button" className="text-action" disabled={!!pending} onClick={()=>setConfirming(null)}>Отмена</button></div>}
+        </>}
         <details className="text-[11px]">
           <summary className="font-bold text-slate-800 cursor-pointer py-1">Почему появилась подсказка?</summary>
           <p className="text-slate-500 mt-2">{insight.evidenceLevel === 'preliminary' ? 'Два похожих платежа в соседних месяцах. Совпадение ещё может быть случайным.' : `Один расход в каждом из ${insight.evidence.length} месяцев подряд, примерно в одни даты. Это может быть подписка или другой регулярный платёж.`}</p>

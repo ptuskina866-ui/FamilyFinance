@@ -2,6 +2,7 @@ import type { RecurringExpenseInsight, RecurringTransaction, Transaction } from 
 import { isCashflow } from './finance';
 import { fromMinorUnits, toMinorUnits } from './money';
 import { planningDateISO } from './planning';
+import { merchantIdentity,transactionMerchant } from './merchants';
 
 const GENERIC_DESCRIPTIONS = /^(?:покупка|покупки|оплата|платеж|платёж|расход|расходы|продукты|еда|кафе|такси|перевод|другое|импорт выписки|без комментария)$/u;
 
@@ -35,7 +36,7 @@ export function discoverRecurringExpenses(
   const groups = new Map<string, Transaction[]>();
   const seen = new Set<string>();
   for (const tx of transactions) {
-    const date = dateParts(tx.date), merchant = recurringMerchantKey(tx.comment);
+    const date = dateParts(tx.date), merchant = transactionMerchant(tx).key;
     // Auto-posted templates are not independent evidence of a real bank payment.
     if (!tx.id || seen.has(tx.id) || !date || tx.date > today || date.month < now.month - 11 || !merchant ||
         tx.type !== 'expense' || !isCashflow(tx) || tx.recurringId) continue;
@@ -69,13 +70,13 @@ export function discoverRecurringExpenses(
     const latest = chain[0], previous = chain[1];
     const monthEnd = chain.every(tx => { const d = dateParts(tx.date)!; return d.day === d.lastDay; });
     const expectedDate = dateInMonth(latestMonth + 1, monthEnd ? 31 : dateParts(latest.date)!.day);
-    const merchantKey = recurringMerchantKey(latest.comment);
+    const merchantKey = transactionMerchant(latest).key;
     insights.push({
-      id, merchant: latest.comment.trim(), accountId: latest.accountId || null, categoryId: latest.categoryId,
+      id, merchantKey,merchant:transactionMerchant(latest).name, accountId: latest.accountId || null, categoryId: latest.categoryId,
       lastAmount: latest.amount, previousAmount: previous.amount,
       amountChange: fromMinorUnits(toMinorUnits(latest.amount) - toMinorUnits(previous.amount)), expectedDate,
       alreadyPlanned: recurring.some(item => item.is_active && item.type === 'expense' &&
-        (item.account_id || null) === (latest.accountId || null) && recurringMerchantKey(item.comment) === merchantKey),
+        (item.account_id || null) === (latest.accountId || null) && (item.merchant_key||merchantIdentity(item.comment).key) === merchantKey),
       evidenceLevel: chain.length >= 3 ? 'established' : 'preliminary',
       evidence: chain.map(tx => ({ id: tx.id, date: tx.date, amount: tx.amount })),
     });

@@ -6,6 +6,7 @@ import { DynamicIcon } from '../components/CategoryGrid';
 import { BankSyncModal } from '../components/BankSyncModal';
 import { TransactionEditor } from '../components/TransactionEditor';
 import { PriorEventDetails } from '../components/PriorEventDetails';
+import { transactionTitle } from '../lib/merchants';
 import { PriorAutomation } from '../components/PriorAutomation';
 import { calculateSafeDaily, isCashflow } from '../lib/finance';
 import { categoryTone } from '../lib/categories';
@@ -45,7 +46,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
     getCategoryById, 
     getMemberById,
     savingsGoals,
-    availableBalance, categoryBudgets, accounts, recurringTransactions, accountsReady
+    availableBalance, categoryBudgets, accounts, recurringTransactions, accountsReady,merchantRules=[]
   } = useApp();
   const { profile } = useAuth();
 
@@ -87,7 +88,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
       return (!insightTransactionIds || insightTransactionIds.includes(tx.id)) &&
         (filterType === 'all' || (isCashflow(tx) && tx.type === filterType)) &&
         (!accountFilter || tx.accountId === accountFilter || tx.targetAccountId === accountFilter) &&
-        (!query || `${tx.comment} ${getCategoryById(tx.categoryId)?.name || ''} ${tx.amount}`.toLocaleLowerCase('ru-RU').includes(query));
+        (!query || `${transactionTitle(tx,merchantRules)} ${tx.comment} ${tx.bankEvent?.description||''} ${getCategoryById(tx.categoryId)?.name || ''} ${tx.amount}`.toLocaleLowerCase('ru-RU').includes(query));
     });
 
     const groups: { dateLabel: string; items: typeof transactions }[] = [];
@@ -103,7 +104,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
     }
 
     return groups;
-  }, [transactions, filterType, search, accountFilter, getCategoryById, insightTransactionIds]);
+  }, [transactions, filterType, search, accountFilter, getCategoryById, insightTransactionIds,merchantRules]);
 
   const handleDelete = async (tx: Transaction) => {
     if (!window.confirm('Удалить операцию? Остатки и связанный резерв будут пересчитаны.')) return;
@@ -180,7 +181,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
                           <div className="min-w-0">
                             <div className="transaction-main">
                               <span className="transaction-name min-w-0 text-slate-900">
-                                {(tx.comment || label).replace(/\s*\[goal_id:[^\]]+\]/g, '')}
+                                {(transactionTitle(tx,merchantRules) || label).replace(/\s*\[goal_id:[^\]]+\]/g, '')}
                               </span>
                             <span className={`transaction-amount money ${cancelled?'line-through text-slate-400':cashflow && isIncome ? 'text-emerald-700' : 'text-slate-900'}`}>
                               {hideBalance ? '••••' : `${cashflow ? (isIncome ? '+' : '−') : '↔ '}${fmt(cancelled?Math.abs(fromMinorUnits(toMinorUnits(tx.bankEvent!.bank_amount))):tx.amount)}`}
@@ -199,6 +200,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
                             </button>
                             </div></div>
                             {tx.bankEvent&&<PriorEventDetails event={tx.bankEvent} hidden={hideBalance}/>}
+                            {tx.bankEvent?.rule_category===tx.categoryId&&<p className="text-[11px] text-slate-500 mt-1">Категория по вашему правилу</p>}
+                            {tx.recurringMonth&&tx.recurringId&&<p className="text-[11px] text-slate-500 mt-1">Учтено в плане платежей</p>}
                           </div>
                         </div>
                       );

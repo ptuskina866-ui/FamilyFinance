@@ -9,7 +9,8 @@ import { BudgetPlanner } from '../components/BudgetPlanner';
 import { FundsPlanner } from '../components/FundsPlanner';
 import { RecurringInsights } from '../components/RecurringInsights';
 import { Target, Plus, Trash2, Archive, X, Check, RefreshCw, Calendar, ArrowUpRight } from 'lucide-react';
-import { goalMonthlyNeeded } from '../lib/finance';
+import { goalMonthlyNeeded,recurringPaid,recurringDueDate } from '../lib/finance';
+import { planningDateISO } from '../lib/planning';
 import { localDateISO, parseMoneyInput, sumMoney } from '../lib/money';
 
 const GOAL_EMOJIS = ['🎯', '🏖️', '🚗', '🏠', '💍', '✈️', '📱', '🎓', '💰', '🛋️', '🍔', '🎁'];
@@ -380,7 +381,7 @@ const PlansScreen: React.FC = () => {
               <div>
                 <p className="text-xs font-bold text-slate-700 mb-0.5">Автоматизация финансов</p>
                 <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
-                  Регулярные платежи создаются автоматически каждый месяц в указанный день при открытии приложения.
+                  Подтверждённые банковские платежи ждут реального списания. Обычные регулярные операции создаются по расписанию при открытии приложения.
                 </p>
               </div>
             </div>
@@ -398,26 +399,29 @@ const PlansScreen: React.FC = () => {
               recurringTransactions.map((rec) => {
                 const cat = CATEGORIES.find(c => c.id === rec.category_id);
                 const isExpense = rec.type === 'expense';
+                const paid=rec.match_mode==='bank'&&recurringPaid(rec,transactions,recurringDueDate(planningDateISO(),rec.day_of_month));
+                const actual=paid?transactions.find(t=>t.recurringId===rec.id&&t.recurringMonth===planningDateISO().slice(0,7)+'-01'&&t.amount>0)?.amount:null;
                 return (
-                  <div key={rec.id} className="card px-4 py-3.5 flex items-center gap-3.5 group active:scale-[0.99] transition-all">
+                  <div key={rec.id} className={`card px-4 py-3.5 flex ${rec.match_mode==='bank'?'flex-wrap items-start':'items-center'} gap-3.5 group active:scale-[0.99] transition-all`}>
                     <div className="w-11 h-11 rounded-full bg-[#f0f0f4] flex items-center justify-center shrink-0 shadow-sm">
                       <DynamicIcon name={cat?.icon || 'RefreshCw'} className="w-5 h-5" style={{ color: '#555861' }} />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-slate-800 text-sm truncate tracking-tight">{cat?.name || 'Другое'}</p>
+                    <div className={rec.match_mode==='bank'?'flex-1 min-w-[120px]':'flex-1 min-w-0'}>
+                      <p className="font-bold text-slate-800 text-sm break-words tracking-tight">{rec.match_mode==='bank'?rec.comment:cat?.name || 'Другое'}</p>
                       <p className="text-[11px] text-slate-400 font-semibold mt-0.5">
                         Каждый месяц, {ordinalDay(rec.day_of_month)}
                       </p>
-                      {rec.comment && <p className="text-[11px] text-slate-500 truncate mt-0.5">{rec.comment}</p>}
+                      {rec.comment&&rec.match_mode!=='bank' && <p className="text-[11px] text-slate-500 truncate mt-0.5">{rec.comment}</p>}
+                      {rec.match_mode==='bank'&&<p className={`text-[11px] mt-1 ${paid?'text-emerald-700':'text-blue-700'}`}>{paid?'Оплачено в этом месяце':'Ждём списание банка'}</p>}
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className={`flex items-center gap-2 shrink-0 ${rec.match_mode==='bank'?'w-full justify-between pl-[58px]':''}`}>
                       <span className={`font-extrabold text-sm tracking-tight ${isExpense ? 'text-rose-500' : 'text-emerald-600'}`}>
-                        {isExpense ? '-' : '+'}{fmt(rec.amount)}
+                        {rec.match_mode==='bank'&&!paid?'≈ ':isExpense ? '-' : '+'}{fmt(actual??rec.amount)}
                       </span>
                       <button
                         onClick={() => handleDeleteRecurring(rec.id)}
                         disabled={!!actionLoadingId}
-                        aria-label={`Удалить регулярный платеж ${cat?.name || rec.comment}`}
+                        aria-label={`Удалить регулярный платеж ${rec.match_mode==='bank'?rec.comment:cat?.name || rec.comment}`}
                         className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-rose-50 border border-slate-100/50 hover:border-rose-100 flex items-center justify-center text-slate-400 hover:text-rose-500 transition-all active:scale-90"
                       >
                         <Trash2 className="w-3.5 h-3.5" />

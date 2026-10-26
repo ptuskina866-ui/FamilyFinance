@@ -265,6 +265,9 @@ export default function DemoApp() {
   const budgetReservedBalance = budgetReserved(data.budgets,data.transactions);
   const monthly = cashflowTotals(data.transactions.filter(tx => tx.date.startsWith(localDateISO().slice(0, 7))));
   const context: AppContextType = {
+    merchantRules:[],smartRulesReady:false,
+    confirmBankBill:async()=>{throw new Error('Подтверждение банковских платежей доступно в вашем аккаунте.');},
+    deleteMerchantRule:async()=>{throw new Error('Правила магазинов доступны в вашем аккаунте.');},
     transactions: [...data.transactions].sort((a, b) => b.date.localeCompare(a.date)), categories: CATEGORIES, members: MEMBERS,
     accounts: data.accounts, accountBalances: accountBalances(data.accounts, data.transactions), accountsReady: true, schemaReady: true,
     financeLoading: false, financeError: storageError, balance, reservedBalance,
