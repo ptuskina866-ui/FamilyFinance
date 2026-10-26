@@ -35,6 +35,14 @@ export function isCashflow(tx: Transaction): boolean {
   return tx.kind == null || tx.kind === 'cashflow';
 }
 
+export function recurringDueDate(month:string,day:number):string {
+ const d=calendarDate(month.slice(0,7)+'-01');return monthISO(monthNumber(d),day);
+}
+export function recurringPaid(item:RecurringTransaction,transactions:readonly Transaction[],due:string):boolean {
+ if(item.match_mode!=='bank')return !!(item.last_applied&&item.last_applied>=due)||transactions.some(tx=>isCashflow(tx)&&tx.recurringId===item.id&&tx.date===due);
+ return transactions.some(tx=>isCashflow(tx)&&tx.recurringId===item.id&&tx.recurringMonth===due.slice(0,7)+'-01'&&tx.amount>0&&tx.bankEvent?.state!=='cancelled');
+}
+
 export function cashflowTotals(transactions: readonly Transaction[]): { income: number; expense: number; net: number } {
   let income = 0;
   let expense = 0;
@@ -101,9 +109,8 @@ export function calculateSafeDaily(
   for (const item of recurring) {
     if (!item.is_active || item.type !== 'expense') continue;
     const due = monthISO(monthNumber(date), item.day_of_month);
-    if (due < today || (item.last_applied && item.last_applied >= due)) continue;
-    const posted = transactions.some(tx => isCashflow(tx) && tx.type === 'expense' && tx.recurringId === item.id && tx.date === due);
-    if (!posted) obligations += toMinorUnits(item.amount);
+    if (due < today || recurringPaid(item,transactions,due)) continue;
+    obligations += toMinorUnits(item.amount);
   }
   // Restore today's consumption before allocating its share, then deduct it once.
   // Current balance has already deducted that consumption.

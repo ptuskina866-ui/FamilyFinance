@@ -39,6 +39,7 @@ export interface PriorAutomationState {
   live_enabled?:boolean;live_requested?:boolean;live_probe?:{valid:boolean;at:string}|null;
 }
 export interface PriorBankEvent {
+ merchant_key?:string|null;merchant_name?:string|null;rule_category?:string|null;
  id:string;transaction_id:string|null;state:'provisional'|'posted'|'cancelled'|'needs_review';
  bank_amount:number|string;applied_amount:number|string;original_amount:number|string|null;original_currency:string;
  description:string;day:string;reason:string|null;suppressed:boolean;observed_state?:string;
@@ -79,6 +80,7 @@ export interface FamilyMember {
 }
 
 export interface RecurringTransaction {
+ match_mode?:'scheduled'|'bank';merchant_key?:string|null;
   id: string;
   household_id: string;
   added_by: string | null;
@@ -86,7 +88,7 @@ export interface RecurringTransaction {
   amount: number;
   category_id: string;
   comment: string;
-  day_of_month: number; // 1-28
+  day_of_month: number; // 1-28 scheduled; 1-31 for bank-observed monthly bills
   last_applied: string | null; // ISO date YYYY-MM-DD
   is_active: boolean;
   created_at: string;
@@ -111,6 +113,7 @@ export interface SavingsGoal {
 }
 
 export interface Transaction {
+  recurringMonth?:string|null;
   id: string;
   type: TransactionType;
   amount: number;
@@ -129,6 +132,7 @@ export interface Transaction {
 }
 
 export interface RecurringExpenseInsight {
+  merchantKey?:string;
   id: string;
   merchant: string;
   accountId: string | null;
@@ -140,6 +144,11 @@ export interface RecurringExpenseInsight {
   alreadyPlanned: boolean;
   evidenceLevel: 'preliminary' | 'established';
   evidence: Pick<Transaction, 'id' | 'date' | 'amount'>[];
+}
+
+export interface MerchantRule {
+ id:string;household_id:string;merchant_key:string;transaction_type:TransactionType;
+ display_name:string;category_id:string;created_at:string;updated_at:string;
 }
 
 export interface CategoryBudget {

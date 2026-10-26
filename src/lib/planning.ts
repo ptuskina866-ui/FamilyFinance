@@ -1,5 +1,5 @@
 import type { CategoryBudget, IncomeAllocation, RecurringTransaction, Transaction } from '../types';
-import { isCashflow } from './finance';
+import { isCashflow,recurringDueDate,recurringPaid } from './finance';
 import { fromMinorUnits, localDateISO, sumMoney, toMinorUnits } from './money';
 
 /** Shared BYN planning uses one household calendar even when members travel. */
@@ -33,8 +33,8 @@ export function uncoveredRecurring(recurring: readonly RecurringTransaction[], b
   const funds = new Map(budgets.filter(b => b.month.slice(0, 7) === today.slice(0, 7)).map(b => [b.category_id, toMinorUnits(budgetProgress(b, transactions).remaining)]));
   return [...recurring].sort((a, b) => a.day_of_month - b.day_of_month || a.id.localeCompare(b.id)).map(item => {
     if (!item.is_active || item.type !== 'expense') return item;
-    const due = `${today.slice(0, 7)}-${String(item.day_of_month).padStart(2, '0')}`;
-    if (due < today || (item.last_applied && item.last_applied >= due) || transactions.some(t => t.recurringId === item.id && t.date === due)) return item;
+    const due = recurringDueDate(today,item.day_of_month);
+    if (due < today || recurringPaid(item,transactions,due)) return item;
     const key = funds.has(item.category_id) ? item.category_id : item.category_id.startsWith('food-') && funds.has('food') ? 'food' : item.category_id;
     const funded = funds.get(key) || 0;
     const use = Math.min(funded, toMinorUnits(item.amount));
@@ -105,8 +105,8 @@ export function cashflowCalendar(capital: number, recurring: readonly RecurringT
   while (localDateISO(month) <= endISO) {
     for (const item of recurring) {
       if (!item.is_active) continue;
-      const due = `${localDateISO(month).slice(0, 7)}-${String(item.day_of_month).padStart(2, '0')}`;
-      if (due < today || due > endISO || (item.last_applied && item.last_applied >= due) || transactions.some(t => t.recurringId === item.id && t.date === due)) continue;
+      const due = recurringDueDate(localDateISO(month),item.day_of_month);
+      if (due < today || due > endISO || recurringPaid(item,transactions,due)) continue;
       events.push({ id: `${item.id}:${due}`, date: due, type: item.type, amount: item.amount, comment: item.comment || (item.type === 'income' ? 'Плановый доход' : 'Плановый платеж') });
     }
     month.setMonth(month.getMonth() + 1);

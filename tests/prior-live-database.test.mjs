@@ -20,7 +20,7 @@ test('Prior v2: shadow, authorizations, settlement, occurrences, cancellation, t
  CREATE FUNCTION vault.create_secret(new_secret text,new_name text DEFAULT NULL,new_description text DEFAULT NULL) RETURNS uuid LANGUAGE sql AS $$INSERT INTO vault.secrets(secret) VALUES(new_secret) RETURNING id$$;`);
  await db.exec(await fs.readFile(new URL('../supabase_schema.sql',import.meta.url),'utf8'));
  const migration=await fs.readFile(new URL('../supabase/migrations/20261025153840_prior_live_accounting.sql',import.meta.url),'utf8');
- eq((await fs.readFile(new URL('../supabase_schema.sql',import.meta.url),'utf8')).split('-- 19. Priorbank live accounting (2026-10-25)')[1].trim(),migration.trim());
+ eq((await fs.readFile(new URL('../supabase_schema.sql',import.meta.url),'utf8')).split('-- 19. Priorbank live accounting (2026-10-25)')[1].split('-- 20. Merchant rules')[0].trim(),migration.trim());
  await db.exec(migration);await db.exec(migration);
  const owner='11111111-1111-4111-8111-111111111111',other='22222222-2222-4222-8222-222222222222';
  await q(`INSERT INTO auth.users VALUES($1,'{"household_action":"create","household_name":"A"}'),($2,'{"household_action":"create","household_name":"B"}')`,[owner,other]);

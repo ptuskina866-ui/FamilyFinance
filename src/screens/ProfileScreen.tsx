@@ -1,4 +1,5 @@
 import { ScreenHeader } from '../components/ScreenHeader';
+import { MerchantRules } from '../components/MerchantRules';
 import React, { useState } from 'react';
 import { useApp } from '../AppContext';
 import { useAuth } from '../AuthContext';
@@ -212,6 +213,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onOpenStatement }) => {
           </button>
         </div>
 
+        <MerchantRules />
         {/* PWA install tips */}
         <div className="card px-4 py-4 flex flex-col gap-3">
           <p className="text-[11px] text-slate-400 font-bold tracking-normal flex items-center gap-2">

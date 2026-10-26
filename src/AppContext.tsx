@@ -7,10 +7,13 @@ import { accountBalances as calculateAccountBalances, cashflowTotals, reservedGo
 import { fromMinorUnits, localDateISO, toMinorUnits } from './lib/money';
 import { allocationTotal, budgetReserved, planningDateISO, planningErrorMessage } from './lib/planning';
 import { previousPlanningMonth, resolveIncomeTemplate } from './lib/flexiblePlanning';
-import type { PriorImportSnapshot, PriorImportSelection, PriorImportCheck, PriorImportResult, PriorBankEvent } from './types';
+import type { PriorImportSnapshot, PriorImportSelection, PriorImportCheck, PriorImportResult, PriorBankEvent, MerchantRule } from './types';
 import { priorImportError } from './lib/priorImport';
 
 export interface AppContextType {
+  merchantRules:MerchantRule[];smartRulesReady:boolean;
+  confirmBankBill:(evidence:string[])=>Promise<void>;
+  deleteMerchantRule:(id:string)=>Promise<void>;
   transactions: Transaction[]; categories: Category[]; members: FamilyMember[];
   accounts: Account[]; accountBalances: Record<string, number>;
   accountsReady: boolean; schemaReady: boolean; financeLoading: boolean; financeError: string | null;
@@ -28,7 +31,7 @@ export interface AppContextType {
   reviewBudgetMonth: (mode: BudgetRolloverMode, goalId: string | null, preview: IncomeAllocation[]) => Promise<void>;
   saveFund: (data: FundInput) => Promise<void>;
   addTransaction: (tx: Omit<Transaction, 'id'>) => Promise<void>;
-  updateTransaction: (id: string, tx: Omit<Transaction, 'id'>) => Promise<void>;
+  updateTransaction: (id: string, tx: Omit<Transaction, 'id'>,learning?:{remember:boolean;name:string}) => Promise<void>;
   addTransactionsBatch: (txs: Omit<Transaction, 'id'>[]) => Promise<void>;
   previewPriorImport: (accountId: string, snapshot: PriorImportSnapshot) => Promise<PriorImportCheck>;
   importPriorOperations: (accountId: string, snapshot: PriorImportSnapshot, items: PriorImportSelection[]) => Promise<PriorImportResult>;
@@ -53,6 +56,7 @@ interface TransactionRow {
   kind?: Transaction['kind']; account_id?: string | null; target_account_id?: string | null;
   goal_id?: string | null; recurring_id?: string | null; income_distribution_id?: string | null;
   import_origin?: Transaction['importOrigin'];
+  recurring_month?:string|null;
 }
 type BudgetRow = Omit<CategoryBudget, 'allocated_amount'> & { allocated_amount: number | string };
 type DistributionRow = Omit<IncomeDistribution, 'total_amount' | 'items'> & { total_amount: number | string; items: (Omit<IncomeAllocation,'amount'> & {amount:number | string})[] };
@@ -63,6 +67,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const { profile, user } = useAuth();
   const householdId = profile?.id === user?.id ? profile?.household_id : undefined;
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [merchantRules,setMerchantRules]=useState<MerchantRule[]>([]),[smartRulesReady,setSmartRulesReady]=useState(false);
   const [members, setMembers] = useState<FamilyMember[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [schemaReady, setSchemaReady] = useState(false);
@@ -97,7 +102,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (page.length < 500 || version !== loadVersion.current) return { data: rows, error: null };
       }
     };
-    const fetchPlanning = async <T,>(table: 'category_budgets' | 'income_distributions' | 'income_templates' | 'budget_rollovers' | 'income_distribution_revisions'|'prior_bank_events') => {
+    const fetchPlanning = async <T,>(table: 'category_budgets' | 'income_distributions' | 'income_templates' | 'budget_rollovers' | 'income_distribution_revisions'|'prior_bank_events'|'merchant_rules') => {
       const rows: T[] = [];
       for (let offset = 0; ; offset += 500) {
         let request = supabase.from(table).select('*').eq('household_id', householdId);
@@ -110,7 +115,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (result.data.length < 500 || version !== loadVersion.current) return {data:rows,error:null};
       }
     };
-    const [txResult, memberResult, accountResult, goalResult, recurringResult, budgetResult, distributionResult,templateResult,rolloverResult,revisionResult,eventResult] = await Promise.all([
+    const [txResult, memberResult, accountResult, goalResult, recurringResult, budgetResult, distributionResult,templateResult,rolloverResult,revisionResult,eventResult,ruleResult] = await Promise.all([
       fetchLedger(),
       supabase.from('profiles').select('id, name, avatar, color').eq('household_id', householdId),
       supabase.from('accounts').select('*').eq('household_id', householdId).order('created_at'),
@@ -118,7 +123,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       supabase.from('recurring_transactions').select('*').eq('household_id', householdId).eq('is_active', true).order('created_at', { ascending: false }),
       fetchPlanning<BudgetRow>('category_budgets'),
       fetchPlanning<DistributionRow>('income_distributions'),
-      fetchPlanning<TemplateRow>('income_templates'),fetchPlanning<RolloverRow>('budget_rollovers'),fetchPlanning<DistributionRevision>('income_distribution_revisions'),fetchPlanning<PriorBankEvent>('prior_bank_events')
+      fetchPlanning<TemplateRow>('income_templates'),fetchPlanning<RolloverRow>('budget_rollovers'),fetchPlanning<DistributionRevision>('income_distribution_revisions'),fetchPlanning<PriorBankEvent>('prior_bank_events'),fetchPlanning<MerchantRule>('merchant_rules')
     ]);
     if (version !== loadVersion.current || currentHousehold.current !== householdId) return;
     const missingSchema = accountResult.error && ['PGRST205', '42P01'].includes(accountResult.error.code);
@@ -129,6 +134,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       || (!planningMissing && (budgetResult.error || distributionResult.error)) || (!flexMissing && flexErrors.find(Boolean));
     setFlexiblePlanningReady(flexErrors.every(error=>!error));
     setPlanningReady(!budgetResult.error && !distributionResult.error);
+    setSmartRulesReady(!ruleResult.error);setMerchantRules(ruleResult.error?[]:ruleResult.data);
     setSchemaReady(!accountResult.error);
     if (failed) { setFinanceError('Не удалось обновить данные. ' + failed.message); setFinanceLoading(false); return; }
     try {
@@ -137,7 +143,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const bankEvents=new Map((eventResult.data??[]).filter(e=>e.transaction_id).map(e=>[e.transaction_id,e]));
       setTransactions(rows.map(t => ({ id: t.id, type: t.type, amount: money(t.amount), categoryId: t.category_id,
         comment: t.comment || '', addedBy: t.added_by || '', date: t.date, kind: t.kind || 'cashflow',
-        accountId: t.account_id, targetAccountId: t.target_account_id, goalId: t.goal_id, recurringId: t.recurring_id, incomeDistributionId: t.income_distribution_id, importOrigin: t.import_origin,bankEvent:bankEvents.get(t.id) })));
+        accountId: t.account_id, targetAccountId: t.target_account_id, goalId: t.goal_id, recurringId: t.recurring_id,recurringMonth:t.recurring_month, incomeDistributionId: t.income_distribution_id, importOrigin: t.import_origin,bankEvent:bankEvents.get(t.id) })));
       setMembers(memberResult.data as FamilyMember[]);
       setAccounts((accountResult.data || []).map(a => ({ ...a, opening_balance: money(a.opening_balance) })) as Account[]);
       setSavingsGoals((goalResult.data || []).map(g => ({ ...g, target_amount: money(g.target_amount), current_amount: money(g.current_amount ?? 0), essential_amount:g.essential_amount == null ? null : money(g.essential_amount) })) as SavingsGoal[]);
@@ -154,13 +160,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     ++loadVersion.current;
     setTransactions([]); setMembers([]); setAccounts([]); setSavingsGoals([]); setRecurringTransactions([]);
+    setMerchantRules([]);setSmartRulesReady(false);
     setCategoryBudgets([]); setIncomeDistributions([]); setPlanningReady(false);
     setIncomeTemplates([]);setBudgetRollovers([]);setDistributionRevisions([]);setFlexiblePlanningReady(false);
     setSchemaReady(false); setFinanceError(null); setFinanceLoading(!!householdId);
     if (!householdId) return;
     void refresh();
     const channel = supabase.channel(`finance-${householdId}`);
-    for (const table of ['transactions', 'profiles', 'accounts', 'savings_goals', 'recurring_transactions', 'category_budgets', 'income_distributions','income_templates','budget_rollovers','income_distribution_revisions','prior_bank_events']) {
+    for (const table of ['transactions', 'profiles', 'accounts', 'savings_goals', 'recurring_transactions', 'category_budgets', 'income_distributions','income_templates','budget_rollovers','income_distribution_revisions','prior_bank_events','merchant_rules']) {
       channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `household_id=eq.${householdId}` }, () => { void refresh(); });
     }
     channel.subscribe();
@@ -224,14 +231,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (error) throw new Error(error.message);
     await refresh();
   };
-  const updateTransaction = async (id: string, tx: Omit<Transaction, 'id'>) => {
+  const updateTransaction = async (id: string, tx: Omit<Transaction, 'id'>,learning?:{remember:boolean;name:string}) => {
     if (!transactions.some(t => t.id === id && isCashflow(t))) throw new Error('Эту операцию нельзя редактировать как доход или расход.');
     requireAccounts();
     const record = transactionRecord(tx);
-    await runRpc('update_finance_transaction', { p_id: id, p_type: record.type, p_amount: record.amount,
+    await runRpc(learning?.remember?'save_transaction_with_rule':'update_finance_transaction', { p_id: id, p_type: record.type, p_amount: record.amount,
       p_category_id: record.category_id, p_comment: record.comment, p_added_by: record.added_by,
-      p_date: record.date, p_account_id: tx.accountId || defaultAccountId });
+      p_date: record.date, p_account_id: tx.accountId || defaultAccountId,...(learning?.remember?{p_remember:true,p_merchant_name:learning.name}:{}) });
   };
+  const confirmBankBill=async(evidence:string[])=>runRpc('confirm_bank_bill',{p_evidence:evidence});
+  const deleteMerchantRule=async(id:string)=>runRpc('delete_merchant_rule',{p_id:id});
   const addTransactionsBatch = async (txs: Omit<Transaction, 'id'>[]) => {
     if (!txs.length) return;
     const { error } = await supabase.from('transactions').insert(txs.map(transactionRecord));
@@ -347,6 +356,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     flexiblePlanningReady,incomeTemplates,budgetRollovers,distributionRevisions,transferCategoryBudget,changeIncomeDistribution,saveIncomeTemplate,archiveIncomeTemplate,reviewBudgetMonth,saveFund,
     addTransaction, updateTransaction, addTransactionsBatch, previewPriorImport, importPriorOperations, deleteTransaction, initializeFinance, createAccount, transferBetweenAccounts,
     setBudgetLimit, getCategoryById: id => CATEGORIES.find(c => c.id === id), getMemberById: id => members.find(m => m.id === id),
+    merchantRules:merchantRules.filter(r=>r.household_id===householdId),smartRulesReady,confirmBankBill,deleteMerchantRule,
     addRecurring, deleteRecurring, addGoal, deleteGoal, updateGoalAmount, withdrawGoalAmount }}>{children}</AppContext.Provider>;
 };
 export const useApp = () => {
