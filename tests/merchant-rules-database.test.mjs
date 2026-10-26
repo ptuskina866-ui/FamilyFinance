@@ -20,7 +20,9 @@ test('merchant learning and bank-observed monthly bills are atomic, isolated and
  const migration=await fs.readFile(new URL('../supabase/migrations/20261026065110_merchant_rules_bank_recurring.sql',import.meta.url),'utf8');
  eq(schema.split('-- 20. Merchant rules and bank-observed bills (2026-10-26)')[1].split('-- 21. Month-end bank bills')[0].trim(),migration.trim());await db.exec(migration);
  const endMigration=await fs.readFile(new URL('../supabase/migrations/20261026071613_bank_bill_month_end.sql',import.meta.url),'utf8');
- eq(schema.split('-- 21. Month-end bank bills (2026-10-26)')[1].trim(),endMigration.trim());await db.exec(endMigration);await db.exec(endMigration);
+ eq(schema.split('-- 21. Month-end bank bills (2026-10-26)')[1].split('-- 22. Exact new bank rows')[0].trim(),endMigration.trim());await db.exec(endMigration);await db.exec(endMigration);
+ const guardMigration=await fs.readFile(new URL('../supabase/migrations/20261026072334_merchant_new_row_guard.sql',import.meta.url),'utf8');
+ eq(schema.split('-- 22. Exact new bank rows (2026-10-26)')[1].trim(),guardMigration.trim());await db.exec(guardMigration);await db.exec(guardMigration);
  for(const text of ['Retail BLR Minsk MAK.BY','SMAK.BY','Netflix.com','OTHER SHOP 123','OTHER SHOP 124','ＡＰＰＬＥ.COM/BILL','', 'оплата', 'x'.repeat(300),...MERCHANTS.map(x=>x[1])])eq((await q('SELECT finance_private.merchant_identity($1) v',[text]))[0].v,merchantIdentity(text));
  const owner='11111111-1111-4111-8111-111111111111',other='22222222-2222-4222-8222-222222222222';
  await q(`INSERT INTO auth.users VALUES($1,'{"household_action":"create","household_name":"A"}'),($2,'{"household_action":"create","household_name":"B"}')`,[owner,other]);
@@ -29,10 +31,12 @@ test('merchant learning and bank-observed monthly bills are atomic, isolated and
  const scalar=async(sql,args=[])=>Object.values((await q(sql,args))[0])[0];
  const today=await scalar(`SELECT (now() AT TIME ZONE 'Europe/Minsk')::date::text`),month=today.slice(0,7)+'-01';
  const tx=async(description,amount,date=today)=>{await db.exec('RESET ROLE');return scalar(`INSERT INTO public.transactions(household_id,added_by,account_id,kind,type,amount,category_id,comment,date) VALUES($1,$2,$3,'cashflow','expense',$4,'other',$5,$6) RETURNING id`,[h,owner,account,amount,description,date]);};
- const bank=async(description,amount,date=today)=>{
+ const bank=async(description,amount,date=today,legacy=false)=>{
+  await db.exec('BEGIN');
   const id=await tx(description,amount,date);await q(`UPDATE transactions SET import_origin='prior-auto' WHERE id=$1`,[id]);
+  if(legacy)await q(`UPDATE transactions SET created_at=now()-interval '1 second' WHERE id=$1`,[id]);
   const event=await scalar(`INSERT INTO public.prior_bank_events(owner_id,household_id,account_id,source_key,aliases,match_key,state,bank_amount,original_currency,day,occurred_at,precise_time,description) VALUES($1,$2,$3,repeat('a',64),ARRAY[gen_random_uuid()::text],repeat('b',64),'provisional',-$4::numeric,'BYN',$5,$5::date::timestamptz,true,$6) RETURNING id`,[owner,h,account,amount,date,description]);
-  await q('UPDATE prior_bank_events SET transaction_id=$1 WHERE id=$2',[id,event]);return {id,event};
+  await q('UPDATE prior_bank_events SET transaction_id=$1 WHERE id=$2',[id,event]);await db.exec('COMMIT');return {id,event};
  };
  const older=await bank('Retail BLR Minsk MAK.BY',12),current=await bank('Retail BLR Minsk MAK.BY',17);
  const save=async(row,category,name='Мой Мак')=>{await auth(owner);return q(`SELECT save_transaction_with_rule($1,'expense',17,$2,'Моя заметка',$3,$4,$5,true,$6)`,[row.id,category,owner,today,account,name]);};
@@ -68,9 +72,10 @@ test('merchant learning and bank-observed monthly bills are atomic, isolated and
  const d=await tx('Other subscription',9,prior1),e=await tx('Other subscription',9,prior2);await tx('Other subscription',9,prior2);
  await auth(owner);await fail('SELECT confirm_bank_bill($1)',[[d,e]]);
  await fail('SELECT confirm_bank_bill($1)',[[a,b,a,b,a,b,a]]);
- await q(`SELECT save_transaction_with_rule($1,'expense',12.99,'other','Netflix.com',$2,$3,$4,true,'Видео')`,[b,owner,prior2,account]);
- eq(await scalar(`SELECT category_id FROM merchant_rules WHERE merchant_key='brand:netflix'`),'other');
+ await q(`SELECT save_transaction_with_rule($1,'expense',12.99,'subscriptions','Netflix.com',$2,$3,$4,true,'Видео')`,[b,owner,prior2,account]);
+ eq(await scalar(`SELECT category_id FROM merchant_rules WHERE merchant_key='brand:netflix'`),'subscriptions');
  eq(await scalar('SELECT category_id FROM transactions WHERE id=$1',[charge.id]),'other');
+ const legacy=await bank('Netflix.com',11,today,true);eq(await scalar('SELECT category_id FROM transactions WHERE id=$1',[legacy.id]),'other');eq(await scalar('SELECT rule_category FROM prior_bank_events WHERE id=$1',[legacy.event]),null);
  const monthEnd=await scalar(`SELECT (date_trunc('month',$1::date)-interval '1 day')::date::text`,[today]),previousEnd=await scalar(`SELECT (date_trunc('month',$1::date)-interval '1 month'-interval '1 day')::date::text`,[today]);
  const endA=await tx('Monthend Service',19,previousEnd),endB=await tx('Monthend Service',19,monthEnd);await auth(owner);
  const endBill=await scalar('SELECT confirm_bank_bill($1)',[[endA,endB]]);eq(await scalar('SELECT day_of_month FROM recurring_transactions WHERE id=$1',[endBill]),31);
