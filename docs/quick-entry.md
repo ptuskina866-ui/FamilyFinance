@@ -25,3 +25,9 @@ References checked: [MDN API](https://developer.mozilla.org/en-US/docs/Web/API/S
 - Full `npm test` passes (79), `npm run test:prior` passes (38), strict TypeScript/Vite/PWA build passes. Existing bank live and remembered-connection mobile suites pass at 320/390 px. New UI also saves through the original manual form. Screenshots inspected at both widths; no runtime errors or horizontal overflow. The existing large main-bundle warning remains.
 
 Changed code: `src/lib/quickEntry.ts`, `src/components/QuickEntry.tsx`, `src/screens/AddTransactionScreen.tsx`; parser runner and the two tests above. Project/task documentation records delivery and remaining roadmap.
+
+## Release
+
+Published through [PR #23](https://github.com/ptuskina866-ui/FamilyFinance/pull/23), merge `3b74244d6dac789e3e6b9f82c7f163a2c5560ca1`. Cloudflare production build `aa1dae9d-08ef-4bb9-9224-3b471f2bab04` succeeded, version `ce74219b-d442-4040-97f3-ad6cf027d33d`. The branch preview also passed before merge.
+
+Fresh public contexts at 320/390 px loaded login HTTP 200 with `/assets/index-CQo7wqgC.js` and `/assets/index-B1bQYUgv.css`. The bundle contains the new entry UI and Safari speech support; `sw.js` includes the new JS asset and both it and the manifest return HTTP 200. No page errors/overflow. This checks the deployed public bundle/PWA resources; signed-in interaction was verified locally through real components against synthetic APIs, not by writing test entries into the owner's production journal. Physical iPhone microphone behavior remains unverified.
