@@ -1,5 +1,12 @@
 # TASKS.md
 
+## FinApp saves and loading · 2026-11-26
+
+- Production logs showed that some successful manual inserts were followed by GET requests for the journal and bank data that took over two minutes. The bank reconciliation had also accumulated about 1.69 million journal updates and 3.78 million bank event updates for 340 journal entries and 140 bank events.
+- Added migration `20261126131930_reduce_prior_sync_write_churn.sql` and mirrored it in the portable schema. It skips redundant updates to journal rows, bank events and import receipts while retaining status changes and the successful poll timestamp. The hosted function replacement passed a transactional dry run, was applied to production, and the isolated database suite checks that a repeat of a settled snapshot performs zero updates to those three tables.
+- Separated journal, plans, bank metadata and settings refreshes. Deduplicated notifications, bounded PostgREST requests and exposed retry UI, deferred profile fetches outside Auth notifications, and prevented late replies from replacing acknowledged transactions. Manual and phrase cashflow saves show the returned row and reuse the draft ID on retry. The journal initially renders 40 rows with full-history search. Deferred sections and static category icons reduced the starting script from roughly 425 KB to 160 KB compressed.
+- Verification covers an outstanding bank-details read, 180 Realtime notifications, a stale journal response, a saved transaction with a lost response, logout isolation, search and paging on 320/390 px. Tests use synthetic rows. Production verification is recorded with the release.
+
 ## One-phrase entry · 2026-10-26
 
 - First release of the approved order: one-phrase entry → currency accounts → split purchases. Implemented local exact Russian amount/date parsing and optional browser/Safari dictation on Add, compact explicit preview with editable details, income/expense and existing atomic account transfers. Unknown categories/accounts require selection; malformed/ambiguous amounts, debt and foreign currencies are blocked. Preserves the original form and bank logic. No new dependencies or schema/data changes.

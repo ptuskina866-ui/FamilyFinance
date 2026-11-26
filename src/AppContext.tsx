@@ -1,14 +1,15 @@
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Account, AccountKind, Transaction, Category, FamilyMember, RecurringTransaction, SavingsGoal, CategoryBudget, IncomeAllocation, IncomeDistribution, IncomeTemplate, IncomeTemplateItem, BudgetRollover, BudgetRolloverMode, DistributionRevision, FundInput } from './types';
 import { CATEGORIES } from './mockData';
 import { useAuth } from './AuthContext';
 import { supabase } from './supabaseClient';
-import { accountBalances as calculateAccountBalances, cashflowTotals, reservedGoals, totalAccountBalance, isCashflow } from './lib/finance';
-import { fromMinorUnits, localDateISO, toMinorUnits } from './lib/money';
+import { accountBalances as calculateAccountBalances, cashflowTotals, reservedGoals, isCashflow } from './lib/finance';
+import { fromMinorUnits, localDateISO, sumMoney, toMinorUnits } from './lib/money';
 import { allocationTotal, budgetReserved, planningDateISO, planningErrorMessage } from './lib/planning';
 import { previousPlanningMonth, resolveIncomeTemplate } from './lib/flexiblePlanning';
 import type { PriorImportSnapshot, PriorImportSelection, PriorImportCheck, PriorImportResult, PriorBankEvent, MerchantRule } from './types';
 import { priorImportError } from './lib/priorImport';
+import { createFinanceRefresh } from './lib/financeRefresh';
 
 export interface AppContextType {
   merchantRules:MerchantRule[];smartRulesReady:boolean;
@@ -17,6 +18,7 @@ export interface AppContextType {
   transactions: Transaction[]; categories: Category[]; members: FamilyMember[];
   accounts: Account[]; accountBalances: Record<string, number>;
   accountsReady: boolean; schemaReady: boolean; financeLoading: boolean; financeError: string | null;
+  journalAvailable?: boolean; plansAvailable?: boolean; plansError?: string | null; refreshFinance?: () => void;
   balance: number; availableBalance: number; reservedBalance: number;
   monthlyIncome: number; monthlyExpense: number; budgetLimit: number;
   recurringTransactions: RecurringTransaction[]; savingsGoals: SavingsGoal[];
@@ -30,7 +32,7 @@ export interface AppContextType {
   archiveIncomeTemplate: (id: string) => Promise<void>;
   reviewBudgetMonth: (mode: BudgetRolloverMode, goalId: string | null, preview: IncomeAllocation[]) => Promise<void>;
   saveFund: (data: FundInput) => Promise<void>;
-  addTransaction: (tx: Omit<Transaction, 'id'>) => Promise<void>;
+  addTransaction: (tx: Omit<Transaction, 'id'>, requestId?: string) => Promise<void>;
   updateTransaction: (id: string, tx: Omit<Transaction, 'id'>,learning?:{remember:boolean;name:string}) => Promise<void>;
   addTransactionsBatch: (txs: Omit<Transaction, 'id'>[]) => Promise<void>;
   previewPriorImport: (accountId: string, snapshot: PriorImportSnapshot) => Promise<PriorImportCheck>;
@@ -63,16 +65,52 @@ type DistributionRow = Omit<IncomeDistribution, 'total_amount' | 'items'> & { to
 type TemplateRow = Omit<IncomeTemplate, 'items'> & {items:(Omit<IncomeTemplateItem,'value'> & {value:number | string})[]};
 type RolloverRow = Omit<BudgetRollover,'amount'> & {amount:number | string};
 const money = (amount: number | string) => fromMinorUnits(toMinorUnits(amount));
+const financeGroups = ['journal', 'plans', 'bank', 'tools'] as const;
+type FinanceGroup = typeof financeGroups[number];
+const financeTables = {
+  transactions: 'journal', profiles: 'journal', accounts: 'journal',
+  savings_goals: 'plans', recurring_transactions: 'plans', category_budgets: 'plans', income_distributions: 'plans',
+  prior_bank_events: 'bank', income_templates: 'tools', budget_rollovers: 'tools',
+  income_distribution_revisions: 'tools', merchant_rules: 'tools',
+} satisfies Record<string, FinanceGroup>;
+const journalBankFields = 'id,transaction_id,state,bank_amount,applied_amount,original_amount,original_currency,description,day,reason,suppressed,observed_state,history,merchant_key,merchant_name,rule_category';
+const categoriesById = new Map(CATEGORIES.map(category => [category.id, category]));
+const getCategoryById = (id: string) => categoriesById.get(id);
+const isMissingTable = (error: { code: string } | null) => !!error && ['PGRST205', '42P01'].includes(error.code);
+const transactionFromRow = (t: TransactionRow): Transaction => ({
+  id: t.id, type: t.type, amount: money(t.amount), categoryId: t.category_id,
+  comment: t.comment ?? '', addedBy: t.added_by ?? '', date: t.date, kind: t.kind ?? 'cashflow',
+  accountId: t.account_id, targetAccountId: t.target_account_id, goalId: t.goal_id,
+  recurringId: t.recurring_id, recurringMonth: t.recurring_month, incomeDistributionId: t.income_distribution_id,
+  importOrigin: t.import_origin,
+});
+const writeError = (status: number, error: { code: string; message: string }, safeRetry = false) => {
+  if (!status || status >= 500 || error.code === '57014') {
+    return new Error(safeRetry
+      ? 'Сервер не подтвердил сохранение. Можно повторить сохранение этой операции.'
+      : 'Сервер не подтвердил изменение. Проверьте журнал перед повторной попыткой.');
+  }
+  return new Error(planningErrorMessage(error.message));
+};
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { profile, user } = useAuth();
-  const householdId = profile?.id === user?.id ? profile?.household_id : undefined;
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const householdId = profile?.id === user?.id ? profile?.household_id ?? undefined : undefined;
+  return <HouseholdFinance key={`${user?.id ?? ''}:${householdId ?? ''}`} householdId={householdId}>{children}</HouseholdFinance>;
+};
+
+const HouseholdFinance: React.FC<{ children: React.ReactNode; householdId?: string }> = ({ children, householdId }) => {
+  const { profile } = useAuth();
+  const [ledger, setLedger] = useState<Transaction[]>([]);
   const [merchantRules,setMerchantRules]=useState<MerchantRule[]>([]),[smartRulesReady,setSmartRulesReady]=useState(false);
   const [members, setMembers] = useState<FamilyMember[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [schemaReady, setSchemaReady] = useState(false);
-  const [financeLoading, setFinanceLoading] = useState(true);
+  const [financeLoading, setFinanceLoading] = useState(!!householdId);
+  const [journalAvailable, setJournalAvailable] = useState(false);
   const [financeError, setFinanceError] = useState<string | null>(null);
+  const [plansAvailable, setPlansAvailable] = useState(false);
+  const [plansError, setPlansError] = useState<string | null>(null);
   const [budgetLimit, setBudgetLimitState] = useState(1500);
   const [recurringTransactions, setRecurringTransactions] = useState<RecurringTransaction[]>([]);
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
@@ -83,104 +121,153 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [incomeTemplates,setIncomeTemplates] = useState<IncomeTemplate[]>([]);
   const [budgetRollovers,setBudgetRollovers] = useState<BudgetRollover[]>([]);
   const [distributionRevisions,setDistributionRevisions] = useState<DistributionRevision[]>([]);
-  const loadVersion = useRef(0);
-  const currentHousehold = useRef(householdId);
-  currentHousehold.current = householdId;
-  const refresh = useCallback(async () => {
-    if (!householdId) return;
-    const version = ++loadVersion.current;
-    const fetchLedger = async () => {
-      const rows: TransactionRow[] = [];
-      // Hosted PostgREST caps each response. Load the complete ledger for balances.
-      for (let offset = 0; ; offset += 500) {
-        const result = await supabase.from('transactions').select('*').eq('household_id', householdId)
-          .order('date', { ascending: false }).order('created_at', { ascending: false }).order('id')
-          .range(offset, offset + 499);
-        if (result.error) return { data: rows, error: result.error };
-        const page = result.data as unknown as TransactionRow[];
-        rows.push(...page);
-        if (page.length < 500 || version !== loadVersion.current) return { data: rows, error: null };
-      }
-    };
-    const fetchPlanning = async <T,>(table: 'category_budgets' | 'income_distributions' | 'income_templates' | 'budget_rollovers' | 'income_distribution_revisions'|'prior_bank_events'|'merchant_rules') => {
-      const rows: T[] = [];
-      for (let offset = 0; ; offset += 500) {
-        let request = supabase.from(table).select('*').eq('household_id', householdId);
-        if (table === 'category_budgets') request = request.gte('month',previousPlanningMonth());
-        if (table === 'income_distributions') request = request.eq('month',`${planningDateISO().slice(0,7)}-01`);
-        if (table === 'income_templates') request = request.eq('is_archived',false);
-        const result = await request.order('created_at').order('id').range(offset,offset+499);
-        if (result.error) return {data:rows,error:result.error};
-        rows.push(...result.data as unknown as T[]);
-        if (result.data.length < 500 || version !== loadVersion.current) return {data:rows,error:null};
-      }
-    };
-    const [txResult, memberResult, accountResult, goalResult, recurringResult, budgetResult, distributionResult,templateResult,rolloverResult,revisionResult,eventResult,ruleResult] = await Promise.all([
-      fetchLedger(),
-      supabase.from('profiles').select('id, name, avatar, color').eq('household_id', householdId),
-      supabase.from('accounts').select('*').eq('household_id', householdId).order('created_at'),
-      supabase.from('savings_goals').select('*').eq('household_id', householdId).order('created_at', { ascending: false }),
-      supabase.from('recurring_transactions').select('*').eq('household_id', householdId).eq('is_active', true).order('created_at', { ascending: false }),
-      fetchPlanning<BudgetRow>('category_budgets'),
-      fetchPlanning<DistributionRow>('income_distributions'),
-      fetchPlanning<TemplateRow>('income_templates'),fetchPlanning<RolloverRow>('budget_rollovers'),fetchPlanning<DistributionRevision>('income_distribution_revisions'),fetchPlanning<PriorBankEvent>('prior_bank_events'),fetchPlanning<MerchantRule>('merchant_rules')
-    ]);
-    if (version !== loadVersion.current || currentHousehold.current !== householdId) return;
-    const missingSchema = accountResult.error && ['PGRST205', '42P01'].includes(accountResult.error.code);
-    const planningMissing = [budgetResult.error, distributionResult.error].some(error => error && ['PGRST205', '42P01'].includes(error.code));
-    const flexErrors=[templateResult.error,rolloverResult.error,revisionResult.error];
-    const flexMissing=flexErrors.some(error=>error && ['PGRST205','42P01'].includes(error.code));
-    const failed = txResult.error || memberResult.error || goalResult.error || recurringResult.error || (!missingSchema && accountResult.error)
-      || (!planningMissing && (budgetResult.error || distributionResult.error)) || (!flexMissing && flexErrors.find(Boolean));
-    setFlexiblePlanningReady(flexErrors.every(error=>!error));
-    setPlanningReady(!budgetResult.error && !distributionResult.error);
-    setSmartRulesReady(!ruleResult.error);setMerchantRules(ruleResult.error?[]:ruleResult.data);
-    setSchemaReady(!accountResult.error);
-    if (failed) { setFinanceError('Не удалось обновить данные. ' + failed.message); setFinanceLoading(false); return; }
-    try {
-      // Normalize SQL names and exact NUMERIC values at the data boundary.
-      const rows = txResult.data as unknown as TransactionRow[];
-      const bankEvents=new Map((eventResult.data??[]).filter(e=>e.transaction_id).map(e=>[e.transaction_id,e]));
-      setTransactions(rows.map(t => ({ id: t.id, type: t.type, amount: money(t.amount), categoryId: t.category_id,
-        comment: t.comment || '', addedBy: t.added_by || '', date: t.date, kind: t.kind || 'cashflow',
-        accountId: t.account_id, targetAccountId: t.target_account_id, goalId: t.goal_id, recurringId: t.recurring_id,recurringMonth:t.recurring_month, incomeDistributionId: t.income_distribution_id, importOrigin: t.import_origin,bankEvent:bankEvents.get(t.id) })));
-      setMembers(memberResult.data as FamilyMember[]);
-      setAccounts((accountResult.data || []).map(a => ({ ...a, opening_balance: money(a.opening_balance) })) as Account[]);
-      setSavingsGoals((goalResult.data || []).map(g => ({ ...g, target_amount: money(g.target_amount), current_amount: money(g.current_amount ?? 0), essential_amount:g.essential_amount == null ? null : money(g.essential_amount) })) as SavingsGoal[]);
-      setRecurringTransactions((recurringResult.data || []).map(r => ({ ...r, amount: money(r.amount) })) as RecurringTransaction[]);
-      setCategoryBudgets((budgetResult.data || []).map(b => ({ ...b, allocated_amount: money(b.allocated_amount) })) as CategoryBudget[]);
-      setIncomeDistributions((distributionResult.data || []).map(d => ({ ...d, total_amount: money(d.total_amount), items: d.items.map(i => ({ ...i, amount: money(i.amount) })) })));
-      setIncomeTemplates((templateResult.data || []).map(t=>({...t,items:t.items.map(i=>({...i,value:money(i.value)}))})));
-      setBudgetRollovers((rolloverResult.data || []).map(r=>({...r,amount:money(r.amount)})));
-      setDistributionRevisions(revisionResult.data || []);
-      setFinanceError(missingSchema ? 'Для новых счетов и накоплений требуется обновление базы приложения.' : null);
-    } catch { setFinanceError('Не удалось прочитать денежные значения. Проверьте данные перед продолжением.'); }
-    setFinanceLoading(false);
-  }, [householdId]);
+  const refreshQueue = useRef<ReturnType<typeof createFinanceRefresh<FinanceGroup>> | null>(null);
+  const ledgerRevision = useRef(0);
+  const [bankEvents, setBankEvents] = useState<PriorBankEvent[]>([]);
+  const [planningDay, setPlanningDay] = useState(planningDateISO);
+  const refresh = useCallback(() => refreshQueue.current?.request(financeGroups), []);
+
   useEffect(() => {
-    ++loadVersion.current;
-    setTransactions([]); setMembers([]); setAccounts([]); setSavingsGoals([]); setRecurringTransactions([]);
-    setMerchantRules([]);setSmartRulesReady(false);
-    setCategoryBudgets([]); setIncomeDistributions([]); setPlanningReady(false);
-    setIncomeTemplates([]);setBudgetRollovers([]);setDistributionRevisions([]);setFlexiblePlanningReady(false);
-    setSchemaReady(false); setFinanceError(null); setFinanceLoading(!!householdId);
     if (!householdId) return;
-    void refresh();
+    const pageSize = 500;
+    const fetchPages = async <T,>(table: Parameters<typeof supabase.from>[0], signal: AbortSignal) => {
+      const rows: T[] = [];
+      for (let offset = 0; !signal.aborted; offset += pageSize) {
+        let query = supabase.from(table).select(table === 'prior_bank_events' ? journalBankFields : '*')
+          .eq('household_id', householdId);
+        if (table === 'category_budgets') query = query.gte('month', previousPlanningMonth());
+        if (table === 'income_distributions') query = query.eq('month', `${planningDateISO().slice(0, 7)}-01`);
+        if (table === 'income_templates') query = query.eq('is_archived', false);
+        if (table === 'prior_bank_events') query = query.not('transaction_id', 'is', null);
+        if (table === 'transactions') query = query.order('date', { ascending: false });
+        const result = await query.order('created_at', { ascending: table !== 'transactions' })
+          .order('id').range(offset, offset + pageSize - 1).abortSignal(signal).retry(false);
+        if (result.error) return { data: rows, error: result.error };
+        rows.push(...result.data as unknown as T[]);
+        if (result.data.length < pageSize) break;
+      }
+      return { data: rows, error: null };
+    };
+
+    const load = async (group: FinanceGroup, signal: AbortSignal) => {
+      try {
+        if (group === 'journal') {
+          const revision = ledgerRevision.current;
+          const [ledger, people, accountList] = await Promise.all([
+            fetchPages<TransactionRow>('transactions', signal),
+            supabase.from('profiles').select('id, name, avatar, color').eq('household_id', householdId).abortSignal(signal).retry(false),
+            supabase.from('accounts').select('*').eq('household_id', householdId).order('created_at').abortSignal(signal).retry(false),
+          ]);
+          if (signal.aborted || revision !== ledgerRevision.current) return;
+          const legacy = isMissingTable(accountList.error);
+          if (ledger.error || people.error || (accountList.error && !legacy)) throw new Error('journal read failed');
+          const parsedLedger = ledger.data.map(transactionFromRow);
+          const parsedAccounts = (accountList.data ?? []).map(a => ({ ...a, opening_balance: money(a.opening_balance) })) as Account[];
+          setLedger(parsedLedger);
+          setMembers(people.data as FamilyMember[]);
+          setAccounts(parsedAccounts);
+          setSchemaReady(!legacy);
+          setJournalAvailable(true);
+          setFinanceError(legacy ? 'Для счетов и накоплений требуется обновление базы приложения.' : null);
+        } else if (group === 'plans') {
+          const [goals, recurring, budgets, distributions] = await Promise.all([
+            supabase.from('savings_goals').select('*').eq('household_id', householdId).order('created_at', { ascending: false }).abortSignal(signal).retry(false),
+            supabase.from('recurring_transactions').select('*').eq('household_id', householdId).eq('is_active', true).order('created_at', { ascending: false }).abortSignal(signal).retry(false),
+            fetchPages<BudgetRow>('category_budgets', signal),
+            fetchPages<DistributionRow>('income_distributions', signal),
+          ]);
+          if (signal.aborted) return;
+          if (goals.error || recurring.error || (budgets.error && !isMissingTable(budgets.error))) throw new Error('plans read failed');
+          const parsedGoals = (goals.data ?? []).map(g => ({ ...g, target_amount: money(g.target_amount), current_amount: money(g.current_amount ?? 0), essential_amount: g.essential_amount == null ? null : money(g.essential_amount) })) as SavingsGoal[];
+          const parsedRecurring = (recurring.data ?? []).map(r => ({ ...r, amount: money(r.amount) })) as RecurringTransaction[];
+          setSavingsGoals(parsedGoals);
+          setRecurringTransactions(parsedRecurring);
+          if (!budgets.error) setCategoryBudgets(budgets.data.map(b => ({ ...b, allocated_amount: money(b.allocated_amount) })));
+          if (!distributions.error) setIncomeDistributions(distributions.data.map(d => ({ ...d, total_amount: money(d.total_amount), items: d.items.map(i => ({ ...i, amount: money(i.amount) })) })));
+          setPlanningReady(!budgets.error && !distributions.error);
+          setPlansAvailable(true);
+          setPlansError(distributions.error && !isMissingTable(distributions.error) ? 'Не удалось обновить распределения доходов.' : null);
+        } else if (group === 'tools') {
+          const [templates, rollovers, revisions, rules] = await Promise.all([
+            fetchPages<TemplateRow>('income_templates', signal),
+            fetchPages<RolloverRow>('budget_rollovers', signal),
+            fetchPages<DistributionRevision>('income_distribution_revisions', signal),
+            fetchPages<MerchantRule>('merchant_rules', signal),
+          ]);
+          if (signal.aborted) return;
+          if (!templates.error) setIncomeTemplates(templates.data.map(t => ({ ...t, items: t.items.map(i => ({ ...i, value: money(i.value) })) })));
+          if (!rollovers.error) setBudgetRollovers(rollovers.data.map(r => ({ ...r, amount: money(r.amount) })));
+          if (!revisions.error) setDistributionRevisions(revisions.data);
+          if (!rules.error) setMerchantRules(rules.data);
+          setFlexiblePlanningReady(!templates.error && !rollovers.error && !revisions.error);
+          setSmartRulesReady(!rules.error);
+        } else {
+          const result = await fetchPages<PriorBankEvent>('prior_bank_events', signal);
+          if (!signal.aborted && !result.error) setBankEvents(result.data);
+        }
+      } catch {
+        if (signal.aborted) return;
+        if (group === 'journal') setFinanceError('Не удалось обновить журнал и счета. Повторите загрузку.');
+        if (group === 'plans') setPlansError('Не удалось обновить бюджеты и накопления. Повторите загрузку.');
+      } finally {
+        if (group === 'journal' && !signal.aborted) setFinanceLoading(false);
+      }
+    };
+
+    const queue = createFinanceRefresh(load);
+    refreshQueue.current = queue;
+    queue.request(['journal']);
     const channel = supabase.channel(`finance-${householdId}`);
-    for (const table of ['transactions', 'profiles', 'accounts', 'savings_goals', 'recurring_transactions', 'category_budgets', 'income_distributions','income_templates','budget_rollovers','income_distribution_revisions','prior_bank_events','merchant_rules']) {
-      channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `household_id=eq.${householdId}` }, () => { void refresh(); });
+    for (const [table, group] of Object.entries(financeTables)) {
+      channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `household_id=eq.${householdId}` }, () => {
+        queue.request([group]);
+      });
     }
-    channel.subscribe();
-    const onReturn = () => { if(document.visibilityState==='visible'){void refresh();void supabase.rpc('request_prior_sync').then(()=>{});} };
-    document.addEventListener('visibilitychange',onReturn);
-    window.addEventListener('online',onReturn);
+    // Give the first journal batch a head start before the optional reads.
+    const secondary = window.setTimeout(() => queue.request(['plans', 'bank', 'tools']), 300);
+    let subscribed = false;
+    channel.subscribe(status => {
+      if (status !== 'SUBSCRIBED') return;
+      if (subscribed) refresh();
+      subscribed = true;
+    });
+    let lastReturn = 0;
+    const onReturn = () => {
+      if (document.visibilityState !== 'visible' || Date.now() - lastReturn < 1_500) return;
+      lastReturn = Date.now();
+      setPlanningDay(planningDateISO());
+      refresh();
+    };
+    document.addEventListener('visibilitychange', onReturn);
+    window.addEventListener('online', onReturn);
     let loadedDay = planningDateISO();
     const clock = window.setInterval(() => {
       const day = planningDateISO();
-      if (day !== loadedDay) {loadedDay = day; void refresh();}
-    },60_000);
-    return () => { window.clearInterval(clock); document.removeEventListener('visibilitychange',onReturn); window.removeEventListener('online',onReturn); ++loadVersion.current; void supabase.removeChannel(channel); };
+      if (day !== loadedDay) {
+        loadedDay = day;
+        setPlanningDay(day);
+        queue.request(['plans', 'tools']);
+      }
+    }, 60_000);
+    return () => {
+      queue.dispose();
+      refreshQueue.current = null;
+      window.clearTimeout(secondary);
+      window.clearInterval(clock);
+      document.removeEventListener('visibilitychange', onReturn);
+      window.removeEventListener('online', onReturn);
+      void supabase.removeChannel(channel);
+    };
   }, [householdId, refresh]);
+
+  const transactions = useMemo(() => {
+    if (!bankEvents.length) return ledger;
+    const events = new Map(bankEvents.map(e => [e.transaction_id, e]));
+    return ledger.map(transaction => {
+      const event = events.get(transaction.id);
+      return event ? { ...transaction, bankEvent: event } : transaction;
+    });
+  }, [ledger, bankEvents]);
   const accountsReady = accounts.length > 0;
   const requireHousehold = () => {
     if (!householdId || !profile) throw new Error('Дождитесь загрузки профиля.');
@@ -192,30 +279,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!accountsReady) throw new Error('Сначала подключите счета на главной странице.');
   };
   const defaultAccountId = accounts.find(a => !a.is_archived)?.id;
+  const refreshJournal = () => {
+    ledgerRevision.current += 1;
+    refreshQueue.current?.request(['journal']);
+  };
+  const showConfirmedTransaction = (tx: Transaction) => {
+    setLedger(previous => [tx, ...previous.filter(item => item.id !== tx.id)].sort((a, b) => b.date.localeCompare(a.date)));
+    refreshJournal();
+  };
   const runRpc = async (name: string, args: Record<string, unknown>) => {
     requireHousehold();
-    const { error } = await supabase.rpc(name, args);
-    if (error) throw new Error(planningErrorMessage(error.message));
-    await refresh();
+    const { data, error, status } = await supabase.rpc(name, args).retry(false);
+    if (error) throw writeError(status, error);
+    ledgerRevision.current += 1;
+    refresh();
+    return data;
   };
-  const recurringSignature = recurringTransactions.map(r => `${r.id}:${r.last_applied}:${r.day_of_month}`).join('|');
+  const recurringSignature = recurringTransactions.filter(item => {
+    const due = planningDay.slice(0, 8) + String(item.day_of_month).padStart(2, '0');
+    return item.match_mode !== 'bank' && item.is_active && due <= planningDay && (!item.last_applied || item.last_applied < due);
+  }).map(item => `${item.id}:${item.day_of_month}`).join('|');
   useEffect(() => {
-    if (!householdId || !schemaReady || !accountsReady) return;
-    let active = true;
-    void supabase.rpc('apply_due_recurring', { p_today: localDateISO() }).then(async ({ error }) => {
-      if (!active) return;
-      if (error) setFinanceError('Не удалось применить регулярные операции. ' + error.message);
-      else await refresh();
+    if (!householdId || !schemaReady || !accountsReady || !recurringSignature) return;
+    const controller = new AbortController();
+    void supabase.rpc('apply_due_recurring', { p_today: planningDay }).abortSignal(controller.signal).retry(false).then(({ data, error }) => {
+      if (controller.signal.aborted) return;
+      if (error) setPlansError('Не удалось применить регулярные операции.');
+      else if (Number(data) > 0) refreshQueue.current?.request(['journal', 'plans']);
     });
-    return () => { active = false; };
-  }, [householdId, schemaReady, accountsReady, recurringSignature, refresh]);
+    return () => controller.abort();
+  }, [householdId, schemaReady, accountsReady, recurringSignature, planningDay]);
   useEffect(() => {
     if (!householdId) return;
-    const stored = localStorage.getItem(`ff_budget_limit:${householdId}`) || localStorage.getItem('ff_budget_limit');
+    let stored: string | null = null;
+    try { stored = localStorage.getItem(`ff_budget_limit:${householdId}`) || localStorage.getItem('ff_budget_limit'); } catch { /* Local preferences may be unavailable. */ }
     setBudgetLimitState(stored && Number.isFinite(Number(stored)) && Number(stored) > 0 ? Number(stored) : 1500);
   }, [householdId]);
   const transactionRecord = (tx: Omit<Transaction, 'id'>) => {
     const own = requireHousehold();
+    if (!journalAvailable) throw new Error('Сначала загрузите журнал и счета.');
     if (!isCashflow(tx as Transaction)) throw new Error('Переводы и резервы изменяются отдельным действием.');
     if (toMinorUnits(tx.amount) <= 0) throw new Error('Укажите положительную сумму.');
     const record = { type: tx.type, amount: money(tx.amount), category_id: tx.categoryId, comment: tx.comment,
@@ -226,10 +328,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!accounts.some(a => a.id === accountId && !a.is_archived)) throw new Error('Выберите доступный счет.');
     return { ...record, kind: 'cashflow', account_id: accountId };
   };
-  const addTransaction = async (tx: Omit<Transaction, 'id'>) => {
-    const { error } = await supabase.from('transactions').insert(transactionRecord(tx));
-    if (error) throw new Error(error.message);
-    await refresh();
+  const addTransaction = async (tx: Omit<Transaction, 'id'>, requestId: string = crypto.randomUUID()) => {
+    const record = transactionRecord(tx);
+    const result = await supabase.from('transactions').insert({ ...record, id: requestId }).select('*').single().retry(false);
+    if (result.error?.code === '23505' || (result.error && [0, 502, 503, 504].includes(result.status))) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 4_000);
+      const confirmed = await Promise.resolve(supabase.from('transactions').select('*').eq('household_id', record.household_id)
+        .eq('id', requestId).abortSignal(controller.signal).maybeSingle().retry(false)).finally(() => clearTimeout(timeout));
+      if (!confirmed.error && confirmed.data) {
+        showConfirmedTransaction(transactionFromRow(confirmed.data as unknown as TransactionRow));
+        return;
+      }
+      throw writeError(0, result.error, true);
+    }
+    if (result.error) throw writeError(result.status, result.error, true);
+    showConfirmedTransaction(transactionFromRow(result.data as unknown as TransactionRow));
   };
   const updateTransaction = async (id: string, tx: Omit<Transaction, 'id'>,learning?:{remember:boolean;name:string}) => {
     if (!transactions.some(t => t.id === id && isCashflow(t))) throw new Error('Эту операцию нельзя редактировать как доход или расход.');
@@ -238,14 +352,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await runRpc(learning?.remember?'save_transaction_with_rule':'update_finance_transaction', { p_id: id, p_type: record.type, p_amount: record.amount,
       p_category_id: record.category_id, p_comment: record.comment, p_added_by: record.added_by,
       p_date: record.date, p_account_id: tx.accountId || defaultAccountId,...(learning?.remember?{p_remember:true,p_merchant_name:learning.name}:{}) });
+    setLedger(previous => previous.map(item => item.id === id ? { ...item, type: record.type, amount: record.amount,
+      categoryId: record.category_id, comment: record.comment, date: record.date, addedBy: record.added_by, accountId: tx.accountId || defaultAccountId } : item));
   };
   const confirmBankBill=async(evidence:string[])=>runRpc('confirm_bank_bill',{p_evidence:evidence});
   const deleteMerchantRule=async(id:string)=>runRpc('delete_merchant_rule',{p_id:id});
   const addTransactionsBatch = async (txs: Omit<Transaction, 'id'>[]) => {
     if (!txs.length) return;
-    const { error } = await supabase.from('transactions').insert(txs.map(transactionRecord));
-    if (error) throw new Error(error.message);
-    await refresh();
+    const { error, status } = await supabase.from('transactions').insert(txs.map(transactionRecord)).retry(false);
+    if (error) throw writeError(status, error);
+    refreshJournal();
   };
   const previewPriorImport = async (accountId: string, snapshot: PriorImportSnapshot): Promise<PriorImportCheck> => {
     requireAccounts();
@@ -258,16 +374,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const { data, error } = await supabase.rpc('import_prior_operations', { p_account_id: accountId, p_snapshot: snapshot, p_items: items });
     if (error) throw new Error(priorImportError(`${error.code} ${error.message}`));
     // Keep the result even if a subsequent ledger refresh fails: retry is idempotent.
-    await refresh();
+    refreshJournal();
     return data as PriorImportResult;
   };
   const deleteTransaction = async (id: string) => {
-    if (schemaReady && accountsReady) return runRpc('delete_finance_transaction', { p_id: id });
+    if (schemaReady && accountsReady) {
+      await runRpc('delete_finance_transaction', { p_id: id });
+      setLedger(previous => previous.filter(item => item.id !== id));
+      return;
+    }
     const tx = transactions.find(t => t.id === id);
     if (tx?.comment.includes('[goal_id:')) throw new Error('Для изменения истории копилки сначала подключите счета.');
     const { error } = await supabase.from('transactions').delete().eq('id', id).eq('household_id', requireHousehold().householdId);
     if (error) throw new Error(error.message);
-    await refresh();
+    setLedger(previous => previous.filter(item => item.id !== id));
+    refreshJournal();
   };
   const initializeFinance = async (legacyIds: string[]) => {
     if (!schemaReady) throw new Error('Сначала обновите базу приложения.');
@@ -279,24 +400,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
   const transferBetweenAccounts = async (data: { fromAccountId: string; toAccountId: string; amount: number; date: string; comment: string }) => {
     requireAccounts();
-    await runRpc('transfer_finance', { p_from: data.fromAccountId, p_to: data.toAccountId, p_amount: money(data.amount), p_date: data.date, p_comment: data.comment });
+    const id = await runRpc('transfer_finance', { p_from: data.fromAccountId, p_to: data.toAccountId, p_amount: money(data.amount), p_date: data.date, p_comment: data.comment });
+    if (typeof id === 'string') showConfirmedTransaction({
+      id, type: 'expense', kind: 'transfer', amount: money(data.amount), categoryId: 'savings',
+      date: data.date, comment: data.comment, addedBy: requireHousehold().profileId,
+      accountId: data.fromAccountId, targetAccountId: data.toAccountId,
+    });
   };
   const addRecurring = async (data: Omit<RecurringTransaction, 'id' | 'household_id' | 'last_applied' | 'is_active' | 'created_at'>) => {
     requireAccounts();
     const { error } = await supabase.from('recurring_transactions').insert({ ...data, amount: money(data.amount), household_id: requireHousehold().householdId, is_active: true, account_id: defaultAccountId });
     if (error) throw new Error(error.message);
-    await refresh();
+    refreshQueue.current?.request(['plans']);
   };
   const deleteRecurring = async (id: string) => {
     const { error } = await supabase.from('recurring_transactions').delete().eq('id', id).eq('household_id', requireHousehold().householdId);
     if (error) throw new Error(error.message);
-    await refresh();
+    refreshQueue.current?.request(['plans']);
   };
   const addGoal = async (data: Pick<SavingsGoal, 'name' | 'target_amount' | 'emoji' | 'deadline'>) => {
     requireAccounts();
     const { error } = await supabase.from('savings_goals').insert({ ...data, target_amount: money(data.target_amount), household_id: requireHousehold().householdId, current_amount: 0, is_completed: false });
     if (error) throw new Error(error.message);
-    await refresh();
+    refreshQueue.current?.request(['plans']);
   };
   const deleteGoal = async (id: string) => { requireAccounts(); await runRpc('archive_savings_goal', { p_goal_id: id, p_date: localDateISO() }); };
   const updateGoalAmount = async (goalId: string, amount: number) => {
@@ -311,12 +437,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
   const setBudgetLimit = (limit: number) => {
     requireHousehold(); setBudgetLimitState(money(limit));
-    localStorage.setItem(`ff_budget_limit:${householdId}`, String(limit));
+    try { localStorage.setItem(`ff_budget_limit:${householdId}`, String(limit)); } catch { /* The in-memory preference still applies. */ }
   };
-  const balances = calculateAccountBalances(accounts, transactions);
-  const balance = accountsReady ? totalAccountBalance(accounts, transactions) : cashflowTotals(transactions).net;
-  const reservedBalance = reservedGoals(savingsGoals);
-  const budgetReservedBalance = budgetReserved(categoryBudgets, transactions);
+  const balances = useMemo(() => calculateAccountBalances(accounts, ledger), [accounts, ledger]);
+  const getMemberById = useMemo(() => {
+    const membersById = new Map(members.map(member => [member.id, member]));
+    return (id: string) => membersById.get(id);
+  }, [members]);
+  const balance = useMemo(() => accountsReady ? sumMoney(Object.values(balances)) : cashflowTotals(ledger).net, [accountsReady, balances, ledger]);
+  const reservedBalance = useMemo(() => reservedGoals(savingsGoals), [savingsGoals]);
+  const budgetReservedBalance = useMemo(() => budgetReserved(categoryBudgets, ledger, planningDay), [categoryBudgets, ledger, planningDay]);
   const setCategoryBudget = async (categoryId: string, amount: number) => {
     requireAccounts();
     if (!planningReady) throw new Error('Бюджеты появятся после обновления приложения.');
@@ -348,15 +478,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
   // Legacy deposits already reduce the balance until the reviewed migration is accepted.
   const availableBalance = accountsReady ? fromMinorUnits(toMinorUnits(balance) - toMinorUnits(reservedBalance) - toMinorUnits(budgetReservedBalance)) : balance;
-  const monthly = cashflowTotals(transactions.filter(t => t.date.startsWith(localDateISO().slice(0, 7))));
+  const monthly = useMemo(() => cashflowTotals(ledger.filter(t => t.date.startsWith(planningDay.slice(0, 7)))), [ledger, planningDay]);
   return <AppContext.Provider value={{ transactions, categories: CATEGORIES, members, accounts, accountBalances: balances,
-    accountsReady, schemaReady, financeLoading, financeError, balance, availableBalance, reservedBalance,
+    accountsReady, schemaReady, financeLoading, financeError, journalAvailable, plansAvailable, plansError, refreshFinance: refresh, balance, availableBalance, reservedBalance,
     monthlyIncome: monthly.income, monthlyExpense: monthly.expense, budgetLimit, recurringTransactions, savingsGoals,
     categoryBudgets, incomeDistributions, planningReady, budgetReservedBalance, setCategoryBudget, distributeIncome,
     flexiblePlanningReady,incomeTemplates,budgetRollovers,distributionRevisions,transferCategoryBudget,changeIncomeDistribution,saveIncomeTemplate,archiveIncomeTemplate,reviewBudgetMonth,saveFund,
     addTransaction, updateTransaction, addTransactionsBatch, previewPriorImport, importPriorOperations, deleteTransaction, initializeFinance, createAccount, transferBetweenAccounts,
-    setBudgetLimit, getCategoryById: id => CATEGORIES.find(c => c.id === id), getMemberById: id => members.find(m => m.id === id),
-    merchantRules:merchantRules.filter(r=>r.household_id===householdId),smartRulesReady,confirmBankBill,deleteMerchantRule,
+    setBudgetLimit, getCategoryById, getMemberById,
+    merchantRules,smartRulesReady,confirmBankBill,deleteMerchantRule,
     addRecurring, deleteRecurring, addGoal, deleteGoal, updateGoalAmount, withdrawGoalAmount }}>{children}</AppContext.Provider>;
 };
 export const useApp = () => {

@@ -1,5 +1,23 @@
 import React from 'react';
-import * as Icons from 'lucide-react';
+import {
+  ArrowDownLeft, ArrowRightLeft, Award, Baby, Banknote, Bike, Briefcase, Bus, Car,
+  Cat, Coffee, Coins, Droplet, Dumbbell, FileText, Fuel, Gamepad2, Gift, GraduationCap,
+  Hammer, HandHeart, Heart, HeartHandshake, HelpCircle, Home, KeyRound, Landmark,
+  Laptop, Leaf, LineChart, Package, ParkingSquare, Percent, Phone, Pill, Plane,
+  Receipt, RefreshCw, Repeat, Scissors, Shirt, ShoppingBag, ShoppingCart, Smartphone,
+  Sparkles, Store, Tag, Target, TrendingUp, Truck, Undo2, Utensils, Wallet, Wifi, Wind, Wrench,
+  type LucideIcon,
+} from 'lucide-react';
+import type { Category } from '../types';
+
+const icons: Record<string, LucideIcon> = {
+  ArrowDownLeft, ArrowRightLeft, Award, Baby, Banknote, Bike, Briefcase, Bus, Car,
+  Cat, Coffee, Coins, Droplet, Dumbbell, FileText, Fuel, Gamepad2, Gift, GraduationCap,
+  Hammer, HandHeart, Heart, HeartHandshake, HelpCircle, Home, KeyRound, Landmark,
+  Laptop, Leaf, LineChart, Package, ParkingSquare, Percent, Phone, Pill, Plane,
+  Receipt, RefreshCw, Repeat, Scissors, Shirt, ShoppingBag, ShoppingCart, Smartphone,
+  Sparkles, Store, Tag, Target, TrendingUp, Truck, Undo2, Utensils, Wallet, Wifi, Wind, Wrench,
+};
 
 // Dynamic Icon Renderer helper
 export const DynamicIcon: React.FC<{
@@ -13,12 +31,12 @@ export const DynamicIcon: React.FC<{
   strokeWidth = 1.6,
   style
 }) => {
-  const IconComponent = (Icons as any)[name] || Icons.HelpCircle;
+  const IconComponent = Object.prototype.hasOwnProperty.call(icons, name) ? icons[name] : HelpCircle;
   return <IconComponent className={className} strokeWidth={strokeWidth} style={style} />;
 };
 
 interface CategoryGridProps {
-  categories: any[];
+  categories: Category[];
   selectedId: string;
   onSelect: (id: string) => void;
 }
