@@ -22,6 +22,17 @@ test('Prior v2: shadow, authorizations, settlement, occurrences, cancellation, t
  const migration=await fs.readFile(new URL('../supabase/migrations/20261025153840_prior_live_accounting.sql',import.meta.url),'utf8');
  eq((await fs.readFile(new URL('../supabase_schema.sql',import.meta.url),'utf8')).split('-- 19. Priorbank live accounting (2026-10-25)')[1].split('-- 20. Merchant rules')[0].trim(),migration.trim());
  await db.exec(migration);await db.exec(migration);
+ const quietMigration=await fs.readFile(new URL('../supabase/migrations/20261126131930_reduce_prior_sync_write_churn.sql',import.meta.url),'utf8');
+ eq((await fs.readFile(new URL('../supabase_schema.sql',import.meta.url),'utf8')).split('-- 23. Quiet Priorbank reconciliation (2026-11-26)')[1].trim(),quietMigration.trim());
+ await db.exec(quietMigration);await db.exec(quietMigration);
+ await db.exec(`
+  CREATE TABLE test_bank_writes(table_name text);
+  CREATE FUNCTION test_count_bank_write() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $$
+  BEGIN INSERT INTO public.test_bank_writes VALUES(TG_TABLE_NAME); RETURN NEW; END $$;
+  CREATE TRIGGER test_event_write AFTER UPDATE ON prior_bank_events FOR EACH ROW EXECUTE FUNCTION test_count_bank_write();
+  CREATE TRIGGER test_ledger_write AFTER UPDATE ON transactions FOR EACH ROW EXECUTE FUNCTION test_count_bank_write();
+  CREATE TRIGGER test_receipt_write AFTER UPDATE ON prior_import_days FOR EACH ROW EXECUTE FUNCTION test_count_bank_write();
+ `);
  const owner='11111111-1111-4111-8111-111111111111',other='22222222-2222-4222-8222-222222222222';
  await q(`INSERT INTO auth.users VALUES($1,'{"household_action":"create","household_name":"A"}'),($2,'{"household_action":"create","household_name":"B"}')`,[owner,other]);
  const auth=async id=>db.exec(`RESET ROLE;SET ROLE authenticated;SELECT set_config('request.jwt.claim.sub','${id}',false);`);
@@ -47,6 +58,10 @@ test('Prior v2: shadow, authorizations, settlement, occurrences, cancellation, t
  rows=[row('Shop','-27.00','12:00:01','history'),row('Top-up','10.00','12:00:02','history')];await db.exec('SET ROLE service_role');
  eq((await save()).imported,0);await db.exec('RESET ROLE');eq((await q('SELECT id,category_id,comment FROM transactions WHERE id=$1',[shop]))[0],{id:shop,category_id:'cafes',comment:'My note'});
  eq((await q("SELECT count(*)::int n FROM prior_bank_events WHERE state='posted'"))[0].n,2);
+ await q('TRUNCATE test_bank_writes');
+ eq(await save(),{imported:0,updated:0,issue:null});
+ await db.exec('RESET ROLE');
+ eq(await q('SELECT table_name FROM test_bank_writes'),[]);
  // Changed amount with the same precise operation identity updates one ledger row and records history.
  rows[0]=row('Shop','-28.19','12:00:01','history');await db.exec('SET ROLE service_role');eq((await save()).imported,0);
  await db.exec('RESET ROLE');eq((await q('SELECT amount::text n FROM transactions WHERE id=$1',[shop]))[0].n,'28.19');eq((await q('SELECT jsonb_array_length(history)::int n FROM prior_bank_events WHERE transaction_id=$1',[shop]))[0].n>0,true);

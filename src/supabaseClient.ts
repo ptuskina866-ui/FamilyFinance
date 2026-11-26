@@ -14,8 +14,26 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
+const boundedFetch: typeof fetch = async (input, init) => {
+  const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+  if (!new URL(url).pathname.startsWith('/auth/v1/')) return fetch(input, init);
+
+  const controller = new AbortController();
+  const upstream = init?.signal ?? (input instanceof Request ? input.signal : null);
+  const abort = () => controller.abort();
+  upstream?.addEventListener('abort', abort, { once: true });
+  if (upstream?.aborted) abort();
+  const timer = setTimeout(abort, 12_000);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+    upstream?.removeEventListener('abort', abort);
+  }
+};
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, demo ? {
   auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   global: { fetch: async () => { throw new Error('В демо нет подключения к серверу.'); } }
-} : undefined);
+} : { db: { timeout: 12_000 }, global: { fetch: boundedFetch } });
 

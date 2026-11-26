@@ -22,7 +22,7 @@ test('merchant learning and bank-observed monthly bills are atomic, isolated and
  const endMigration=await fs.readFile(new URL('../supabase/migrations/20261026071613_bank_bill_month_end.sql',import.meta.url),'utf8');
  eq(schema.split('-- 21. Month-end bank bills (2026-10-26)')[1].split('-- 22. Exact new bank rows')[0].trim(),endMigration.trim());await db.exec(endMigration);await db.exec(endMigration);
  const guardMigration=await fs.readFile(new URL('../supabase/migrations/20261026072334_merchant_new_row_guard.sql',import.meta.url),'utf8');
- eq(schema.split('-- 22. Exact new bank rows (2026-10-26)')[1].trim(),guardMigration.trim());await db.exec(guardMigration);await db.exec(guardMigration);
+ eq(schema.split('-- 22. Exact new bank rows (2026-10-26)')[1].split('-- 23. Quiet Priorbank reconciliation')[0].trim(),guardMigration.trim());await db.exec(guardMigration);await db.exec(guardMigration);
  for(const text of ['Retail BLR Minsk MAK.BY','SMAK.BY','Netflix.com','OTHER SHOP 123','OTHER SHOP 124','ＡＰＰＬＥ.COM/BILL','', 'оплата', 'x'.repeat(300),...MERCHANTS.map(x=>x[1])])eq((await q('SELECT finance_private.merchant_identity($1) v',[text]))[0].v,merchantIdentity(text));
  const owner='11111111-1111-4111-8111-111111111111',other='22222222-2222-4222-8222-222222222222';
  await q(`INSERT INTO auth.users VALUES($1,'{"household_action":"create","household_name":"A"}'),($2,'{"household_action":"create","household_name":"B"}')`,[owner,other]);

@@ -1,22 +1,25 @@
 import React, { lazy, Suspense, useState } from 'react';
-import { AppProvider } from './AppContext';
+import { AppProvider, useApp } from './AppContext';
 import { AuthProvider, useAuth } from './AuthContext';
 import Layout from './components/Layout';
 import BottomNav from './components/BottomNav';
 import HomeScreen from './screens/HomeScreen';
 import AddTransactionScreen from './screens/AddTransactionScreen';
-import AnalyticsScreen from './screens/AnalyticsScreen';
-import ProfileScreen from './screens/ProfileScreen';
-import PlansScreen from './screens/PlansScreen';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
-import { BankStatementScreen } from './screens/BankStatementScreen';
 import { ErrorBoundary } from './components/ErrorBoundary';
+
+const AnalyticsScreen = lazy(() => import('./screens/AnalyticsScreen'));
+const ProfileScreen = lazy(() => import('./screens/ProfileScreen'));
+const PlansScreen = lazy(() => import('./screens/PlansScreen'));
+const BankStatementScreen = lazy(() => import('./screens/BankStatementScreen').then(module => ({ default: module.BankStatementScreen })));
+const screenLoading = <p className="m-auto p-4 text-sm text-slate-500" role="status">Открываем раздел…</p>;
 
 export type TabType = 'home' | 'add' | 'analytics' | 'plans' | 'profile';
 
 export const AppContent: React.FC<{ notice?: React.ReactNode }> = ({ notice }) => {
-  const { user, loading } = useAuth();
+  const { user, profile, loading, refreshProfile } = useAuth();
+  const { financeError, plansError, refreshFinance } = useApp();
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [authView, setAuthView] = useState<'login' | 'register'>('login');
   const [showStatement, setShowStatement] = useState(false);
@@ -48,12 +51,30 @@ export const AppContent: React.FC<{ notice?: React.ReactNode }> = ({ notice }) =
     );
   }
 
+  if (!profile?.household_id) {
+    return <Layout>
+      {notice}
+      <div className="m-auto p-5 flex flex-col gap-4">
+        <p role="alert">Не удалось открыть профиль семьи.</p>
+        <button type="button" className="auth-button" onClick={() => void refreshProfile()}>Повторить загрузку профиля</button>
+      </div>
+    </Layout>;
+  }
+
+  const dataNotice = (financeError || plansError) && refreshFinance ? (
+    <div className="mx-4 mt-2 rounded-xl bg-amber-50 p-3 text-xs text-amber-900 flex flex-wrap gap-2 items-center">
+      <span role="status" className="flex-1 min-w-0">{financeError || plansError}</span>
+      <button type="button" className="font-bold py-2" onClick={refreshFinance}>Обновить</button>
+    </div>
+  ) : null;
+
   // Full-screen dedicated Bank Statement import page
   if (showStatement) {
     return (
       <Layout>
         {notice}
-        <BankStatementScreen onBack={() => setShowStatement(false)} />
+        {dataNotice}
+        <Suspense fallback={screenLoading}><BankStatementScreen onBack={() => setShowStatement(false)} /></Suspense>
       </Layout>
     );
   }
@@ -72,8 +93,9 @@ export const AppContent: React.FC<{ notice?: React.ReactNode }> = ({ notice }) =
   return (
     <Layout>
       {notice}
+      {dataNotice}
       <div className="flex-1 flex flex-col min-h-0 relative">
-        {renderScreen()}
+        <Suspense fallback={screenLoading}>{renderScreen()}</Suspense>
       </div>
       <BottomNav activeTab={activeTab} onChangeTab={setActiveTab} />
     </Layout>

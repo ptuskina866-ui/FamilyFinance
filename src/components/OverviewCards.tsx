@@ -14,7 +14,7 @@ interface Props {
   onBank:()=>void; onPlans:()=>void; onReview:(ids:string[])=>void;
 }
 export function OverviewCards({hideAmounts,daily,goal,onBank,onPlans,onReview}:Props) {
-  const {balance,availableBalance,reservedBalance,budgetReservedBalance,accountsReady,monthlyIncome,monthlyExpense,transactions,savingsGoals,accounts,schemaReady,financeLoading}=useApp();
+  const {balance,availableBalance,reservedBalance,budgetReservedBalance,accountsReady,monthlyIncome,monthlyExpense,transactions,savingsGoals,accounts,schemaReady,financeLoading,journalAvailable=true,plansAvailable=true,plansError}=useApp();
   const accountsRef=useRef<AccountsPanelHandle>(null);
   const money=(amount:number) => hideAmounts ? '••••' : fmt(amount);
   const progress=goal && goal.target_amount>0 ? Math.min(100,goal.current_amount/goal.target_amount*100) : 0;
@@ -22,13 +22,13 @@ export function OverviewCards({hideAmounts,daily,goal,onBank,onPlans,onReview}:P
   return <>
     <section className="balance-hero" aria-label="Обзор баланса">
       <p className="balance-label">Общий баланс</p>
-      <div className="flex flex-wrap items-baseline justify-center gap-2 mt-3"><p className="balance-value min-w-0">{hideAmounts?'••••••':balance.toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2})}</p><span className="text-xs text-slate-500">BYN</span></div>
-      {accountsReady && <dl className="balance-breakdown">
+      <div className="flex flex-wrap items-baseline justify-center gap-2 mt-3"><p className="balance-value min-w-0">{financeLoading?'…':!journalAvailable?'—':hideAmounts?'••••••':balance.toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2})}</p><span className="text-xs text-slate-500">BYN</span></div>
+      {accountsReady && plansAvailable && <dl className="balance-breakdown">
         <div className="min-w-0"><dt>Свободно</dt><dd className="money">{money(availableBalance)}</dd></div>
         <div className="min-w-0"><dt>В целях</dt><dd className="money">{money(reservedBalance)}</dd></div>
         {budgetReservedBalance>0 && <div className="min-w-0 col-span-2"><dt>В бюджетах</dt><dd className="money">{money(budgetReservedBalance)}</dd></div>}
       </dl>}
-      {!hideAmounts&&availableBalance<0&&<p role="status" className="bank-caption text-amber-800 mt-3">Не хватает {fmt(Math.abs(availableBalance))} свободных средств. Резервы в целях и бюджетах сохранены; их можно пересмотреть в планах.</p>}
+      {plansAvailable&&!hideAmounts&&availableBalance<0&&<p role="status" className="bank-caption text-amber-800 mt-3">Не хватает {fmt(Math.abs(availableBalance))} свободных средств. Резервы в целях и бюджетах сохранены; их можно пересмотреть в планах.</p>}
     </section>
     <div className="quick-actions" aria-label="Быстрые действия">
       <button type="button" onClick={onPlans} className="quick-action"><span className="quick-action-icon"><Target size={21} strokeWidth={1.6}/></span><span>Накопления</span></button>
@@ -37,9 +37,11 @@ export function OverviewCards({hideAmounts,daily,goal,onBank,onPlans,onReview}:P
     </div>
     <section className="daily-card" aria-labelledby="today-heading">
       <h2 id="today-heading" className="text-[11px] text-slate-500">Можно потратить сегодня</h2>
+      {plansAvailable && journalAvailable ? <>
       <div className="flex flex-wrap items-baseline justify-between gap-2 mt-1"><p className="daily-amount money">{money(daily.remaining)}</p><span className="text-[11px] text-slate-500">потрачено {money(daily.spentToday)}</span></div>
       {!hideAmounts && <div aria-hidden="true" className="daily-meter"><div className={`h-full rounded-full ${daily.isOver?'bg-rose-600':'bg-[#476ba7]'}`} style={{width:`${daily.limit>0?Math.min(100,daily.spentToday/daily.limit*100):daily.spentToday>0?100:0}%`}}/></div>}
       <details className="daily-explanation"><summary className={daily.isOver?'daily-over':''}>{daily.isOver?'Расходы выше ориентира':'Как рассчитано'}<ChevronDown size={13}/></summary><p>Это ориентир на {daily.daysLeft} дн. до конца месяца, после резервов на цели, бюджеты и предстоящие платежи. Сумма уменьшается на сегодняшние расходы.</p></details>
+      </> : <p className="mt-2 text-xs text-slate-600">{plansError || (!financeLoading && !journalAvailable) ? 'Расчёт пока недоступен' : 'Загружаем данные для расчёта…'}</p>}
     </section>
     <AccountsPanel ref={accountsRef} hideBalances={hideAmounts}/>
     <section aria-label="Доходы и расходы за месяц" className="monthly-strip">
@@ -50,7 +52,7 @@ export function OverviewCards({hideAmounts,daily,goal,onBank,onPlans,onReview}:P
       <summary><span className="flex items-center gap-3 min-w-0"><Target size={20} strokeWidth={1.6}/><span><span className="block text-sm font-semibold">Планы и подсказки</span><span className="block text-xs text-slate-500 mt-1">Накопления и регулярные расходы</span></span></span><ChevronDown size={17}/></summary>
       <div className="overview-extra space-y-4">
     <section className="space-y-2" aria-labelledby="savings-heading"><div className="section-heading"><h2 id="savings-heading" className="section-title">Ближе к цели</h2><button type="button" onClick={onPlans} className="text-action">Все планы<ChevronRight size={14}/></button></div>
-      {goal ? <button type="button" onClick={onPlans} className="card accent-savings goal-preview"><span className="goal-ring" style={{background:`conic-gradient(#796299 ${progress}%,#eff0f3 0)`}}><span>{goal.emoji||'🎯'}</span></span><span className="flex-1 min-w-0"><span className="block text-sm font-bold truncate">{goal.name}</span><span className="block money text-xs text-slate-500 mt-1">{money(goal.current_amount)}<span className="block text-[11px] mt-1">{hideAmounts?'Цель скрыта':`из ${fmt(goal.target_amount)}`}</span></span></span><ChevronRight size={18} className="text-slate-400 shrink-0"/></button>
+      {!plansAvailable ? <p className="text-xs text-slate-500">{plansError ? 'Цели пока недоступны' : 'Загружаем цели…'}</p> : goal ? <button type="button" onClick={onPlans} className="card accent-savings goal-preview"><span className="goal-ring" style={{background:`conic-gradient(#796299 ${progress}%,#eff0f3 0)`}}><span>{goal.emoji||'🎯'}</span></span><span className="flex-1 min-w-0"><span className="block text-sm font-bold truncate">{goal.name}</span><span className="block money text-xs text-slate-500 mt-1">{money(goal.current_amount)}<span className="block text-[11px] mt-1">{hideAmounts?'Цель скрыта':`из ${fmt(goal.target_amount)}`}</span></span></span><ChevronRight size={18} className="text-slate-400 shrink-0"/></button>
       : <button type="button" onClick={onPlans} className="card accent-savings goal-preview"><span className="icon-button"><Plus size={20}/></span><span className="flex-1 text-sm font-bold">Создать первую цель<span className="block text-xs text-slate-500 font-normal mt-1">У каждой мечты будет свой план.</span></span><ChevronRight size={18}/></button>}
     </section>
     <PayDreamFirstBanner transactions={transactions} goals={savingsGoals} availableBalance={availableBalance} hideAmounts={hideAmounts} onOpenPlans={onPlans}/>

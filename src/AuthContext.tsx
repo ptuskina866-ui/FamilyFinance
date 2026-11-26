@@ -48,6 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [household, setHousehold] = useState<Household | null>(null);
   const [loading, setLoading] = useState(true);
   const loadGuard = useRef(createAuthLoadGuard());
+  const profileRequestedFor = useRef<string | null>(null);
 
   const fetchProfileAndHousehold = async (userId: string, ticket: AuthLoadTicket) => {
     const isCurrent = () => loadGuard.current.isCurrent(ticket) && ticket.userId === userId;
@@ -58,7 +59,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .single()
+        .retry(false);
       if (!isCurrent()) return;
 
       // Retry once after 600ms if profile row was just created by trigger
@@ -69,7 +71,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .from('profiles')
           .select('*')
           .eq('id', userId)
-          .single();
+          .single()
+          .retry(false);
         if (!isCurrent()) return;
         profileData = retry.data;
         profileError = retry.error;
@@ -92,6 +95,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
       setProfile(profileData);
+      setHousehold(previous => previous?.id === profileData.household_id ? previous : null);
+      setLoading(false);
 
       // 2. Fetch Household if profile has one
       if (profileData && profileData.household_id) {
@@ -99,7 +104,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .from('households')
           .select('*')
           .eq('id', profileData.household_id)
-          .single();
+          .single()
+          .retry(false);
         if (!isCurrent()) return;
 
         if (householdError) {
@@ -119,6 +125,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     let active = true;
     loadGuard.current.activate();
+    profileRequestedFor.current = null;
+    let deferred: ReturnType<typeof setTimeout> | undefined;
     const initialTicket = loadGuard.current.snapshot();
 
     // Safety timeout: Never hang on loading screen for more than 5 seconds
@@ -128,10 +136,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }, 5000);
 
-    const handleSession = async (currentSession: Session | null) => {
+    const handleSession = (currentSession: Session | null) => {
       if (!active) return;
       const nextUserId = currentSession?.user.id ?? null;
       const identityChanged = loadGuard.current.userId !== nextUserId;
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
+      if (!identityChanged && nextUserId && profileRequestedFor.current === nextUserId) return;
+
+      clearTimeout(deferred);
       const ticket = loadGuard.current.begin(nextUserId);
       const isCurrent = () => active && loadGuard.current.isCurrent(ticket);
       if (identityChanged) {
@@ -139,51 +152,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setHousehold(null);
         setLoading(nextUserId !== null);
       }
-      const profileTimer = setTimeout(() => { if (isCurrent()) setLoading(false); }, 5000);
-      try {
-        setSession(currentSession);
-        setUser(currentSession?.user ?? null);
-
-        if (currentSession?.user) {
-          await fetchProfileAndHousehold(currentSession.user.id, ticket);
-        } else {
-          setProfile(null);
-          setHousehold(null);
-        }
-      } catch (err) {
-        if (isCurrent()) console.error('Ошибка при обработке сессии:', err);
-      } finally {
-        clearTimeout(profileTimer);
-        if (isCurrent()) {
-          setLoading(false);
-        }
+      profileRequestedFor.current = nextUserId;
+      if (!nextUserId) {
+        setProfile(null);
+        setHousehold(null);
+        setLoading(false);
+        return;
       }
+      // Release the Auth client's notification before issuing any Supabase request.
+      deferred = setTimeout(() => {
+        void fetchProfileAndHousehold(nextUserId, ticket).finally(() => {
+          if (isCurrent()) setLoading(false);
+        });
+      }, 0);
     };
 
-    // 1. Initial auth check
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (active && loadGuard.current.isCurrent(initialTicket)) {
-        void handleSession(session);
-      }
-    }).catch(err => {
-      if (active && loadGuard.current.isCurrent(initialTicket)) {
-        console.error('Ошибка getSession:', err);
-        setLoading(false);
-      }
-    });
-
-    // 2. Auth state changes listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!active) return;
-      if (event === 'INITIAL_SESSION') return;
-
-      void handleSession(session);
+      if (event === 'INITIAL_SESSION' && !loadGuard.current.isCurrent(initialTicket)) return;
+      handleSession(session);
     });
 
     return () => {
       active = false;
       loadGuard.current.invalidate();
       clearTimeout(safetyTimer);
+      clearTimeout(deferred);
       subscription.unsubscribe();
     };
   }, []);
@@ -232,10 +225,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refreshProfile = async () => {
     if (!user || loadGuard.current.userId !== user.id) return;
     const ticket = loadGuard.current.begin(user.id);
-    const profileTimer = setTimeout(() => { if (loadGuard.current.isCurrent(ticket)) setLoading(false); }, 5000);
+    if (!profile) setLoading(true);
     try { await fetchProfileAndHousehold(user.id, ticket); }
     finally {
-      clearTimeout(profileTimer);
       if (loadGuard.current.isCurrent(ticket)) setLoading(false);
     }
   };

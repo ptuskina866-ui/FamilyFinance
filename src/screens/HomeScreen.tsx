@@ -1,9 +1,8 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { lazy, Suspense, useState, useMemo, useRef, useDeferredValue, useEffect } from 'react';
 import { useApp } from '../AppContext';
 import { useAuth } from '../AuthContext';
 import { OverviewCards } from '../components/OverviewCards';
 import { DynamicIcon } from '../components/CategoryGrid';
-import { BankSyncModal } from '../components/BankSyncModal';
 import { TransactionEditor } from '../components/TransactionEditor';
 import { PriorEventDetails } from '../components/PriorEventDetails';
 import { transactionTitle } from '../lib/merchants';
@@ -16,6 +15,8 @@ import { Transaction } from '../types';
 import { Trash2, Pencil, Search, Eye, EyeOff } from 'lucide-react';
 
 const fmt = (n: number) => n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' Br';
+const BankSyncModal = lazy(() => import('../components/BankSyncModal').then(module => ({ default: module.BankSyncModal })));
+const journalPageSize = 40;
 
 const formatDateGroup = (iso: string) => {
   const d = new Date(iso);
@@ -46,7 +47,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
     getCategoryById, 
     getMemberById,
     savingsGoals,
-    availableBalance, categoryBudgets, accounts, recurringTransactions, accountsReady,merchantRules=[]
+    availableBalance, categoryBudgets, accounts, recurringTransactions, accountsReady, financeLoading, financeError, merchantRules=[]
   } = useApp();
   const { profile } = useAuth();
 
@@ -54,6 +55,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
   const [hideBalance, setHideBalance] = useState(false);
   const [filterType, setFilterType] = useState<'all' | 'expense' | 'income'>('all');
   const [search, setSearch] = useState('');
+  const searchQuery = useDeferredValue(search);
+  const [visibleCount, setVisibleCount] = useState(journalPageSize);
   const [accountFilter, setAccountFilter] = useState('');
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -81,30 +84,26 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
     ) || savingsGoals.find(g => !g.is_archived);
   }, [savingsGoals]);
 
-  // Grouped transactions by Date
-  const groupedTransactions = useMemo(() => {
-    const filtered = transactions.filter(tx => {
-      const query = search.trim().toLocaleLowerCase('ru-RU');
-      return (!insightTransactionIds || insightTransactionIds.includes(tx.id)) &&
+  useEffect(() => setVisibleCount(journalPageSize), [filterType, searchQuery, accountFilter, insightTransactionIds]);
+  const filtered = useMemo(() => {
+    const query = searchQuery.trim().toLocaleLowerCase('ru-RU');
+    const insights = insightTransactionIds ? new Set(insightTransactionIds) : null;
+    return transactions.filter(tx => {
+      return (!insights || insights.has(tx.id)) &&
         (filterType === 'all' || (isCashflow(tx) && tx.type === filterType)) &&
         (!accountFilter || tx.accountId === accountFilter || tx.targetAccountId === accountFilter) &&
         (!query || `${transactionTitle(tx,merchantRules)} ${tx.comment} ${tx.bankEvent?.description||''} ${getCategoryById(tx.categoryId)?.name || ''} ${tx.amount}`.toLocaleLowerCase('ru-RU').includes(query));
     });
-
-    const groups: { dateLabel: string; items: typeof transactions }[] = [];
-    const dateMap = new Map<string, typeof transactions>();
-
-    for (const tx of filtered) {
-      const label = formatDateGroup(tx.date);
-      if (!dateMap.has(label)) {
-        dateMap.set(label, []);
-        groups.push({ dateLabel: label, items: dateMap.get(label)! });
-      }
-      dateMap.get(label)!.push(tx);
+  }, [transactions, filterType, searchQuery, accountFilter, getCategoryById, insightTransactionIds, merchantRules]);
+  const groupedTransactions = useMemo(() => {
+    const days = new Map<string, Transaction[]>();
+    for (const tx of filtered.slice(0, visibleCount)) {
+      const day = days.get(tx.date);
+      if (day) day.push(tx);
+      else days.set(tx.date, [tx]);
     }
-
-    return groups;
-  }, [transactions, filterType, search, accountFilter, getCategoryById, insightTransactionIds,merchantRules]);
+    return [...days].map(([date, items]) => ({ date, dateLabel: formatDateGroup(date), items }));
+  }, [filtered, visibleCount]);
 
   const handleDelete = async (tx: Transaction) => {
     if (!window.confirm('Удалить операцию? Остатки и связанный резерв будут пересчитаны.')) return;
@@ -153,12 +152,12 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
           {/* Transactions Grouped by Date (like reference left screen) */}
           {groupedTransactions.length === 0 ? (
             <div className="card p-8 text-center">
-              <p className="text-xs font-semibold text-slate-400">Операций не найдено</p>
+              <p className="text-xs font-semibold text-slate-500">{financeLoading ? 'Загружаем операции…' : financeError ? 'Журнал пока недоступен' : 'Операций не найдено'}</p>
             </div>
           ) : (
             <div className="flex flex-col gap-4">
               {groupedTransactions.map(group => (
-                <div key={group.dateLabel} className="flex flex-col gap-2">
+                <div key={group.date} className="flex flex-col gap-2">
                   <span className="text-[11px] font-extrabold text-slate-500 px-1">
                     {group.dateLabel}
                   </span>
@@ -209,6 +208,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
                   </div>
                 </div>
               ))}
+              {filtered.length > visibleCount && <button type="button" className="card py-3 text-sm font-semibold" onClick={() => setVisibleCount(count => count + journalPageSize)}>Показать ещё операции</button>}
             </div>
           )}
         </section>
@@ -216,7 +216,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenStatement, onNavigateTab 
       </div>
 
       {/* Bank Sync Modal fallback */}
-      <BankSyncModal isOpen={bankSyncOpen} onClose={() => setBankSyncOpen(false)} />
+      {bankSyncOpen && <Suspense fallback={null}><BankSyncModal isOpen onClose={() => setBankSyncOpen(false)} /></Suspense>}
       {editing && <TransactionEditor transaction={editing} onClose={() => setEditing(null)} />}
     </div>
   );

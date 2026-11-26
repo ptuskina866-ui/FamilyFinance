@@ -5,6 +5,7 @@ import { useAuth } from '../AuthContext';
 import { parseQuickEntry, type QuickEntryDraft } from '../lib/quickEntry';
 import { parseMoneyInput } from '../lib/money';
 import { isIncomeCategory } from '../lib/categories';
+import { identifySaveAttempt } from '../lib/saveAttempt';
 
 // The browser handles audio through its own recognition service. FinApp does
 // not record, upload or store audio. Safari exposes the prefixed constructor.
@@ -22,6 +23,7 @@ export function QuickEntry({onSaved}:{onSaved:()=>void}) {
   const [amount,setAmount]=useState(''),[error,setError]=useState(''),[listening,setListening]=useState(false),[saving,setSaving]=useState(false),[editing,setEditing]=useState(false);
   const busy=useRef(false),recognition=useRef<Recognition|null>(null),mounted=useRef(true);
   const timer=useRef<ReturnType<typeof setTimeout>|null>(null);
+  const attempt=useRef<ReturnType<typeof identifySaveAttempt>|null>(null);
   const Speech=(window as SpeechWindow).SpeechRecognition||(window as SpeechWindow).webkitSpeechRecognition;
   const active=accounts.filter(a=>!a.is_archived);
   const cancelSpeech=()=>{if(timer.current)clearTimeout(timer.current);timer.current=null;const r=recognition.current;recognition.current=null;if(r){r.onresult=null;r.onerror=null;r.onend=null;try{r.abort();}catch{/* Browser service may already be unavailable. */}}if(mounted.current)setListening(false);};
@@ -47,9 +49,14 @@ export function QuickEntry({onSaved}:{onSaved:()=>void}) {
     busy.current=true;setSaving(true);setError('');
     try {
       if(draft.kind==='transfer')await transferBetweenAccounts({fromAccountId:source.id,toAccountId:target!.id,amount:value,date:draft.date,comment:draft.comment});
-      else await addTransaction({type:draft.type,amount:value,categoryId:draft.categoryId,accountId:source.id,date:draft.date,comment:draft.comment,addedBy:profile?.id||''});
+      else {
+        const operation = {type:draft.type,amount:value,categoryId:draft.categoryId,accountId:source.id,date:draft.date,comment:draft.comment,addedBy:profile?.id||''};
+        attempt.current = identifySaveAttempt(attempt.current, operation);
+        await addTransaction(operation, attempt.current.id);
+      }
+      attempt.current = null;
       if(mounted.current){setDraft(null);setPhrase('');onSaved();}
-    }catch(e){if(mounted.current)setError(`${e instanceof Error?e.message:'Не удалось сохранить.'} Проверьте журнал перед повторной попыткой.`);}
+    }catch(e){if(mounted.current)setError(e instanceof Error?e.message:'Не удалось сохранить.');}
     finally{busy.current=false;if(mounted.current)setSaving(false);}
   };
   const valid=draft&&!draft.issues.length&&Number(parseMoneyInput(amount))>0&&!!draft.accountId&&!!draft.date&&(draft.kind==='transfer'?!!draft.targetAccountId&&draft.accountId!==draft.targetAccountId:!!draft.categoryId);

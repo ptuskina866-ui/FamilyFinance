@@ -1,5 +1,5 @@
 import { ScreenHeader } from '../components/ScreenHeader';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../AppContext';
 import { useAuth } from '../AuthContext';
 import { DynamicIcon } from '../components/CategoryGrid';
@@ -8,6 +8,7 @@ import { parseMoneyInput, fromMinorUnits, toMinorUnits, localDateISO } from '../
 import type { TransactionType } from '../types';
 import { categoryGroup, categoryTone, isIncomeCategory, matchesCategoryQuery } from '../lib/categories';
 import { QuickEntry } from '../components/QuickEntry';
+import { identifySaveAttempt } from '../lib/saveAttempt';
 
 interface AddTransactionScreenProps {
   onNavigateHome: () => void;
@@ -25,7 +26,7 @@ const GROUPS = [
 const QUICK_AMOUNTS = [5, 10, 20, 50, 100];
 
 const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateHome }) => {
-  const { categories = [], addTransaction, members = [], availableBalance = 0, accounts, accountBalances, accountsReady, schemaReady, financeLoading } = useApp();
+  const { categories = [], addTransaction, members = [], availableBalance = 0, accounts, accountBalances, accountsReady, schemaReady, financeLoading, journalAvailable = true, plansAvailable = true } = useApp();
   const { profile } = useAuth();
 
   const [txType, setTxType] = useState<TransactionType>('expense');
@@ -39,6 +40,8 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
   const [error, setError] = useState<string | null>(null);
   const [selectedGroup, setSelectedGroup] = useState('all');
   const [categoryQuery, setCategoryQuery] = useState('');
+  const pending = useRef(false);
+  const attempt = useRef<ReturnType<typeof identifySaveAttempt> | null>(null);
 
   useEffect(() => {
     if (!accounts.some(a => a.id === accountId && !a.is_archived)) setAccountId(accounts.find(a => !a.is_archived)?.id || '');
@@ -55,12 +58,12 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
     if (defaultCat) {
       setSelectedCategoryId(defaultCat.id);
     }
-    if (profile?.id) {
-      setSelectedMemberId(profile.id);
-    } else if (members.length > 0) {
-      setSelectedMemberId(members[0].id);
-    }
-  }, [txType, categories, profile, members]);
+  }, [txType, categories]);
+
+  useEffect(() => {
+    setSelectedMemberId(previous => members.some(member => member.id === previous)
+      ? previous : profile?.id || members[0]?.id || '');
+  }, [profile?.id, members]);
 
   const handleTypeChange = (type: TransactionType) => {
     setTxType(type);
@@ -74,13 +77,12 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
   };
 
   const handleSave = async () => {
-    if (saving) return;
+    if (pending.current) return;
     const amount = parseMoneyInput(amountStr);
     if (amount === null || amount <= 0) return;
     if (!selectedCategoryId) return;
 
-    setSaving(true); setError(null);
-    try { await addTransaction({
+    const draft = {
       type: txType,
       amount,
       categoryId: selectedCategoryId,
@@ -88,10 +90,16 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
       comment: comment.trim(),
       addedBy: selectedMemberId || profile?.id || '',
       accountId: accountId || null
-    });
-    onNavigateHome();
+    };
+    attempt.current = identifySaveAttempt(attempt.current, draft);
+    pending.current = true;
+    setSaving(true); setError(null);
+    try {
+      await addTransaction(draft, attempt.current.id);
+      attempt.current = null;
+      onNavigateHome();
     } catch (err) { setError(err instanceof Error ? err.message : 'Не удалось сохранить операцию.'); }
-    finally { setSaving(false); }
+    finally { pending.current = false; setSaving(false); }
   };
 
   const isIncome = txType === 'income';
@@ -143,7 +151,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
           </div>
 
           <span className="text-[11px] font-bold text-slate-400">
-            Свободно: <strong className="text-slate-700">{availableBalance.toLocaleString('ru-RU', { maximumFractionDigits: 2 })} Br</strong>
+            {plansAvailable ? <>Свободно: <strong className="text-slate-700">{availableBalance.toLocaleString('ru-RU', { maximumFractionDigits: 2 })} Br</strong></> : 'Загружаем резервы…'}
           </span>
 
           {/* Quick Amount Chips */}
@@ -321,7 +329,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ onNavigateH
         <button
           type="button"
           onClick={handleSave}
-          disabled={saving || financeLoading || (schemaReady && !accountsReady) || !amountStr || (parseMoneyInput(amountStr) || 0) <= 0 || !selectedCategoryId}
+          disabled={saving || financeLoading || !journalAvailable || (schemaReady && !accountsReady) || !amountStr || (parseMoneyInput(amountStr) || 0) <= 0 || !selectedCategoryId}
           className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-slate-950 hover:bg-slate-900 text-white font-black text-sm active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none"
         >
           <Check className="w-5 h-5" strokeWidth={3} />

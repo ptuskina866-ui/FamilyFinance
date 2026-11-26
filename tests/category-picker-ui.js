@@ -38,7 +38,7 @@ async page=>{
       await p.screenshot({path:'C:/Users/Honor/AppData/Local/Temp/finapp-accents-income-'+width+'-b.png'});
       await p.getByLabel('Комментарий новой операции').fill('Стипендия: проверка интерфейса');await p.getByRole('button',{name:'Сохранить доход · 150.01 Br',exact:true}).click();await p.locator('.balance-value').waitFor();
       if(cents(await p.locator('.balance-value').innerText())!==before-1234n+15001n)throw Error('Income amount changed');
-      await p.getByLabel('Поиск операций').fill('Стипендия: проверка интерфейса');await p.getByLabel('Редактировать операцию',{exact:true}).click();
+      await p.getByLabel('Поиск операций').fill('Стипендия: проверка интерфейса');await p.locator('.transaction-row').filter({hasText:'Стипендия: проверка интерфейса'}).getByLabel('Редактировать операцию',{exact:true}).click();
       const editor=p.getByRole('dialog',{name:'Редактировать операцию'});if(await editor.getByRole('combobox').first().inputValue()!=='income-scholarship')throw Error('Editor lost new income category');
       await p.getByLabel('Закрыть редактирование').click();await fit();
       if(errors.length||remote.length)throw Error(JSON.stringify({errors,remote}));results.push({width,visualLandmarks:true,searchAndGroups:true,newExpenseAndIncomeRoundtrip:true,exactAmounts:true,editor:true,noOverflow:true,noRealRequests:true});
